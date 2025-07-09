@@ -46,8 +46,7 @@ const Stats = () => {
       setLoading(true);
       setError('');
 
-      const [
-      ] = await Promise.all([
+      await Promise.all([
         axios.get('/api/stats/one-rep-max'),
         axios.get('/api/stats/weekly-volume'),
       ]);

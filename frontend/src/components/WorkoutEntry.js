@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -63,30 +63,18 @@ const WorkoutEntry = () => {
     }
   };
 
-  // When exercise changes, reset weight/reps/notes and fetch recent data
-  useEffect(() => {
-    if (selectedExercise !== '') {
-      setWeight('');
-      setReps('');
-      setNotes('');
-      fetchRecentData();
-    }
-  }, [selectedExercise]);
-
-  const fetchRecentData = async () => {
+  const fetchRecentData = useCallback(async () => {
     if (!selectedExercise) {
       setRecentSets([]);
       setSuggestedWeights(null);
       return;
     }
-
     try {
       setLoadingData(true);
       const [recentResponse, suggestedResponse] = await Promise.all([
         axios.get(`/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`),
         axios.get(`/api/stats/suggested-weights?exercise_id=${selectedExercise}`)
       ]);
-      
       setRecentSets(recentResponse.data);
       setSuggestedWeights(suggestedResponse.data);
     } catch (error) {
@@ -96,7 +84,16 @@ const WorkoutEntry = () => {
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [selectedExercise]);
+
+  useEffect(() => {
+    if (selectedExercise !== '') {
+      setWeight('');
+      setReps('');
+      setNotes('');
+      fetchRecentData();
+    }
+  }, [selectedExercise, fetchRecentData]);
 
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
