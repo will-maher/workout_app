@@ -38,7 +38,6 @@ const WorkoutEntry = () => {
   const [reps, setReps] = useState('');
   const [sets, setSets] = useState([]);
   const [date, setDate] = useState(new Date());
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
@@ -53,13 +52,12 @@ const WorkoutEntry = () => {
 
   const fetchExercises = async () => {
     try {
-      setLoading(true);
       const response = await axios.get('/api/exercises');
       setExercises(response.data);
     } catch (error) {
       setMessage('Error loading exercises');
     } finally {
-      setLoading(false);
+      // setLoading(false); // This line was removed
     }
   };
 

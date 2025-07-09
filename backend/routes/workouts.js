@@ -53,19 +53,39 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST create a new workout
+// POST create a new workout (and sets)
 router.post('/', authenticateToken, async (req, res) => {
   const userId = req.user.userId;
-  const { date, notes } = req.body;
+  const { date, notes, sets } = req.body;
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+    // 1. Create the workout
+    const workoutResult = await client.query(
       'INSERT INTO workouts (user_id, date, notes) VALUES ($1, $2, $3) RETURNING *',
       [userId, date, notes]
     );
-    res.status(201).json(result.rows[0]);
+    const workout = workoutResult.rows[0];
+
+    // 2. Insert sets if provided
+    let insertedSets = [];
+    if (Array.isArray(sets) && sets.length > 0) {
+      for (const [idx, set] of sets.entries()) {
+        const setResult = await client.query(
+          'INSERT INTO workout_sets (user_id, workout_id, exercise_id, weight, reps, set_number) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+          [userId, workout.id, set.exercise_id, set.weight, set.reps, set.set_number || idx + 1]
+        );
+        insertedSets.push(setResult.rows[0]);
+      }
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ...workout, sets: insertedSets });
   } catch (err) {
-    console.error('Error creating workout:', err);
-    res.status(500).json({ error: 'Failed to create workout' });
+    await client.query('ROLLBACK');
+    console.error('Error creating workout and sets:', err);
+    res.status(500).json({ error: 'Failed to create workout and sets' });
+  } finally {
+    client.release();
   }
 });
 
