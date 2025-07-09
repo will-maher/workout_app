@@ -37,7 +37,7 @@ import Register from './components/Register';
 
 // API base URL configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://workout-app-backend-production.up.railway.app' 
+  ? 'https://workoutbackend-production-6a39.up.railway.app' 
   : 'http://localhost:5001';
 
 // More page with links to History and Exercise Library
