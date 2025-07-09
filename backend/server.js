@@ -25,6 +25,24 @@ app.get('/', (req, res) => {
   res.send('Workout App API running with Postgres!');
 });
 
+// Test database connection
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+    res.json({
+      message: 'Database connection successful',
+      current_time: result.rows[0].current_time,
+      db_version: result.rows[0].db_version
+    });
+  } catch (err) {
+    console.error('Database connection test failed:', err);
+    res.status(500).json({
+      error: 'Database connection failed',
+      details: err.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 

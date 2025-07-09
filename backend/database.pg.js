@@ -1,11 +1,19 @@
 const { Pool } = require('pg');
 
+// Use Railway's DATABASE_URL environment variable
 const pool = new Pool({
-  user: 'workout_user',
-  host: 'localhost',
-  database: 'workout_app',
-  password: 'workout_pass',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Test the connection
+pool.on('connect', () => {
+  console.log('Connected to Postgres database');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
 module.exports = { pool }; 
