@@ -26,7 +26,19 @@ import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 
 const muscleGroups = [
-  'chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'other'
+  'Chest',
+  'Anterior deltoid',
+  'Triceps',
+  'Bicep',
+  'Lateral deltoid',
+  'Quad',
+  'Calf',
+  'Glutes',
+  'Back',
+  'Hamstring',
+  'Trapezius',
+  'Abs',
+  'Posterior deltoid',
 ];
 
 const ExerciseLibrary = () => {

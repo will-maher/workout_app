@@ -41,9 +41,6 @@ const WorkoutEntry = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [lastExercise, setLastExercise] = useState('');
-  const [lastWeight, setLastWeight] = useState('');
-  const [lastReps, setLastReps] = useState('');
   const [notes, setNotes] = useState('');
   const [notesError, setNotesError] = useState('');
   const [recentSets, setRecentSets] = useState([]);
@@ -68,15 +65,11 @@ const WorkoutEntry = () => {
 
   // When exercise changes, reset weight/reps/notes and fetch recent data
   useEffect(() => {
-    if (selectedExercise !== lastExercise) {
+    if (selectedExercise !== '') {
       setWeight('');
       setReps('');
       setNotes('');
       fetchRecentData();
-    } else {
-      setWeight(lastWeight);
-      setReps(lastReps);
-      setNotes('');
     }
   }, [selectedExercise]);
 
@@ -135,9 +128,6 @@ const WorkoutEntry = () => {
       notes: notes.trim(),
     };
     setSets([...sets, newSet]);
-    setLastExercise(selectedExercise);
-    setLastWeight(weight);
-    setLastReps(reps);
     setMessage('');
     setNotes('');
   };
