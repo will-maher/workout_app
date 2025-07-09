@@ -17,7 +17,6 @@ import {
   Button,
   Select,
   FormControl,
-  Divider,
   CircularProgress,
   Stack,
   useMediaQuery,
@@ -82,21 +81,6 @@ const initialProgram = {
     { exercise: 'Ab cable crunch', sets: 3 },
   ],
 };
-
-const LOCAL_STORAGE_KEY = 'workout_planner_program_v1';
-
-function getWeeklyVolume(program, exerciseMap) {
-  const volume = {};
-  for (const day of defaultDays) {
-    for (const ex of program[day]) {
-      if (!ex || !ex.exercise) continue;
-      const muscle = exerciseMap[ex.exercise]?.muscle_group;
-      if (!muscle) continue;
-      volume[muscle] = (volume[muscle] || 0) + (parseInt(ex.sets) || 0);
-    }
-  }
-  return volume;
-}
 
 function getWeeklyVolumeAndFrequency(program, exerciseMap) {
   const volume = {};

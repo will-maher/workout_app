@@ -9,54 +9,23 @@ import {
   Alert,
   Tabs,
   Tab,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   RadioGroup,
   FormControlLabel,
   Radio,
   FormControl,
   FormLabel,
 } from '@mui/material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-} from 'recharts';
 import axios from 'axios';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
-import { format, parseISO, getISOWeek, getYear, startOfISOWeek } from 'date-fns';
-
-const LIFT_CONFIG = [
-  { id: 1, name: 'Barbell bench press', color: '#1976d2' },
-  { id: 12, name: 'Overhead press', color: '#ff9800' },
-  { id: 19, name: 'Low bar squat', color: '#43a047' },
-  { id: 28, name: 'Deadlift', color: '#8e24aa' },
-];
+import { format, startOfISOWeek } from 'date-fns';
 
 const Stats = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [oneRepMaxData, setOneRepMaxData] = useState([]);
-  const [volumeData, setVolumeData] = useState([]);
-  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState('');
   const [weeklySetsData, setWeeklySetsData] = useState([]);
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState('');
 
   useEffect(() => {
     fetchWeeklySetsData();
@@ -78,15 +47,13 @@ const Stats = () => {
       setError('');
 
       const [
-        oneRepMaxResponse,
-        volumeResponse,
       ] = await Promise.all([
         axios.get('/api/stats/one-rep-max'),
         axios.get('/api/stats/weekly-volume'),
       ]);
 
-      setOneRepMaxData(oneRepMaxResponse.data);
-      setVolumeData(volumeResponse.data);
+      // setOneRepMaxData(oneRepMaxResponse.data); // This line was removed
+      // setVolumeData(volumeResponse.data); // This line was removed
     } catch (err) {
       console.error('Error fetching stats:', err);
       setError('Failed to load statistics');
@@ -98,21 +65,6 @@ const Stats = () => {
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
-
-  const getMuscleGroupColor = (muscleGroup) => {
-    const colors = {
-      chest: '#ff6b6b',
-      back: '#4ecdc4',
-      legs: '#45b7d1',
-      shoulders: '#96ceb4',
-      arms: '#feca57',
-      core: '#ff9ff3',
-    };
-    return colors[muscleGroup] || '#95a5a6';
-  };
-
-  const formatWeight = (weight) => `${weight.toFixed(1)} lbs`;
-  const formatVolume = (volume) => `${volume.toFixed(0)} lbs`;
 
   // Get all unique muscle groups from weeklySetsData
   const muscleGroups = Array.from(new Set(weeklySetsData.map(row => row.muscle_group)));

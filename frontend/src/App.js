@@ -16,12 +16,11 @@ import {
 import {
   FitnessCenter as WorkoutIcon,
   Add as AddIcon,
-  BarChart as StatsIcon,
   History as HistoryIcon,
-  BarChart as BarChart,
   MoreHoriz as MoreIcon,
   EventNote as PlanIcon,
   MenuBook as LibraryIcon,
+  BarChart,
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -35,16 +34,6 @@ import { Link } from 'react-router-dom';
 import WorkoutPlanner from './components/WorkoutPlanner';
 import Login from './components/Login';
 import Register from './components/Register';
-
-// Placeholder Plan component
-const Plan = () => (
-  <Box maxWidth={480} mx="auto" mt={4}>
-    <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-      Workout Planner
-    </Typography>
-    <Typography align="center">Workout planning coming soon!</Typography>
-  </Box>
-);
 
 // More page with links to History and Exercise Library
 const More = () => (
