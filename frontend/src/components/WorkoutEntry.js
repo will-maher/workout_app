@@ -138,24 +138,34 @@ const WorkoutEntry = () => {
     }
     try {
       setSaving(true);
-      // Save each set as a separate workout (or batch as needed)
-      for (const set of sets) {
+      
+      // Group sets by date
+      const setsByDate = {};
+      sets.forEach((set, index) => {
+        if (!setsByDate[set.date]) {
+          setsByDate[set.date] = [];
+        }
+        setsByDate[set.date].push({
+          exercise_id: set.exercise_id,
+          weight: set.weight,
+          reps: set.reps,
+          set_number: setsByDate[set.date].length + 1,
+        });
+      });
+      
+      // Save each date as a separate workout
+      for (const [date, dateSets] of Object.entries(setsByDate)) {
         await axios.post('/api/workouts', {
-          date: set.date,
-          sets: [
-            {
-              exercise_id: set.exercise_id,
-              weight: set.weight,
-              reps: set.reps,
-              set_number: 1,
-            },
-          ],
+          date: date,
+          sets: dateSets,
         });
       }
+      
       setMessage('Sets saved successfully!');
       setSets([]);
     } catch (error) {
-      setMessage('Error saving sets');
+      console.error('Error saving sets:', error);
+      setMessage('Error saving sets: ' + (error.response?.data?.error || error.message));
     } finally {
       setSaving(false);
     }

@@ -185,9 +185,11 @@ const WorkoutPlanner = () => {
 
   const handleSave = async () => {
     try {
-      await axios.post('/api/plan', program);
+      await axios.post('/api/plan', { plan_json: program });
       setSnackbarOpen(true);
-    } catch {}
+    } catch (error) {
+      console.error('Error saving plan:', error);
+    }
   };
 
   const { volume: weeklyVolume, freqDays: weeklyFreq } = getWeeklyVolumeAndFrequency(program, exerciseMap);
