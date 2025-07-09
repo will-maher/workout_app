@@ -35,6 +35,11 @@ import WorkoutPlanner from './components/WorkoutPlanner';
 import Login from './components/Login';
 import Register from './components/Register';
 
+// API base URL configuration
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://workout-app-backend-production.up.railway.app' 
+  : 'http://localhost:5001';
+
 // More page with links to History and Exercise Library
 const More = () => (
   <Box maxWidth={480} mx="auto" mt={4}>
@@ -74,7 +79,7 @@ function App() {
     }
   }, []);
 
-  // Attach token to all fetch requests
+  // Attach token to all fetch requests and use correct base URL
   useEffect(() => {
     const origFetch = window.fetch;
     window.fetch = (url, options = {}) => {
@@ -83,6 +88,12 @@ function App() {
         options.headers = options.headers || {};
         options.headers['Authorization'] = 'Bearer ' + token;
       }
+      
+      // Prepend API base URL if the URL starts with /api
+      if (url.startsWith('/api')) {
+        url = API_BASE_URL + url;
+      }
+      
       return origFetch(url, options);
     };
     return () => { window.fetch = origFetch; };
@@ -96,6 +107,12 @@ function App() {
         if (token) {
           config.headers['Authorization'] = 'Bearer ' + token;
         }
+        
+        // Prepend API base URL if the URL starts with /api
+        if (config.url && config.url.startsWith('/api')) {
+          config.url = API_BASE_URL + config.url;
+        }
+        
         return config;
       },
       (error) => Promise.reject(error)
