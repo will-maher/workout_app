@@ -43,6 +43,34 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Test database structure
+app.get('/api/test-structure', async (req, res) => {
+  try {
+    const tables = ['users', 'exercises', 'workouts', 'workout_sets', 'plans'];
+    const results = {};
+    
+    for (const table of tables) {
+      try {
+        const result = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
+        results[table] = { exists: true, count: result.rows[0].count };
+      } catch (err) {
+        results[table] = { exists: false, error: err.message };
+      }
+    }
+    
+    res.json({
+      message: 'Database structure check',
+      tables: results
+    });
+  } catch (err) {
+    console.error('Database structure test failed:', err);
+    res.status(500).json({
+      error: 'Database structure test failed',
+      details: err.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 
