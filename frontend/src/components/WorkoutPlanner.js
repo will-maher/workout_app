@@ -144,11 +144,14 @@ const WorkoutPlanner = () => {
       setLoading(true);
       try {
         const res = await axios.get('/api/exercises');
-        setExercises(res.data);
+        // Ensure exercises is always an array
+        const exercisesData = Array.isArray(res.data) ? res.data : [];
+        setExercises(exercisesData);
         const map = {};
-        res.data.forEach(ex => { map[ex.name] = ex; });
+        exercisesData.forEach(ex => { map[ex.name] = ex; });
         setExerciseMap(map);
-      } catch {
+      } catch (error) {
+        console.error('Error loading exercises:', error);
         setExercises([]);
         setExerciseMap({});
       } finally {
@@ -239,7 +242,7 @@ const WorkoutPlanner = () => {
                                 sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}
                               >
                                 <MenuItem value=""><em>None</em></MenuItem>
-                                {exercises.map(exOpt => (
+                                {Array.isArray(exercises) && exercises.map(exOpt => (
                                   <MenuItem key={exOpt.id} value={exOpt.name} sx={{ fontSize: isMobile ? 12 : 15 }}>{exOpt.name}</MenuItem>
                                 ))}
                               </Select>

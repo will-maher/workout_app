@@ -35,8 +35,10 @@ const Stats = () => {
   const fetchWeeklySetsData = async () => {
     try {
       const res = await axios.get('/api/stats/weekly-sets-by-muscle-group');
-      setWeeklySetsData(res.data);
+      // Ensure weeklySetsData is always an array
+      setWeeklySetsData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
+      console.error('Error loading weekly sets data:', err);
       setWeeklySetsData([]);
     }
   };
@@ -180,7 +182,7 @@ const Stats = () => {
                       value={selectedMuscleGroup}
                       onChange={e => setSelectedMuscleGroup(e.target.value)}
                     >
-                      {muscleGroups.map(mg => (
+                      {Array.isArray(muscleGroups) && muscleGroups.map(mg => (
                         <FormControlLabel
                           key={mg}
                           value={mg}

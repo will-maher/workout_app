@@ -59,9 +59,12 @@ const ExerciseLibrary = () => {
     setError('');
     try {
       const res = await axios.get('/api/exercises');
-      setExercises(res.data);
+      // Ensure exercises is always an array
+      setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
+      console.error('Error loading exercises:', err);
       setError('Failed to load exercises');
+      setExercises([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -120,13 +123,13 @@ const ExerciseLibrary = () => {
       ) : (
         <Card>
           <CardContent sx={{ p: 1 }}>
-            {sortedGroups.map((mg, idx) => (
+            {Array.isArray(sortedGroups) && sortedGroups.map((mg, idx) => (
               <Box key={mg} mb={1}>
                 <Typography variant="subtitle2" fontWeight={700} sx={{ mt: idx !== 0 ? 2 : 0, mb: 0.5, color: 'primary.main', fontSize: 15 }}>
                   {mg}
                 </Typography>
                 <List dense disablePadding>
-                  {grouped[mg].map((ex, i) => (
+                  {Array.isArray(grouped[mg]) && grouped[mg].map((ex, i) => (
                     <React.Fragment key={ex.id}>
                       <ListItem sx={{ py: 0.5 }}>
                         <ListItemText
@@ -165,7 +168,7 @@ const ExerciseLibrary = () => {
               onChange={e => setNewMuscle(e.target.value)}
               label="Muscle Group"
             >
-              {muscleGroups.map(mg => (
+              {Array.isArray(muscleGroups) && muscleGroups.map(mg => (
                 <MenuItem key={mg} value={mg}>{mg}</MenuItem>
               ))}
             </Select>

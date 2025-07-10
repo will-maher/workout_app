@@ -53,9 +53,12 @@ const WorkoutEntry = () => {
   const fetchExercises = async () => {
     try {
       const response = await axios.get('/api/exercises');
-      setExercises(response.data);
+      // Ensure exercises is always an array
+      setExercises(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
+      console.error('Error loading exercises:', error);
       setMessage('Error loading exercises');
+      setExercises([]); // Set empty array on error
     } finally {
       // setLoading(false); // This line was removed
     }
@@ -199,7 +202,7 @@ const WorkoutEntry = () => {
                     onChange={(e) => setSelectedExercise(e.target.value)}
                     label="Exercise"
                   >
-                    {exercises.map((exercise) => (
+                    {Array.isArray(exercises) && exercises.map((exercise) => (
                       <MenuItem key={exercise.id} value={exercise.id}>
                         {exercise.name}
                       </MenuItem>

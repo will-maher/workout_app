@@ -60,10 +60,12 @@ const WorkoutHistory = () => {
       
       const params = date ? { date: format(date, 'yyyy-MM-dd') } : {};
       const response = await axios.get('/api/workouts', { params });
-      setWorkouts(response.data);
+      // Ensure workouts is always an array
+      setWorkouts(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Error fetching workouts:', err);
       setError('Failed to load workout history');
+      setWorkouts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -116,10 +118,12 @@ const WorkoutHistory = () => {
   };
 
   const calculateWorkoutVolume = (sets) => {
+    if (!Array.isArray(sets)) return 0;
     return sets.reduce((total, set) => total + (set.weight * set.reps), 0);
   };
 
   const getMuscleGroups = (sets) => {
+    if (!Array.isArray(sets)) return '';
     const groups = [...new Set(sets.map(set => set.muscle_group))];
     return groups.join(', ');
   };
@@ -193,7 +197,7 @@ const WorkoutHistory = () => {
           </Card>
         ) : (
           <List>
-            {workouts.map((workout) => (
+            {Array.isArray(workouts) && workouts.map((workout) => (
               <Card key={workout.id} sx={{ mb: 2 }}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -235,7 +239,7 @@ const WorkoutHistory = () => {
                   </AccordionSummary>
                   <AccordionDetails>
                     <Grid container spacing={2}>
-                      {workout.sets.map((set, index) => (
+                      {Array.isArray(workout.sets) && workout.sets.map((set, index) => (
                         <Grid item xs={12} sm={6} md={4} key={set.id}>
                           <Card variant="outlined">
                             <CardContent sx={{ py: 1 }}>
@@ -300,7 +304,7 @@ const WorkoutHistory = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedWorkout.sets.map((set, index) => (
+                      {Array.isArray(selectedWorkout.sets) && selectedWorkout.sets.map((set, index) => (
                         <TableRow key={set.id}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{set.exercise_name}</TableCell>

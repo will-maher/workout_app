@@ -89,9 +89,12 @@ const Performance = () => {
     try {
       setLoading(true);
       const res = await axios.get('/api/exercises');
-      setExercises(res.data);
+      // Ensure exercises is always an array
+      setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
+      console.error('Error loading exercises:', err);
       setError('Failed to load exercises');
+      setExercises([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -219,7 +222,7 @@ const Performance = () => {
               onChange={e => setSelectedExercise(e.target.value)}
               label="Exercise"
             >
-              {exercises.map(ex => (
+              {Array.isArray(exercises) && exercises.map(ex => (
                 <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
               ))}
             </Select>
