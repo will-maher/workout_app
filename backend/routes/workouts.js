@@ -83,7 +83,14 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creating workout and sets:', err);
-    res.status(500).json({ error: 'Failed to create workout and sets' });
+    console.error('Error details:', err.message);
+    console.error('Error code:', err.code);
+    console.error('Error detail:', err.detail);
+    res.status(500).json({ 
+      error: 'Failed to create workout and sets',
+      details: err.message,
+      code: err.code
+    });
   } finally {
     client.release();
   }

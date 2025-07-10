@@ -36,9 +36,15 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 // API base URL configuration
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://workoutapp-production-3c56.up.railway.app' 
-  : 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://workoutapp-production-3c56.up.railway.app' 
+    : 'http://localhost:5001');
+
+// Debug logging
+console.log('Environment:', process.env.NODE_ENV);
+console.log('API Base URL:', API_BASE_URL);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
 // More page with links to History and Exercise Library
 const More = () => (
