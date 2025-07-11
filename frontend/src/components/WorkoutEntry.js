@@ -41,7 +41,6 @@ const WorkoutEntry = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
-  const [notesError, setNotesError] = useState('');
   const [recentSets, setRecentSets] = useState([]);
   const [suggestedWeights, setSuggestedWeights] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
@@ -107,12 +106,6 @@ const WorkoutEntry = () => {
     if (!isNumeric(weight) || !isNumeric(reps)) {
       setMessage('Weight and reps must be numeric');
       return;
-    }
-    if (notes.length > 100) {
-      setNotesError('Notes must be 100 characters or less');
-      return;
-    } else {
-      setNotesError('');
     }
     const exercise = exercises.find(ex => ex.id === parseInt(selectedExercise));
     const newSet = {
