@@ -182,20 +182,20 @@ const WorkoutEntry = () => {
             {message}
           </Alert>
         )}
-        <Card sx={{ mb: 4, p: 2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)' }}>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
+        <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)' }}> {/* More compact */}
+          <CardContent sx={{ p: 1 }}>
+            <Grid container spacing={1} alignItems="center"> {/* More compact spacing */}
               <Grid item xs={12}>
                 <DatePicker
                   label="Date"
                   value={date}
                   onChange={setDate}
                   maxDate={new Date()}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  renderInput={(params) => <TextField {...params} fullWidth size="small" sx={{ mb: 0.5 }} />} // More compact
                 />
               </Grid>
               <Grid item xs={12}>
-                <FormControl fullWidth>
+                <FormControl fullWidth size="small">
                   <InputLabel>Exercise</InputLabel>
                   <Select
                     value={selectedExercise}
@@ -217,9 +217,11 @@ const WorkoutEntry = () => {
                   value={reps}
                   onChange={(e) => setReps(e.target.value)}
                   fullWidth
+                  size="small"
                   inputProps={{ min: 1 }}
                   error={!!reps && !isNumeric(reps)}
                   helperText={!!reps && !isNumeric(reps) ? 'Enter a valid number' : ''}
+                  sx={{ mb: 0.5 }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -229,11 +231,15 @@ const WorkoutEntry = () => {
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   fullWidth
+                  size="small"
                   inputProps={{ min: 0, step: 0.5 }}
                   error={!!weight && !isNumeric(weight)}
                   helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
+                  sx={{ mb: 0.5 }}
                 />
               </Grid>
+              {/* Notes input hidden for now */}
+              {/*
               <Grid item xs={12}>
                 <TextField
                   label="Notes (optional)"
@@ -244,8 +250,11 @@ const WorkoutEntry = () => {
                   inputProps={{ maxLength: 100 }}
                   error={!!notesError}
                   helperText={notesError || `${notes.length}/100`}
+                  size="small"
+                  sx={{ mb: 0.5 }}
                 />
               </Grid>
+              */}
               <Grid item xs={12}>
                 <Button
                   variant="contained"
@@ -254,7 +263,7 @@ const WorkoutEntry = () => {
                   onClick={handleAddSet}
                   fullWidth
                   size="large"
-                  sx={{ fontWeight: 600, fontSize: 18, py: 1.5 }}
+                  sx={{ fontWeight: 600, fontSize: 17, py: 1 }}
                 >
                   Add Set
                 </Button>
