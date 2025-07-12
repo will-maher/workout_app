@@ -160,6 +160,29 @@ const globalStyles = `
     .MuiGrid-root {
       margin: 0 !important;
     }
+    
+    /* Ensure bottom navigation stays fixed */
+    .MuiPaper-root[style*="position: fixed"] {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      transform: translateZ(0) !important;
+      will-change: transform !important;
+    }
+    
+    /* Prevent viewport issues on mobile */
+    @supports (-webkit-touch-callout: none) {
+      /* iOS Safari specific fixes */
+      body {
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .MuiPaper-root[style*="position: fixed"] {
+        position: fixed !important;
+        bottom: env(safe-area-inset-bottom, 0) !important;
+      }
+    }
   }
 `;
 

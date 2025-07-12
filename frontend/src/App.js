@@ -234,7 +234,11 @@ function App() {
           flexGrow: 1, 
           py: 3,
           pb: isMobile ? 10 : 3, // Add bottom padding for mobile navigation
-          maxWidth: 'lg'
+          maxWidth: 'lg',
+          // Ensure content doesn't interfere with bottom nav
+          position: 'relative',
+          zIndex: 1,
+          minHeight: isMobile ? 'calc(100vh - 72px)' : 'auto', // Account for bottom nav height
         }}
       >
         <Routes>
@@ -260,6 +264,14 @@ function App() {
             borderRadius: 0, // Ensure square
             height: 72, // Thicker/higher on mobile
             boxShadow: '0 -2px 16px 0 rgba(34,34,59,0.08)',
+            // Ensure it stays in place on mobile
+            transform: 'translateZ(0)', // Force hardware acceleration
+            willChange: 'transform', // Optimize for animations
+            // Prevent any movement
+            top: 'auto',
+            width: '100vw',
+            maxWidth: '100vw',
+            overflow: 'hidden',
           }} 
           elevation={3}
         >
@@ -267,7 +279,14 @@ function App() {
             value={value}
             onChange={handleNavigationChange}
             showLabels
-            sx={{ height: 72 }} // Thicker/higher on mobile
+            sx={{ 
+              height: 72, // Thicker/higher on mobile
+              // Ensure stable positioning
+              position: 'relative',
+              width: '100%',
+              maxWidth: '100%',
+              overflow: 'hidden',
+            }}
           >
             <BottomNavigationAction
               label="Add"
