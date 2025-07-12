@@ -131,7 +131,7 @@ const ScrollablePicker = ({
   };
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative', width: '100%' }}>
       <Button
         variant="outlined"
         onClick={() => setIsOpen(!isOpen)}
@@ -142,13 +142,23 @@ const ScrollablePicker = ({
           py: 1.5,
           px: 2,
           borderColor: 'grey.300',
-          '&:hover': { borderColor: 'primary.main' }
+          '&:hover': { borderColor: 'primary.main' },
+          minWidth: 0,
+          overflow: 'hidden'
         }}
       >
-        <Typography>
+        <Typography
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}
+        >
           {getSelectedItemLabel()}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, ml: 1 }}>
           ▼
         </Typography>
       </Button>
@@ -166,6 +176,9 @@ const ScrollablePicker = ({
             border: '1px solid',
             borderColor: 'grey.200',
             borderRadius: 1,
+            left: 0,
+            right: 0,
+            maxWidth: '100vw',
           }}
         >
           <Box
@@ -485,17 +498,29 @@ const WorkoutEntry = () => {
                                   mb: 0.5,
                                   border: '1px solid',
                                   borderColor: 'grey.200',
-                                  '&:hover': { bgcolor: 'grey.100' }
+                                  '&:hover': { bgcolor: 'grey.100' },
+                                  minWidth: 0, // Prevent flex items from overflowing
+                                  width: '100%'
                                 }}
                               >
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                  sx={{ 
+                                    flex: 1,
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
                                   {set.reps} reps @ {set.weight} kg
                                 </Typography>
                                 <IconButton 
                                   size="small" 
                                   onClick={() => handleRemoveSet(set.id)} 
                                   color="error"
-                                  sx={{ p: 0.5, ml: 1 }}
+                                  sx={{ p: 0.5, ml: 1, flexShrink: 0 }}
                                 >
                                   <DeleteIcon sx={{ fontSize: 16 }} />
                                 </IconButton>

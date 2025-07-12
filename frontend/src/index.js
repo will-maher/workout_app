@@ -63,6 +63,27 @@ const theme = createTheme({
         },
       },
     },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingLeft: 16,
+          paddingRight: 16,
+          '@media (max-width: 600px)': {
+            paddingLeft: 12,
+            paddingRight: 12,
+          },
+        },
+      },
+    },
+    MuiGrid: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            margin: 0,
+          },
+        },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
@@ -106,6 +127,47 @@ const theme = createTheme({
     },
   },
 });
+
+// Add global CSS to prevent horizontal overflow on mobile
+const globalStyles = `
+  * {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  @media (max-width: 600px) {
+    body {
+      padding: 0;
+      margin: 0;
+    }
+    
+    .MuiContainer-root {
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+    
+    .MuiGrid-root {
+      margin: 0 !important;
+    }
+  }
+`;
+
+// Inject global styles
+const styleSheet = document.createElement('style');
+styleSheet.type = 'text/css';
+styleSheet.innerText = globalStyles;
+document.head.appendChild(styleSheet);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
