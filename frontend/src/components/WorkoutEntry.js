@@ -8,11 +8,6 @@ import {
   Button,
   Grid,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Chip,
   Alert,
   CircularProgress,
   Paper,
@@ -437,6 +432,82 @@ const WorkoutEntry = () => {
                   Add Set
                 </Button>
               </Grid>
+              
+              {/* Compact Sets Display - Directly under Add Set button */}
+              {sets.length > 0 && (
+                <Grid item xs={12}>
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                        Sets Added ({sets.length})
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={handleSaveSets}
+                        disabled={saving}
+                        size="small"
+                        sx={{ fontWeight: 600, fontSize: 12, py: 0.5, px: 1.5 }}
+                      >
+                        {saving ? 'Saving...' : 'Save All'}
+                      </Button>
+                    </Box>
+                    
+                    {/* Group sets by exercise */}
+                    {(() => {
+                      const groupedSets = sets.reduce((acc, set) => {
+                        if (!acc[set.exercise_name]) {
+                          acc[set.exercise_name] = [];
+                        }
+                        acc[set.exercise_name].push(set);
+                        return acc;
+                      }, {});
+                      
+                      return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => (
+                        <Box key={exerciseName} sx={{ mb: 1.5 }}>
+                          {/* Exercise name */}
+                          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5, color: 'primary.main' }}>
+                            {exerciseName}
+                          </Typography>
+                          {/* Sets for this exercise */}
+                          <Box sx={{ pl: 1.5 }}>
+                            {exerciseSets.map((set, index) => (
+                              <Box 
+                                key={set.id} 
+                                sx={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  alignItems: 'center',
+                                  py: 0.5,
+                                  px: 1,
+                                  borderRadius: 0.5,
+                                  bgcolor: 'white',
+                                  mb: 0.5,
+                                  border: '1px solid',
+                                  borderColor: 'grey.200',
+                                  '&:hover': { bgcolor: 'grey.100' }
+                                }}
+                              >
+                                <Typography variant="body2" color="text.secondary">
+                                  {set.reps} reps @ {set.weight} kg
+                                </Typography>
+                                <IconButton 
+                                  size="small" 
+                                  onClick={() => handleRemoveSet(set.id)} 
+                                  color="error"
+                                  sx={{ p: 0.5, ml: 1 }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      ));
+                    })()}
+                  </Box>
+                </Grid>
+              )}
             </Grid>
           </CardContent>
         </Card>
@@ -542,65 +613,6 @@ const WorkoutEntry = () => {
                   </Grid>
                 </Grid>
               )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {sets.length > 0 && (
-          <Card sx={{ mb: 4, p: 2 }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" fontWeight={600}>
-                  Sets to Save
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleSaveSets}
-                  disabled={saving}
-                  sx={{ fontWeight: 600 }}
-                >
-                  {saving ? 'Saving...' : 'Save All'}
-                </Button>
-              </Box>
-              <List>
-                {sets.map((set, idx) => (
-                  <React.Fragment key={set.id}>
-                    <ListItem
-                      secondaryAction={
-                        <IconButton edge="end" onClick={() => handleRemoveSet(set.id)} color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      }
-                      sx={{ borderRadius: 2, mb: 1, boxShadow: '0 1px 4px 0 rgba(34,34,59,0.04)' }}
-                    >
-                      <ListItemText
-                        primary={
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Typography fontWeight={600}>
-                              {set.exercise_name}
-                            </Typography>
-                            <Chip label={set.muscle_group} size="small" />
-                          </Box>
-                        }
-                        secondary={
-                          <>
-                            <Typography color="text.secondary">
-                              {set.reps} reps @ {set.weight} kg
-                            </Typography>
-                            {set.notes && (
-                              <Typography color="text.secondary" fontStyle="italic">
-                                {set.notes}
-                              </Typography>
-                            )}
-                          </>
-                        }
-                      />
-                    </ListItem>
-                    {idx < sets.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
             </CardContent>
           </Card>
         )}
