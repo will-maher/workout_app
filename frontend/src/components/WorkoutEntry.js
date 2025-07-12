@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Box,
   Card,
@@ -37,6 +38,7 @@ const ScrollablePicker = ({
   getGroupLabel = (group) => group.label || group.name
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [buttonRef, setButtonRef] = useState(null);
   const containerHeight = itemHeight * visibleItems;
 
   const handleItemClick = (item) => {
@@ -133,6 +135,7 @@ const ScrollablePicker = ({
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
       <Button
+        ref={setButtonRef}
         variant="outlined"
         onClick={() => setIsOpen(!isOpen)}
         fullWidth
@@ -163,22 +166,24 @@ const ScrollablePicker = ({
         </Typography>
       </Button>
       
-      {isOpen && (
+      {isOpen && buttonRef && ReactDOM.createPortal(
         <Paper
           elevation={8}
           sx={{
-            position: 'absolute',
-            zIndex: 1000,
-            width: '100%',
+            position: 'fixed',
+            zIndex: 9999, // Much higher z-index to ensure it appears above everything
+            width: buttonRef.offsetWidth,
             maxHeight: containerHeight,
             overflow: 'hidden',
-            mt: 0.5,
             border: '1px solid',
             borderColor: 'grey.200',
             borderRadius: 1,
-            left: 0,
-            right: 0,
-            maxWidth: '100vw',
+            // Position relative to the button
+            top: buttonRef.getBoundingClientRect().bottom + 4,
+            left: buttonRef.getBoundingClientRect().left,
+            // Ensure it's not clipped by parent containers
+            transform: 'translateZ(0)', // Force hardware acceleration
+            willChange: 'transform',
           }}
         >
           <Box
@@ -192,7 +197,8 @@ const ScrollablePicker = ({
           >
             {renderItems()}
           </Box>
-        </Paper>
+        </Paper>,
+        document.body
       )}
     </Box>
   );
@@ -367,8 +373,8 @@ const WorkoutEntry = () => {
             {message}
           </Alert>
         )}
-        <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)' }}> {/* More compact */}
-          <CardContent sx={{ p: 1 }}>
+        <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)', position: 'relative' }}> {/* More compact */}
+          <CardContent sx={{ p: 1, overflow: 'visible' }}>
             <Grid container spacing={1} alignItems="center"> {/* More compact spacing */}
               <Grid item xs={12}>
                 <DatePicker

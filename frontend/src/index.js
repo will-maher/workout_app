@@ -183,6 +183,21 @@ const globalStyles = `
         bottom: env(safe-area-inset-bottom, 0) !important;
       }
     }
+    
+    /* Ensure dropdowns appear above all content */
+    .MuiPaper-root[style*="z-index: 9999"] {
+      z-index: 9999 !important;
+      position: absolute !important;
+    }
+    
+    /* Prevent parent containers from clipping dropdowns */
+    .MuiCard-root {
+      overflow: visible !important;
+    }
+    
+    .MuiCardContent-root {
+      overflow: visible !important;
+    }
   }
 `;
 
