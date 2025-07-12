@@ -16,7 +16,6 @@ import {
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  TableChart as TableChartIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -319,6 +318,7 @@ const WorkoutEntry = () => {
     setSets([...sets, newSet]);
     setMessage('');
     setNotes('');
+    setReps(''); // Reset reps dropdown to blank
   };
 
   const handleRemoveSet = (setId) => {
@@ -543,107 +543,96 @@ const WorkoutEntry = () => {
           </CardContent>
         </Card>
         
-        {/* Recent Sets and Suggested Weights Table */}
+        {/* Recent Sets Dropdown and Suggested Weights */}
         {selectedExercise && (
           <Card sx={{ mb: 4, p: 2 }}>
             <CardContent>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                <TableChartIcon color="primary" />
-                <Typography variant="h6" fontWeight={600}>
-                  Recent Sets & Suggested Weights
-                </Typography>
-              </Box>
-              
-              {loadingData ? (
-                <Box display="flex" justifyContent="center" py={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {/* Recent Sets */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                      Recent Sets
+              <Grid container spacing={2}>
+                {/* Recent Sets Dropdown */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                    Recent Sets
+                  </Typography>
+                  {loadingData ? (
+                    <Box display="flex" justifyContent="center" py={2}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : recentSets.length > 0 ? (
+                    <ScrollablePicker
+                      items={recentSets.map((set, index) => ({
+                        id: index,
+                        name: `${set.date_formatted || set.date}: ${set.weight}kg × ${set.reps} reps`,
+                        set: set
+                      }))}
+                      value=""
+                      onChange={(value) => {
+                        if (value !== '') {
+                          const selectedSet = recentSets[value];
+                          setWeight(selectedSet.weight.toString());
+                          setReps(selectedSet.reps.toString());
+                        }
+                      }}
+                      label="Select from recent sets"
+                      getItemLabel={(item) => item.name}
+                      getItemValue={(item) => item.id}
+                      itemHeight={50}
+                      visibleItems={4}
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No recent sets found
                     </Typography>
-                    {recentSets.length > 0 ? (
-                      <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-                        {recentSets.map((set, index) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
-                              p: 1, 
-                              mb: 1, 
-                              borderRadius: 1, 
-                              bgcolor: 'grey.50',
-                              border: '1px solid',
-                              borderColor: 'grey.200'
-                            }}
-                          >
-                            <Typography variant="body2" fontWeight={500}>
-                              {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Set {set.set_number} • 1RM: {set.one_rep_max.toFixed(1)}kg
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No recent sets found
-                      </Typography>
-                    )}
-                  </Grid>
-                  
-                  {/* Suggested Weights */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                      Suggested Weights
-                    </Typography>
-                    {suggestedWeights && suggestedWeights.estimated_one_rep_max > 0 ? (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" mb={1}>
-                          Est. 1RM: {suggestedWeights.estimated_one_rep_max}kg
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" mb={2}>
-                          Target 1RM: {suggestedWeights.new_one_rep_max}kg
-                        </Typography>
-                        <Grid container spacing={1}>
-                          {[
-                            { reps: 3, weight: suggestedWeights.suggested_weights.reps_3 },
-                            { reps: 5, weight: suggestedWeights.suggested_weights.reps_5 },
-                            { reps: 8, weight: suggestedWeights.suggested_weights.reps_8 },
-                            { reps: 12, weight: suggestedWeights.suggested_weights.reps_12 }
-                          ].map((item) => (
-                            <Grid item xs={6} key={item.reps}>
-                              <Box 
-                                sx={{ 
-                                  p: 1, 
-                                  borderRadius: 1, 
-                                  bgcolor: 'primary.light',
-                                  color: 'primary.contrastText',
-                                  textAlign: 'center'
-                                }}
-                              >
-                                <Typography variant="body2" fontWeight={600}>
-                                  {item.weight}kg
-                                </Typography>
-                                <Typography variant="caption">
-                                  {item.reps} reps
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No data available for suggestions
-                      </Typography>
-                    )}
-                  </Grid>
+                  )}
                 </Grid>
-              )}
+                
+                {/* Suggested Weights */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                    Suggested Weights
+                  </Typography>
+                  {suggestedWeights && suggestedWeights.estimated_one_rep_max > 0 ? (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" mb={1}>
+                        Est. 1RM: {suggestedWeights.estimated_one_rep_max}kg
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" mb={2}>
+                        Target 1RM: {suggestedWeights.new_one_rep_max}kg
+                      </Typography>
+                      <Grid container spacing={1}>
+                        {[
+                          { reps: 3, weight: suggestedWeights.suggested_weights.reps_3 },
+                          { reps: 5, weight: suggestedWeights.suggested_weights.reps_5 },
+                          { reps: 8, weight: suggestedWeights.suggested_weights.reps_8 },
+                          { reps: 12, weight: suggestedWeights.suggested_weights.reps_12 }
+                        ].map((item) => (
+                          <Grid item xs={6} key={item.reps}>
+                            <Box 
+                              sx={{ 
+                                p: 1, 
+                                borderRadius: 1, 
+                                bgcolor: 'primary.light',
+                                color: 'primary.contrastText',
+                                textAlign: 'center'
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={600}>
+                                {item.weight}kg
+                              </Typography>
+                              <Typography variant="caption">
+                                {item.reps} reps
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No data available for suggestions
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         )}
