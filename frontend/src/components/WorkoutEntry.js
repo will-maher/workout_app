@@ -219,6 +219,8 @@ const WorkoutEntry = () => {
   const [suggestedWeights, setSuggestedWeights] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [sliderReps, setSliderReps] = useState(8); // Default to 8 reps for slider
+  const [userPlan, setUserPlan] = useState(null);
+  const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
 
   // Generate reps options (1-50)
   const repsOptions = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `${i + 1} reps` }));
@@ -241,6 +243,21 @@ const WorkoutEntry = () => {
       return latestSet.one_rep_max || 0;
     }
     return 0;
+  };
+
+  // Get planned workout options
+  const getPlannedWorkoutOptions = () => {
+    if (!userPlan) return [];
+    return Object.keys(userPlan).map(day => ({
+      id: day,
+      name: day
+    }));
+  };
+
+  // Get exercises for selected planned workout
+  const getSelectedWorkoutExercises = () => {
+    if (!userPlan || !selectedPlannedWorkout) return [];
+    return userPlan[selectedPlannedWorkout] || [];
   };
 
   // Group exercises by muscle group
@@ -267,6 +284,7 @@ const WorkoutEntry = () => {
 
   useEffect(() => {
     fetchExercises();
+    fetchUserPlan();
   }, []);
 
   const fetchExercises = async () => {
@@ -280,6 +298,18 @@ const WorkoutEntry = () => {
       setExercises([]); // Set empty array on error
     } finally {
       // setLoading(false); // This line was removed
+    }
+  };
+
+  const fetchUserPlan = async () => {
+    try {
+      const response = await axios.get('/api/plan');
+      if (response.data) {
+        setUserPlan(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading user plan:', error);
+      setUserPlan(null);
     }
   };
 
@@ -399,6 +429,54 @@ const WorkoutEntry = () => {
         <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)', position: 'relative' }}> {/* More compact */}
           <CardContent sx={{ p: 1, overflow: 'visible' }}>
             <Grid container spacing={1} alignItems="center"> {/* More compact spacing */}
+              
+              {/* Planned Workout Selector */}
+              {userPlan && Object.keys(userPlan).length > 0 && (
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: '1px solid', borderColor: 'primary.main' }}>
+                    <Typography variant="subtitle2" fontWeight={600} color="primary.contrastText" mb={1}>
+                      📋 Planned Workout
+                    </Typography>
+                    
+                    <ScrollablePicker
+                      items={getPlannedWorkoutOptions()}
+                      value={selectedPlannedWorkout}
+                      onChange={setSelectedPlannedWorkout}
+                      label="Select Planned Workout"
+                      getItemLabel={(item) => item.name}
+                      getItemValue={(item) => item.id}
+                    />
+                    
+                    {/* Show exercises for selected workout */}
+                    {selectedPlannedWorkout && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2" fontWeight={600} color="primary.contrastText" mb={1}>
+                          Planned Exercises:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {getSelectedWorkoutExercises().map((exercise, index) => (
+                            <Box
+                              key={index}
+                              sx={{
+                                px: 1,
+                                py: 0.5,
+                                bgcolor: 'rgba(255,255,255,0.9)',
+                                borderRadius: 0.5,
+                                fontSize: '0.75rem',
+                                color: 'text.primary',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {exercise.exercise} ({exercise.sets} sets)
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              )}
+              
               <Grid item xs={12}>
                 <DatePicker
                   label="Date"
