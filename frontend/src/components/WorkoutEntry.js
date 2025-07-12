@@ -7,10 +7,6 @@ import {
   TextField,
   Button,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   IconButton,
   List,
   ListItem,
@@ -19,6 +15,7 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  Paper,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,6 +27,168 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
 import axios from 'axios';
+
+// Custom Scrollable Picker Component (Apple-style)
+const ScrollablePicker = ({ 
+  items, 
+  value, 
+  onChange, 
+  label, 
+  itemHeight = 40, 
+  visibleItems = 5,
+  getItemLabel = (item) => item.name || item.toString(),
+  getItemValue = (item) => item.id || item,
+  grouped = false,
+  getGroupLabel = (group) => group.label || group.name
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerHeight = itemHeight * visibleItems;
+
+  const handleItemClick = (item) => {
+    onChange(getItemValue(item));
+    setIsOpen(false);
+  };
+
+  const getSelectedItemLabel = () => {
+    if (!value) return label;
+    
+    if (grouped) {
+      // Find the item in grouped structure
+      for (const group of items) {
+        const found = group.items.find(item => getItemValue(item) === value);
+        if (found) return getItemLabel(found);
+      }
+      return 'Select...';
+    } else {
+      const found = items.find(item => getItemValue(item) === value);
+      return found ? getItemLabel(found) : 'Select...';
+    }
+  };
+
+  const renderItems = () => {
+    if (grouped) {
+      return items.map((group, groupIndex) => (
+        <React.Fragment key={group.label || group.name}>
+          {/* Group Header */}
+          <Box
+            sx={{
+              py: 1,
+              px: 2,
+              backgroundColor: 'grey.100',
+              borderBottom: '1px solid',
+              borderColor: 'grey.200',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              color: 'text.secondary',
+            }}
+          >
+            {getGroupLabel(group)}
+          </Box>
+          {/* Group Items */}
+          {group.items.map((item, index) => (
+            <Box
+              key={getItemValue(item)}
+              onClick={() => handleItemClick(item)}
+              sx={{
+                py: 1.5,
+                px: 3, // Indent items under group
+                cursor: 'pointer',
+                backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
+                color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
+                '&:hover': {
+                  backgroundColor: getItemValue(item) === value ? 'primary.light' : 'grey.100',
+                },
+                borderBottom: index < group.items.length - 1 ? '1px solid' : 'none',
+                borderColor: 'grey.200',
+              }}
+            >
+              <Typography variant="body2">
+                {getItemLabel(item)}
+              </Typography>
+            </Box>
+          ))}
+        </React.Fragment>
+      ));
+    } else {
+      return items.map((item, index) => (
+        <Box
+          key={getItemValue(item)}
+          onClick={() => handleItemClick(item)}
+          sx={{
+            py: 1.5,
+            px: 2,
+            cursor: 'pointer',
+            backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
+            color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
+            '&:hover': {
+              backgroundColor: getItemValue(item) === value ? 'primary.light' : 'grey.100',
+            },
+            borderBottom: index < items.length - 1 ? '1px solid' : 'none',
+            borderColor: 'grey.200',
+          }}
+        >
+          <Typography variant="body2">
+            {getItemLabel(item)}
+          </Typography>
+        </Box>
+      ));
+    }
+  };
+
+  return (
+    <Box>
+      <Button
+        variant="outlined"
+        onClick={() => setIsOpen(!isOpen)}
+        fullWidth
+        sx={{ 
+          justifyContent: 'space-between',
+          textAlign: 'left',
+          py: 1.5,
+          px: 2,
+          borderColor: 'grey.300',
+          '&:hover': { borderColor: 'primary.main' }
+        }}
+      >
+        <Typography>
+          {getSelectedItemLabel()}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          ▼
+        </Typography>
+      </Button>
+      
+      {isOpen && (
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'absolute',
+            zIndex: 1000,
+            width: '100%',
+            maxHeight: containerHeight,
+            overflow: 'hidden',
+            mt: 0.5,
+            border: '1px solid',
+            borderColor: 'grey.200',
+            borderRadius: 1,
+          }}
+        >
+          <Box
+            sx={{
+              maxHeight: containerHeight,
+              overflow: 'auto',
+              '&::-webkit-scrollbar': { display: 'none' },
+              msOverflowStyle: 'none',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {renderItems()}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  );
+};
 
 const WorkoutEntry = () => {
   const [exercises, setExercises] = useState([]);
@@ -44,6 +203,31 @@ const WorkoutEntry = () => {
   const [recentSets, setRecentSets] = useState([]);
   const [suggestedWeights, setSuggestedWeights] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
+
+  // Generate reps options (1-50)
+  const repsOptions = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `${i + 1} reps` }));
+
+  // Group exercises by muscle group
+  const groupedExercises = React.useMemo(() => {
+    if (!Array.isArray(exercises) || exercises.length === 0) return [];
+    
+    const grouped = exercises.reduce((acc, exercise) => {
+      const muscleGroup = exercise.muscle_group || 'Other';
+      if (!acc[muscleGroup]) {
+        acc[muscleGroup] = [];
+      }
+      acc[muscleGroup].push(exercise);
+      return acc;
+    }, {});
+
+    // Convert to array format and sort
+    return Object.keys(grouped)
+      .sort()
+      .map(muscleGroup => ({
+        label: muscleGroup,
+        items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
+      }));
+  }, [exercises]);
 
   useEffect(() => {
     fetchExercises();
@@ -188,33 +372,25 @@ const WorkoutEntry = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Exercise</InputLabel>
-                  <Select
-                    value={selectedExercise}
-                    onChange={(e) => setSelectedExercise(e.target.value)}
-                    label="Exercise"
-                  >
-                    {Array.isArray(exercises) && exercises.map((exercise) => (
-                      <MenuItem key={exercise.id} value={exercise.id}>
-                        {exercise.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <ScrollablePicker
+                  items={groupedExercises}
+                  value={selectedExercise}
+                  onChange={setSelectedExercise}
+                  label="Select Exercise"
+                  getItemLabel={(item) => item.name}
+                  getItemValue={(item) => item.id}
+                  grouped={true}
+                  getGroupLabel={(group) => group.label}
+                />
               </Grid>
               <Grid item xs={6}>
-                <TextField
-                  label="Reps"
-                  type="number"
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  fullWidth
-                  size="small"
-                  inputProps={{ min: 1 }}
-                  error={!!reps && !isNumeric(reps)}
-                  helperText={!!reps && !isNumeric(reps) ? 'Enter a valid number' : ''}
-                  sx={{ mb: 0.5 }}
+                <ScrollablePicker
+                  items={repsOptions}
+                  value={reps ? parseInt(reps) : ''}
+                  onChange={(value) => setReps(value.toString())}
+                  label="Select Reps"
+                  getItemLabel={(item) => item.name}
+                  getItemValue={(item) => item.id}
                 />
               </Grid>
               <Grid item xs={6}>
