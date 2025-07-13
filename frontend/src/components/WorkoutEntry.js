@@ -230,14 +230,87 @@ const WorkoutEntry = () => {
     return oneRepMax * (1.0278 - 0.0278 * targetReps);
   };
 
-  // Get estimated 1RM from recent sets
-  const getEstimatedOneRepMax = () => {
-    if (recentSets.length > 0) {
-      // Use the most recent set's calculated 1RM
-      const latestSet = recentSets[0];
-      return latestSet.one_rep_max || 0;
+  // Calculate 1RM from weight and reps (same as Performance tab)
+  const calc1RM = (weight, reps) => {
+    if (!weight || !reps) return 0;
+    return weight / (1.0278 - 0.0278 * reps);
+  };
+
+  // Get daily max 1RM (same as Performance tab)
+  const getDailyMax1RM = (points) => {
+    const byDate = {};
+    points.forEach(pt => {
+      const dateOnly = pt.date.slice(0, 10);
+      if (!byDate[dateOnly] || pt.one_rm > byDate[dateOnly].one_rm) {
+        byDate[dateOnly] = { ...pt, date: dateOnly };
+      }
+    });
+    return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // Simple LOESS implementation (same as Performance tab)
+  const loess = (xs, ys, bandwidth = 0.08) => {
+    const n = xs.length;
+    const bw = Math.max(2, Math.floor(bandwidth * n));
+    const result = [];
+    for (let i = 0; i < n; i++) {
+      const distances = xs.map(x => Math.abs(x - xs[i]));
+      const idxs = distances
+        .map((d, idx) => [d, idx])
+        .sort((a, b) => a[0] - b[0])
+        .slice(0, bw)
+        .map(pair => pair[1]);
+      const xw = idxs.map(j => xs[j]);
+      const yw = idxs.map(j => ys[j]);
+      const xbar = xw.reduce((a, b) => a + b, 0) / bw;
+      const ybar = yw.reduce((a, b) => a + b, 0) / bw;
+      const num = xw.reduce((sum, xj, k) => sum + (xj - xbar) * (yw[k] - ybar), 0);
+      const den = xw.reduce((sum, xj) => sum + (xj - xbar) ** 2, 0);
+      const beta = den === 0 ? 0 : num / den;
+      const alpha = ybar - beta * xbar;
+      result.push([xs[i], alpha + beta * xs[i]]);
     }
-    return 0;
+    return result;
+  };
+
+  // Get estimated 1RM using LOESS from performance data
+  const getEstimatedOneRepMax = () => {
+    if (!selectedExercise || recentSets.length === 0) return 0;
+    
+    try {
+      // Calculate 1RM for each set
+      const points = recentSets.map(set => ({
+        date: set.date,
+        one_rm: calc1RM(set.weight, set.reps),
+      }));
+      
+      // Get daily max 1RM (unique per day, highest value)
+      const dailyMax = getDailyMax1RM(points);
+      
+      if (dailyMax.length < 2) {
+        // If not enough data for LOESS, use the latest 1RM
+        return dailyMax.length > 0 ? dailyMax[dailyMax.length - 1].one_rm : 0;
+      }
+      
+      // Prepare data for LOESS
+      const scatterData = dailyMax.map(pt => [
+        new Date(pt.date).getTime(),
+        pt.one_rm
+      ]);
+      
+      const xs = scatterData.map(d => d[0]);
+      const ys = scatterData.map(d => d[1]);
+      
+      // Calculate LOESS smoothed line
+      const loessLine = loess(xs, ys, 0.08);
+      
+      // Return the latest LOESS estimate (most recent point)
+      return loessLine.length > 0 ? loessLine[loessLine.length - 1][1] : 0;
+    } catch (error) {
+      console.error('Error calculating LOESS estimate:', error);
+      // Fallback to latest set's 1RM
+      return recentSets.length > 0 ? calc1RM(recentSets[0].weight, recentSets[0].reps) : 0;
+    }
   };
 
   // Get planned workout options
@@ -441,51 +514,68 @@ const WorkoutEntry = () => {
                     {/* Show exercises for selected workout */}
                     {selectedPlannedWorkout && (
                       <Box sx={{ mt: 1.5 }}>
-                        {getSelectedWorkoutExercises().map((exercise, index) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              py: 0.5,
-                              px: 1,
-                              borderRadius: 0.5,
-                              bgcolor: 'white',
-                              mb: 0.5,
-                              border: '1px solid',
-                              borderColor: 'grey.200',
-                              '&:hover': { bgcolor: 'grey.100' },
-                              minWidth: 0,
-                              width: '100%'
-                            }}
-                          >
-                            <Typography 
-                              variant="body2" 
-                              color="text.secondary"
+                        {getSelectedWorkoutExercises().map((exercise, index) => {
+                          // Find the exercise ID from the exercises list
+                          const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
+                          return (
+                            <Box 
+                              key={index} 
+                              onClick={() => {
+                                if (exerciseData) {
+                                  setSelectedExercise(exerciseData.id);
+                                  // Also set the target reps if available
+                                  if (exercise.targetReps) {
+                                    setReps(exercise.targetReps.toString());
+                                  }
+                                }
+                              }}
                               sx={{ 
-                                flex: 1,
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                py: 0.5,
+                                px: 1,
+                                borderRadius: 0.5,
+                                bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.light' : 'white',
+                                mb: 0.5,
+                                border: '1px solid',
+                                borderColor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'grey.200',
+                                '&:hover': { 
+                                  bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.light' : 'grey.100',
+                                  cursor: exerciseData ? 'pointer' : 'default'
+                                },
                                 minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
+                                width: '100%',
+                                transition: 'all 0.2s ease'
                               }}
                             >
-                              {exercise.exercise}
-                            </Typography>
-                            <Typography 
-                              variant="body2" 
-                              color="text.secondary"
-                              sx={{ 
-                                flexShrink: 0,
-                                ml: 1,
-                                fontWeight: 600
-                              }}
-                            >
-                              {exercise.sets} sets • {exercise.targetReps || '?'} reps
-                            </Typography>
-                          </Box>
-                        ))}
+                              <Typography 
+                                variant="body2" 
+                                color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                                sx={{ 
+                                  flex: 1,
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {exercise.exercise}
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                                sx={{ 
+                                  flexShrink: 0,
+                                  ml: 1,
+                                  fontWeight: 600
+                                }}
+                              >
+                                {exercise.sets} sets • {exercise.targetReps || '?'} reps
+                              </Typography>
+                            </Box>
+                          );
+                        })}
                       </Box>
                     )}
                   </Box>
@@ -541,15 +631,17 @@ const WorkoutEntry = () => {
               {/* Weight Calculator Slider */}
               {selectedExercise && getEstimatedOneRepMax() > 0 && (
                 <Grid item xs={12}>
-                  <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
-                    <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
-                      Weight Calculator
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" mb={2}>
-                      Slide to adjust reps and see suggested weight
-                    </Typography>
+                  <Box sx={{ mt: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                        Weight Calculator
+                      </Typography>
+                      <Typography variant="body2" color="primary.main" fontWeight={600}>
+                        {calculateWeightForReps(sliderReps, getEstimatedOneRepMax()).toFixed(1)} kg
+                      </Typography>
+                    </Box>
                     
-                    <Box sx={{ px: 1 }}>
+                    <Box sx={{ px: 0.5 }}>
                       <Slider
                         value={sliderReps}
                         onChange={(event, newValue) => setSliderReps(newValue)}
@@ -567,21 +659,25 @@ const WorkoutEntry = () => {
                         valueLabelFormat={(value) => `${value} reps`}
                         sx={{
                           '& .MuiSlider-markLabel': {
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
                           },
                           '& .MuiSlider-valueLabel': {
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
+                          },
+                          '& .MuiSlider-track': {
+                            height: 3,
+                          },
+                          '& .MuiSlider-thumb': {
+                            width: 16,
+                            height: 16,
                           }
                         }}
                       />
                     </Box>
                     
-                    <Box sx={{ mt: 2, textAlign: 'center' }}>
-                      <Typography variant="h6" fontWeight={600} color="primary.main">
-                        {calculateWeightForReps(sliderReps, getEstimatedOneRepMax()).toFixed(1)} kg
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        for {sliderReps} reps
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
+                        {sliderReps} reps
                       </Typography>
                       <Button
                         variant="outlined"
@@ -590,9 +686,9 @@ const WorkoutEntry = () => {
                           setReps(sliderReps.toString());
                           setWeight(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()).toFixed(1));
                         }}
-                        sx={{ mt: 1, fontSize: '0.75rem' }}
+                        sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
                       >
-                        Use This Weight
+                        Use
                       </Button>
                     </Box>
                   </Box>
