@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   Alert,
   Paper,
   Slider,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -213,6 +214,8 @@ const WorkoutEntry = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
+  const [recentSets, setRecentSets] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
   const [sliderReps, setSliderReps] = useState(8); // Default to 8 reps for slider
   const [userPlan, setUserPlan] = useState(null);
   const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
@@ -229,9 +232,12 @@ const WorkoutEntry = () => {
 
   // Get estimated 1RM from recent sets
   const getEstimatedOneRepMax = () => {
-    // For now, return a default value since we removed the suggested weights
-    // This could be enhanced later to fetch from a different source
-    return 100; // Default 1RM for weight calculation
+    if (recentSets.length > 0) {
+      // Use the most recent set's calculated 1RM
+      const latestSet = recentSets[0];
+      return latestSet.one_rep_max || 0;
+    }
+    return 0;
   };
 
   // Get planned workout options
@@ -302,13 +308,31 @@ const WorkoutEntry = () => {
     }
   };
 
+  const fetchRecentData = useCallback(async () => {
+    if (!selectedExercise) {
+      setRecentSets([]);
+      return;
+    }
+    try {
+      setLoadingData(true);
+      const response = await axios.get(`/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`);
+      setRecentSets(response.data);
+    } catch (error) {
+      console.error('Error fetching recent data:', error);
+      setRecentSets([]);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [selectedExercise]);
+
   useEffect(() => {
     if (selectedExercise !== '') {
       setWeight('');
       setReps('');
       setNotes('');
+      fetchRecentData();
     }
-  }, [selectedExercise]);
+  }, [selectedExercise, fetchRecentData]);
 
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
@@ -696,7 +720,53 @@ const WorkoutEntry = () => {
           </CardContent>
         </Card>
         
-
+        {/* Recent Sets Section */}
+        {selectedExercise && (
+          <Card sx={{ mb: 4, p: 2 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Recent Sets
+              </Typography>
+              
+              {loadingData ? (
+                <Box display="flex" justifyContent="center" py={2}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <Box>
+                  {recentSets.length > 0 ? (
+                    <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                      {recentSets.map((set, index) => (
+                        <Box 
+                          key={index} 
+                          sx={{ 
+                            p: 1, 
+                            mb: 1, 
+                            borderRadius: 1, 
+                            bgcolor: 'grey.50',
+                            border: '1px solid',
+                            borderColor: 'grey.200'
+                          }}
+                        >
+                          <Typography variant="body2" fontWeight={500}>
+                            {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Set {set.set_number} • 1RM: {set.one_rep_max.toFixed(1)}kg
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No recent sets found
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </Box>
     </LocalizationProvider>
   );
