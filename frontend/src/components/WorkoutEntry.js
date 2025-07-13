@@ -236,17 +236,7 @@ const WorkoutEntry = () => {
     return weight / (1.0278 - 0.0278 * reps);
   };
 
-  // Get daily max 1RM (same as Performance tab)
-  const getDailyMax1RM = (points) => {
-    const byDate = {};
-    points.forEach(pt => {
-      const dateOnly = pt.date.slice(0, 10);
-      if (!byDate[dateOnly] || pt.one_rm > byDate[dateOnly].one_rm) {
-        byDate[dateOnly] = { ...pt, date: dateOnly };
-      }
-    });
-    return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
-  };
+
 
   // Simple LOESS implementation (same as Performance tab)
   const loess = (xs, ys, bandwidth = 0.08) => {
@@ -273,27 +263,49 @@ const WorkoutEntry = () => {
     return result;
   };
 
-  // Get estimated 1RM using LOESS from performance data
+  // Get estimated 1RM using LOESS from performance data (heaviest set per workout)
   const getEstimatedOneRepMax = () => {
     if (!selectedExercise || recentSets.length === 0) return 0;
     
     try {
-      // Calculate 1RM for each set
-      const points = recentSets.map(set => ({
-        date: set.date,
-        one_rm: calc1RM(set.weight, set.reps),
-      }));
+      // Group sets by workout date and get the heaviest set from each workout
+      const workoutGroups = {};
+      recentSets.forEach(set => {
+        // Extract date from the formatted date string (e.g., "15 Dec 23")
+        const dateMatch = set.date_formatted.match(/(\d{2})\s+(\w{3})\s+(\d{2})/);
+        if (dateMatch) {
+          const [, day, month, year] = dateMatch;
+          const monthMap = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+          };
+          const dateKey = `20${year}-${monthMap[month]}-${day}`;
+          
+          if (!workoutGroups[dateKey]) {
+            workoutGroups[dateKey] = [];
+          }
+          workoutGroups[dateKey].push(set);
+        }
+      });
       
-      // Get daily max 1RM (unique per day, highest value)
-      const dailyMax = getDailyMax1RM(points);
+      // Get the heaviest set from each workout
+      const heaviestSetsPerWorkout = Object.entries(workoutGroups).map(([date, sets]) => {
+        const heaviestSet = sets.reduce((max, set) => 
+          calc1RM(set.weight, set.reps) > calc1RM(max.weight, max.reps) ? set : max
+        );
+        return {
+          date: date,
+          one_rm: calc1RM(heaviestSet.weight, heaviestSet.reps),
+        };
+      }).sort((a, b) => a.date.localeCompare(b.date));
       
-      if (dailyMax.length < 2) {
+      if (heaviestSetsPerWorkout.length < 2) {
         // If not enough data for LOESS, use the latest 1RM
-        return dailyMax.length > 0 ? dailyMax[dailyMax.length - 1].one_rm : 0;
+        return heaviestSetsPerWorkout.length > 0 ? heaviestSetsPerWorkout[heaviestSetsPerWorkout.length - 1].one_rm : 0;
       }
       
       // Prepare data for LOESS
-      const scatterData = dailyMax.map(pt => [
+      const scatterData = heaviestSetsPerWorkout.map(pt => [
         new Date(pt.date).getTime(),
         pt.one_rm
       ]);
@@ -311,6 +323,11 @@ const WorkoutEntry = () => {
       // Fallback to latest set's 1RM
       return recentSets.length > 0 ? calc1RM(recentSets[0].weight, recentSets[0].reps) : 0;
     }
+  };
+
+  // Round weight to nearest 2.5kg increment
+  const roundToNearest2_5 = (weight) => {
+    return Math.round(weight / 2.5) * 2.5;
   };
 
   // Get planned workout options
@@ -637,7 +654,7 @@ const WorkoutEntry = () => {
                         Weight Calculator
                       </Typography>
                       <Typography variant="body2" color="primary.main" fontWeight={600}>
-                        {calculateWeightForReps(sliderReps, getEstimatedOneRepMax()).toFixed(1)} kg
+                        {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg
                       </Typography>
                     </Box>
                     
@@ -684,7 +701,7 @@ const WorkoutEntry = () => {
                         size="small"
                         onClick={() => {
                           setReps(sliderReps.toString());
-                          setWeight(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()).toFixed(1));
+                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
                         }}
                         sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
                       >
