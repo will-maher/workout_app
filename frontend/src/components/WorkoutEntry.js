@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Box,
@@ -10,14 +10,12 @@ import {
   Grid,
   IconButton,
   Alert,
-  CircularProgress,
   Paper,
   Slider,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  TableChart as TableChartIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -215,9 +213,6 @@ const WorkoutEntry = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
-  const [recentSets, setRecentSets] = useState([]);
-  const [suggestedWeights, setSuggestedWeights] = useState(null);
-  const [loadingData, setLoadingData] = useState(false);
   const [sliderReps, setSliderReps] = useState(8); // Default to 8 reps for slider
   const [userPlan, setUserPlan] = useState(null);
   const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
@@ -225,24 +220,18 @@ const WorkoutEntry = () => {
   // Generate reps options (1-50)
   const repsOptions = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `${i + 1} reps` }));
 
-  // Calculate weight for given reps using Brzycki formula
+  // Calculate weight for given reps using Brzycki formula (reversed)
   const calculateWeightForReps = (targetReps, oneRepMax) => {
     if (!oneRepMax || targetReps <= 0) return 0;
-    // Brzycki formula: weight = 1RM / (1.0278 - 0.0278 * reps)
-    return oneRepMax / (1.0278 - 0.0278 * targetReps);
+    // Brzycki formula reversed: weight = 1RM * (1.0278 - 0.0278 * reps)
+    return oneRepMax * (1.0278 - 0.0278 * targetReps);
   };
 
-  // Get estimated 1RM from suggested weights or recent sets
+  // Get estimated 1RM from recent sets
   const getEstimatedOneRepMax = () => {
-    if (suggestedWeights && suggestedWeights.estimated_one_rep_max > 0) {
-      return suggestedWeights.estimated_one_rep_max;
-    }
-    // If no suggested weights, try to calculate from recent sets
-    if (recentSets.length > 0) {
-      const latestSet = recentSets[0];
-      return latestSet.one_rep_max || 0;
-    }
-    return 0;
+    // For now, return a default value since we removed the suggested weights
+    // This could be enhanced later to fetch from a different source
+    return 100; // Default 1RM for weight calculation
   };
 
   // Get planned workout options
@@ -313,37 +302,13 @@ const WorkoutEntry = () => {
     }
   };
 
-  const fetchRecentData = useCallback(async () => {
-    if (!selectedExercise) {
-      setRecentSets([]);
-      setSuggestedWeights(null);
-      return;
-    }
-    try {
-      setLoadingData(true);
-      const [recentResponse, suggestedResponse] = await Promise.all([
-        axios.get(`/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`),
-        axios.get(`/api/stats/suggested-weights?exercise_id=${selectedExercise}`)
-      ]);
-      setRecentSets(recentResponse.data);
-      setSuggestedWeights(suggestedResponse.data);
-    } catch (error) {
-      console.error('Error fetching recent data:', error);
-      setRecentSets([]);
-      setSuggestedWeights(null);
-    } finally {
-      setLoadingData(false);
-    }
-  }, [selectedExercise]);
-
   useEffect(() => {
     if (selectedExercise !== '') {
       setWeight('');
       setReps('');
       setNotes('');
-      fetchRecentData();
     }
-  }, [selectedExercise, fetchRecentData]);
+  }, [selectedExercise]);
 
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
@@ -731,110 +696,7 @@ const WorkoutEntry = () => {
           </CardContent>
         </Card>
         
-        {/* Recent Sets and Suggested Weights Table */}
-        {selectedExercise && (
-          <Card sx={{ mb: 4, p: 2 }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                <TableChartIcon color="primary" />
-                <Typography variant="h6" fontWeight={600}>
-                  Recent Sets & Suggested Weights
-                </Typography>
-              </Box>
-              
-              {loadingData ? (
-                <Box display="flex" justifyContent="center" py={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {/* Recent Sets */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                      Recent Sets
-                    </Typography>
-                    {recentSets.length > 0 ? (
-                      <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-                        {recentSets.map((set, index) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
-                              p: 1, 
-                              mb: 1, 
-                              borderRadius: 1, 
-                              bgcolor: 'grey.50',
-                              border: '1px solid',
-                              borderColor: 'grey.200'
-                            }}
-                          >
-                            <Typography variant="body2" fontWeight={500}>
-                              {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Set {set.set_number} • 1RM: {set.one_rep_max.toFixed(1)}kg
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No recent sets found
-                      </Typography>
-                    )}
-                  </Grid>
-                  
-                  {/* Suggested Weights */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                      Suggested Weights
-                    </Typography>
-                    {suggestedWeights && suggestedWeights.estimated_one_rep_max > 0 ? (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" mb={1}>
-                          Est. 1RM: {suggestedWeights.estimated_one_rep_max}kg
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" mb={2}>
-                          Target 1RM: {suggestedWeights.new_one_rep_max}kg
-                        </Typography>
-                        <Grid container spacing={1}>
-                          {[
-                            { reps: 3, weight: suggestedWeights.suggested_weights.reps_3 },
-                            { reps: 5, weight: suggestedWeights.suggested_weights.reps_5 },
-                            { reps: 8, weight: suggestedWeights.suggested_weights.reps_8 },
-                            { reps: 12, weight: suggestedWeights.suggested_weights.reps_12 }
-                          ].map((item) => (
-                            <Grid item xs={6} key={item.reps}>
-                              <Box 
-                                sx={{ 
-                                  p: 1, 
-                                  borderRadius: 1, 
-                                  bgcolor: 'primary.light',
-                                  color: 'primary.contrastText',
-                                  textAlign: 'center'
-                                }}
-                              >
-                                <Typography variant="body2" fontWeight={600}>
-                                  {item.weight}kg
-                                </Typography>
-                                <Typography variant="caption">
-                                  {item.reps} reps
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No data available for suggestions
-                      </Typography>
-                    )}
-                  </Grid>
-                </Grid>
-              )}
-            </CardContent>
-          </Card>
-        )}
+
       </Box>
     </LocalizationProvider>
   );
