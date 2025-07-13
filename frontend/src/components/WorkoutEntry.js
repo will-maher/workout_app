@@ -333,10 +333,24 @@ const WorkoutEntry = () => {
   // Get planned workout options
   const getPlannedWorkoutOptions = () => {
     if (!userPlan) return [];
-    return Object.keys(userPlan).map(day => ({
-      id: day,
-      name: day
-    }));
+    const dayOrder = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ];
+    return Object.keys(userPlan)
+      .sort((a, b) => {
+        // Extract day part (e.g., 'Monday' from 'Monday AM')
+        const dayA = dayOrder.findIndex(day => a.startsWith(day));
+        const dayB = dayOrder.findIndex(day => b.startsWith(day));
+        // If both found, sort by day order, else fallback to string compare
+        if (dayA !== -1 && dayB !== -1) return dayA - dayB;
+        if (dayA !== -1) return -1;
+        if (dayB !== -1) return 1;
+        return a.localeCompare(b);
+      })
+      .map(day => ({
+        id: day,
+        name: day
+      }));
   };
 
   // Get exercises for selected planned workout
