@@ -433,10 +433,12 @@ const WorkoutEntry = () => {
               {/* Planned Workout Selector */}
               {userPlan && Object.keys(userPlan).length > 0 && (
                 <Grid item xs={12}>
-                  <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: '1px solid', borderColor: 'primary.main' }}>
-                    <Typography variant="subtitle2" fontWeight={600} color="primary.contrastText" mb={1}>
-                      📋 Planned Workout
-                    </Typography>
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                        📋 Planned Workout
+                      </Typography>
+                    </Box>
                     
                     <ScrollablePicker
                       items={getPlannedWorkoutOptions()}
@@ -449,28 +451,52 @@ const WorkoutEntry = () => {
                     
                     {/* Show exercises for selected workout */}
                     {selectedPlannedWorkout && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" fontWeight={600} color="primary.contrastText" mb={1}>
-                          Planned Exercises:
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {getSelectedWorkoutExercises().map((exercise, index) => (
-                            <Box
-                              key={index}
-                              sx={{
-                                px: 1,
-                                py: 0.5,
-                                bgcolor: 'rgba(255,255,255,0.9)',
-                                borderRadius: 0.5,
-                                fontSize: '0.75rem',
-                                color: 'text.primary',
-                                fontWeight: 500,
+                      <Box sx={{ mt: 1.5 }}>
+                        {getSelectedWorkoutExercises().map((exercise, index) => (
+                          <Box 
+                            key={index} 
+                            sx={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              py: 0.5,
+                              px: 1,
+                              borderRadius: 0.5,
+                              bgcolor: 'white',
+                              mb: 0.5,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              '&:hover': { bgcolor: 'grey.100' },
+                              minWidth: 0,
+                              width: '100%'
+                            }}
+                          >
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{ 
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
                             >
-                              {exercise.exercise} ({exercise.sets} sets)
-                            </Box>
-                          ))}
-                        </Box>
+                              {exercise.exercise}
+                            </Typography>
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{ 
+                                flexShrink: 0,
+                                ml: 1,
+                                fontWeight: 600
+                              }}
+                            >
+                              {exercise.sets} sets • {exercise.targetReps || '?'} reps
+                            </Typography>
+                          </Box>
+                        ))}
                       </Box>
                     )}
                   </Box>
