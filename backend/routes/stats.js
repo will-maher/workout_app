@@ -271,7 +271,7 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
   const userId = req.user.userId;
   // Optional: accept ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
   const { start_date, end_date } = req.query;
-  let dateFilter = 'WHERE ws.user_id = ? ';
+  let dateFilter = 'WHERE ws.user_id = ?';
   const params = [userId];
   if (start_date && end_date) {
     dateFilter += ' AND w.date BETWEEN ? AND ?';
@@ -280,6 +280,7 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     dateFilter += ' AND w.date >= ?';
     params.push(start_date);
   }
+  dateFilter += ' '; // Always add a space at the end
   // Use Postgres to_char for ISO week
   const query = `
     SELECT 
