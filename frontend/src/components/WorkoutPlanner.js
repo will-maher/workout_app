@@ -139,16 +139,21 @@ const WorkoutPlanner = () => {
     fetchPlan();
   }, []);
 
-  // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM'
+  // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM' and normalize days
   useEffect(() => {
     setProgram(prev => {
-      if (prev['Wed AM']) {
-        const migrated = { ...prev };
+      let migrated = { ...prev };
+      if (migrated['Wed AM']) {
         migrated['Wednesday AM'] = migrated['Wed AM'];
         delete migrated['Wed AM'];
-        return migrated;
       }
-      return prev;
+      // Ensure every day in defaultDays exists as an array
+      defaultDays.forEach(day => {
+        if (!Array.isArray(migrated[day])) {
+          migrated[day] = [];
+        }
+      });
+      return migrated;
     });
   }, []);
 
