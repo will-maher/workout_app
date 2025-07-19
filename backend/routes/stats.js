@@ -282,13 +282,13 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     JOIN workouts w ON ws.workout_id = w.id
   `;
   if (start_date && end_date) {
-    query += ' WHERE ws.user_id = ? AND w.date BETWEEN ? AND ?';
+    query += ' WHERE ws.user_id = $1 AND w.date BETWEEN $2 AND $3';
     params.push(start_date, end_date);
   } else if (start_date) {
-    query += ' WHERE ws.user_id = ? AND w.date >= ?';
+    query += ' WHERE ws.user_id = $1 AND w.date >= $2';
     params.push(start_date);
   } else {
-    query += ' WHERE ws.user_id = ?';
+    query += ' WHERE ws.user_id = $1';
   }
   query += ' GROUP BY e.muscle_group, week ORDER BY e.muscle_group, week';
   // Debug: log the final SQL and params
