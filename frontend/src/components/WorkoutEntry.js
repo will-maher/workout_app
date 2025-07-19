@@ -494,6 +494,24 @@ const WorkoutEntry = () => {
     setSets(sets.filter(set => set.id !== setId));
   };
 
+  // --- LocalStorage persistence for sets ---
+  // Load sets from localStorage on mount
+  useEffect(() => {
+    const savedSets = localStorage.getItem('workout_sets');
+    if (savedSets) {
+      try {
+        setSets(JSON.parse(savedSets));
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Save sets to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('workout_sets', JSON.stringify(sets));
+  }, [sets]);
+
   const handleSaveSets = async () => {
     if (sets.length === 0) {
       setMessage('Please add at least one set');
@@ -526,6 +544,7 @@ const WorkoutEntry = () => {
       
       setMessage('Sets saved successfully!');
       setSets([]);
+      localStorage.removeItem('workout_sets'); // Clear localStorage after saving
     } catch (error) {
       console.error('Error saving sets:', error);
       setMessage('Error saving sets: ' + (error.response?.data?.error || error.message));
