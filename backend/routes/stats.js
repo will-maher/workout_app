@@ -294,8 +294,12 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     GROUP BY e.muscle_group, week
     ORDER BY e.muscle_group, week
   `;
+  // Debug: log the final SQL and params
+  console.log('WEEKLY SETS SQL:', query);
+  console.log('WEEKLY SETS PARAMS:', params);
   pool.query(query, params, (err, result) => {
     if (err) {
+      console.error('WEEKLY SETS SQL ERROR:', err, '\nQUERY:', query, '\nPARAMS:', params);
       console.error('Error fetching weekly sets by muscle group:', err);
       return res.status(500).json({ error: 'Failed to fetch weekly sets by muscle group' });
     }
