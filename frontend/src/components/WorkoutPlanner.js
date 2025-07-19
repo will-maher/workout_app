@@ -250,7 +250,7 @@ const WorkoutPlanner = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {program[day].map((ex, idx) => (
+                      {(Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
                         <TableRow key={idx}>
                           <TableCell sx={{ minWidth: 120, fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
                             <FormControl fullWidth size="small" sx={{ fontSize: isMobile ? 12 : 15 }}>
