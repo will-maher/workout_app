@@ -280,11 +280,11 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     dateFilter += ' AND w.date >= ?';
     params.push(start_date);
   }
-  // Use strftime('%Y', ...) and strftime('%W', ...) for ISO week
+  // Use Postgres to_char for ISO week
   const query = `
     SELECT 
       e.muscle_group,
-      strftime('%Y', w.date) || '-W' || printf('%02d', cast(strftime('%W', w.date) as integer)) as week,
+      to_char(w.date, 'IYYY-"W"IW') as week,
       COUNT(ws.id) as total_sets
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
