@@ -32,53 +32,53 @@ const defaultDays = ['Monday AM', 'Tuesday AM', 'Wed AM', 'Thursday AM', 'Friday
 
 const initialProgram = {
   'Monday AM': [
-    { exercise: 'Barbell bench press', sets: 3 },
-    { exercise: 'Dumbbell shoulder press', sets: 3 },
-    { exercise: 'Dips', sets: 3 },
-    { exercise: 'Cable flies', sets: 3 },
-    { exercise: 'EZ bar curl', sets: 3 },
-    { exercise: 'Dumbbell lateral raise', sets: 3 },
+    { exercise: 'Barbell bench press', sets: 3, targetReps: 8 },
+    { exercise: 'Dumbbell shoulder press', sets: 3, targetReps: 8 },
+    { exercise: 'Dips', sets: 3, targetReps: 8 },
+    { exercise: 'Cable flies', sets: 3, targetReps: 12 },
+    { exercise: 'EZ bar curl', sets: 3, targetReps: 10 },
+    { exercise: 'Dumbbell lateral raise', sets: 3, targetReps: 12 },
   ],
   'Tuesday AM': [
-    { exercise: 'Low bar squat', sets: 3 },
-    { exercise: 'Hack squat', sets: 3 },
-    { exercise: 'Leg press calf raise', sets: 3 },
-    { exercise: 'Lunges', sets: 3 },
-    { exercise: 'Leg extension', sets: 3 },
+    { exercise: 'Low bar squat', sets: 3, targetReps: 5 },
+    { exercise: 'Hack squat', sets: 3, targetReps: 8 },
+    { exercise: 'Leg press calf raise', sets: 3, targetReps: 15 },
+    { exercise: 'Lunges', sets: 3, targetReps: 10 },
+    { exercise: 'Leg extension', sets: 3, targetReps: 12 },
   ],
   'Wed AM': [
-    { exercise: 'Pull-ups', sets: 3 },
-    { exercise: 'Barbell row', sets: 3 },
-    { exercise: 'Seated cable row', sets: 3 },
-    { exercise: 'Stiff-legged DL', sets: 3 },
-    { exercise: 'Hex bar shrugs', sets: 3 },
+    { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
+    { exercise: 'Barbell row', sets: 3, targetReps: 8 },
+    { exercise: 'Seated cable row', sets: 3, targetReps: 10 },
+    { exercise: 'Stiff-legged DL', sets: 3, targetReps: 8 },
+    { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
   ],
   'Thursday AM': [
-    { exercise: 'Incline barbell bench press', sets: 3 },
-    { exercise: 'Preacher curl', sets: 3 },
-    { exercise: 'Overhead tricep extension', sets: 3 },
-    { exercise: 'Incline dumbell curl', sets: 3 },
-    { exercise: 'Dips', sets: 3 },
-    { exercise: 'Hanging leg raise', sets: 3 },
+    { exercise: 'Incline barbell bench press', sets: 3, targetReps: 8 },
+    { exercise: 'Preacher curl', sets: 3, targetReps: 10 },
+    { exercise: 'Overhead tricep extension', sets: 3, targetReps: 12 },
+    { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
+    { exercise: 'Dips', sets: 3, targetReps: 8 },
+    { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
   ],
   'Friday AM': [
-    { exercise: 'High bar squat', sets: 3 },
-    { exercise: 'Leg press', sets: 3 },
-    { exercise: 'Leg press calf raise', sets: 3 },
-    { exercise: 'Hanging leg raise', sets: 3 },
+    { exercise: 'High bar squat', sets: 3, targetReps: 5 },
+    { exercise: 'Leg press', sets: 3, targetReps: 8 },
+    { exercise: 'Leg press calf raise', sets: 3, targetReps: 15 },
+    { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
   ],
   'Saturday AM': [
-    { exercise: 'Dumbbell shoulder press', sets: 3 },
-    { exercise: 'Dumbbell lateral raise', sets: 3 },
-    { exercise: 'Rear delt cable fly', sets: 3 },
-    { exercise: 'Incline dumbell curl', sets: 3 },
+    { exercise: 'Dumbbell shoulder press', sets: 3, targetReps: 8 },
+    { exercise: 'Dumbbell lateral raise', sets: 3, targetReps: 12 },
+    { exercise: 'Rear delt cable fly', sets: 3, targetReps: 12 },
+    { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
   ],
   'Sunday AM': [
-    { exercise: 'Deadlift', sets: 3 },
-    { exercise: 'Pull-ups', sets: 3 },
-    { exercise: 'Hex bar shrugs', sets: 3 },
-    { exercise: 'Cable lat pulldown', sets: 3 },
-    { exercise: 'Ab cable crunch', sets: 3 },
+    { exercise: 'Deadlift', sets: 3, targetReps: 5 },
+    { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
+    { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
+    { exercise: 'Cable lat pulldown', sets: 3, targetReps: 10 },
+    { exercise: 'Ab cable crunch', sets: 3, targetReps: 15 },
   ],
 };
 
@@ -174,7 +174,7 @@ const WorkoutPlanner = () => {
   const handleAddExercise = (day) => {
     setProgram(prev => ({
       ...prev,
-      [day]: [...prev[day], { exercise: '', sets: 3 }],
+      [day]: [...prev[day], { exercise: '', sets: 3, targetReps: 8 }],
     }));
   };
 
@@ -227,6 +227,7 @@ const WorkoutPlanner = () => {
                         <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Exercise</TableCell>
                         <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Muscle</TableCell>
                         <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Sets</TableCell>
+                        <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Reps</TableCell>
                         <TableCell align="center" sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Remove</TableCell>
                       </TableRow>
                     </TableHead>
@@ -260,6 +261,16 @@ const WorkoutPlanner = () => {
                               onChange={e => handleChange(day, idx, 'sets', e.target.value)}
                               size="small"
                               inputProps={{ min: 1, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
+                              sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
+                            <TextField
+                              type="number"
+                              value={ex.targetReps || ''}
+                              onChange={e => handleChange(day, idx, 'targetReps', e.target.value)}
+                              size="small"
+                              inputProps={{ min: 1, max: 50, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
                               sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
                             />
                           </TableCell>
