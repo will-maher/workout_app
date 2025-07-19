@@ -271,18 +271,8 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
   const userId = req.user.userId;
   // Optional: accept ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
   const { start_date, end_date } = req.query;
-  let dateFilter = 'WHERE ws.user_id = ?';
   const params = [userId];
-  if (start_date && end_date) {
-    dateFilter += ' AND w.date BETWEEN ? AND ?';
-    params.push(start_date, end_date);
-  } else if (start_date) {
-    dateFilter += ' AND w.date >= ?';
-    params.push(start_date);
-  }
-  dateFilter += ' '; // Always add a space at the end
-  // Use Postgres to_char for ISO week
-  const query = `
+  let query = `
     SELECT 
       e.muscle_group,
       to_char(w.date, 'IYYY-"W"IW') as week,
@@ -290,10 +280,17 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     JOIN workouts w ON ws.workout_id = w.id
-  ` + dateFilter + `
-    GROUP BY e.muscle_group, week
-    ORDER BY e.muscle_group, week
   `;
+  if (start_date && end_date) {
+    query += ' WHERE ws.user_id = ? AND w.date BETWEEN ? AND ?';
+    params.push(start_date, end_date);
+  } else if (start_date) {
+    query += ' WHERE ws.user_id = ? AND w.date >= ?';
+    params.push(start_date);
+  } else {
+    query += ' WHERE ws.user_id = ?';
+  }
+  query += ' GROUP BY e.muscle_group, week ORDER BY e.muscle_group, week';
   // Debug: log the final SQL and params
   console.log('WEEKLY SETS SQL:', query);
   console.log('WEEKLY SETS PARAMS:', params);
