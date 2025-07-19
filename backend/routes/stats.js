@@ -290,7 +290,7 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     JOIN workouts w ON ws.workout_id = w.id
-    ${dateFilter}
+  ` + dateFilter + `
     GROUP BY e.muscle_group, week
     ORDER BY e.muscle_group, week
   `;
