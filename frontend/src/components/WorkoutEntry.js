@@ -39,7 +39,29 @@ const ScrollablePicker = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [buttonRef, setButtonRef] = useState(null);
+  const [menuRef, setMenuRef] = useState(null); // Add ref for menu
   const containerHeight = itemHeight * visibleItems;
+
+  // Click-away logic
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickAway(event) {
+      if (
+        buttonRef &&
+        !buttonRef.contains(event.target) &&
+        menuRef &&
+        !menuRef.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickAway);
+    document.addEventListener('touchstart', handleClickAway);
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway);
+      document.removeEventListener('touchstart', handleClickAway);
+    };
+  }, [isOpen, buttonRef, menuRef]);
 
   const handleItemClick = (item) => {
     onChange(getItemValue(item));
@@ -168,6 +190,7 @@ const ScrollablePicker = ({
       
       {isOpen && buttonRef && ReactDOM.createPortal(
         <Paper
+          ref={setMenuRef}
           elevation={8}
           sx={{
             position: 'fixed',
