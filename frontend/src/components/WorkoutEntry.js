@@ -427,7 +427,13 @@ const WorkoutEntry = () => {
     try {
       const response = await axios.get('/api/plan');
       if (response.data) {
-        setUserPlan(response.data);
+        // Migrate 'Wed AM' to 'Wednesday AM' if present
+        let plan = { ...response.data };
+        if (plan['Wed AM']) {
+          plan['Wednesday AM'] = plan['Wed AM'];
+          delete plan['Wed AM'];
+        }
+        setUserPlan(plan);
       }
     } catch (error) {
       console.error('Error loading user plan:', error);

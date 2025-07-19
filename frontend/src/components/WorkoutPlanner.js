@@ -28,7 +28,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 
-const defaultDays = ['Monday AM', 'Tuesday AM', 'Wed AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
+const defaultDays = ['Monday AM', 'Tuesday AM', 'Wednesday AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
 
 const initialProgram = {
   'Monday AM': [
@@ -46,7 +46,7 @@ const initialProgram = {
     { exercise: 'Lunges', sets: 3, targetReps: 10 },
     { exercise: 'Leg extension', sets: 3, targetReps: 12 },
   ],
-  'Wed AM': [
+  'Wednesday AM': [
     { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
     { exercise: 'Barbell row', sets: 3, targetReps: 8 },
     { exercise: 'Seated cable row', sets: 3, targetReps: 10 },
@@ -137,6 +137,19 @@ const WorkoutPlanner = () => {
       } catch {}
     };
     fetchPlan();
+  }, []);
+
+  // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM'
+  useEffect(() => {
+    setProgram(prev => {
+      if (prev['Wed AM']) {
+        const migrated = { ...prev };
+        migrated['Wednesday AM'] = migrated['Wed AM'];
+        delete migrated['Wed AM'];
+        return migrated;
+      }
+      return prev;
+    });
   }, []);
 
   useEffect(() => {
