@@ -102,7 +102,7 @@ function getWeeklyVolumeAndFrequency(program, exerciseMap) {
 }
 
 // Add this lookup table for optimal values
-const OPTIMAL_RANGES = {
+export const OPTIMAL_RANGES = {
   'Chest': { sets: '12-20', freq: '1.5-3x' },
   'Anterior deltoid': { sets: '6-8', freq: '2-4x' },
   'Triceps': { sets: '10-14', freq: '2-4x' },

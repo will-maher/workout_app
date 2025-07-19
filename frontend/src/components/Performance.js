@@ -22,6 +22,7 @@ import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
 import { format, parseISO } from 'date-fns';
+import { OPTIMAL_RANGES } from './WorkoutPlanner';
 
 function calc1RM(weight, reps) {
   if (!weight || !reps) return 0;
@@ -72,6 +73,8 @@ const Performance = () => {
   const [allSets, setAllSets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [weeklySetsData, setWeeklySetsData] = useState([]);
+  const [muscleGroup, setMuscleGroup] = useState('');
 
   useEffect(() => {
     fetchExercises();
@@ -84,6 +87,32 @@ const Performance = () => {
       setAllSets([]);
     }
   }, [selectedExercise]);
+
+  useEffect(() => {
+    if (selectedExercise && exercises.length > 0) {
+      const ex = exercises.find(e => e.id === selectedExercise);
+      setMuscleGroup(ex?.muscle_group || '');
+    } else {
+      setMuscleGroup('');
+    }
+  }, [selectedExercise, exercises]);
+
+  useEffect(() => {
+    if (muscleGroup) {
+      fetchWeeklySetsData();
+    } else {
+      setWeeklySetsData([]);
+    }
+    async function fetchWeeklySetsData() {
+      try {
+        const res = await axios.get('/api/stats/weekly-sets-by-muscle-group');
+        // Filter for the selected muscle group
+        setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
+      } catch (err) {
+        setWeeklySetsData([]);
+      }
+    }
+  }, [muscleGroup]);
 
   const fetchExercises = async () => {
     try {
@@ -208,6 +237,44 @@ const Performance = () => {
     },
   };
 
+  // --- Weekly Sets Chart ---
+  let weeklySetsChartOptions = null;
+  if (weeklySetsData.length > 0 && muscleGroup) {
+    const weeks = weeklySetsData.map(row => row.week);
+    const sets = weeklySetsData.map(row => parseInt(row.total_sets, 10));
+    // Get optimal range for this muscle group
+    const optimal = OPTIMAL_RANGES[muscleGroup];
+    let minOpt = 0, maxOpt = 0;
+    if (optimal && optimal.sets) {
+      const match = optimal.sets.match(/(\d+)[^\d]+(\d+)/);
+      if (match) {
+        minOpt = parseInt(match[1], 10);
+        maxOpt = parseInt(match[2], 10);
+      }
+    }
+    weeklySetsChartOptions = {
+      chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+      title: { text: '' },
+      xAxis: { categories: weeks, title: { text: 'Week' }, labels: { style: { fontSize: '14px' } } },
+      yAxis: {
+        min: 0,
+        title: { text: 'Sets per Week' },
+        plotBands: minOpt && maxOpt ? [{
+          from: minOpt,
+          to: maxOpt,
+          color: 'rgba(76, 175, 80, 0.15)',
+          label: { text: `Optimal: ${minOpt}-${maxOpt}`, style: { color: '#388e3c', fontWeight: 600 } }
+        }] : [],
+        labels: { style: { fontSize: '14px' } },
+      },
+      tooltip: { valueSuffix: ' sets', style: { fontSize: '15px' } },
+      series: [{ name: muscleGroup, data: sets, color: '#2196f3' }],
+      credits: { enabled: false },
+      legend: { enabled: false },
+      responsive: { rules: [{ condition: { maxWidth: 600 }, chartOptions: { chart: { height: 300 }, xAxis: { labels: { style: { fontSize: '11px' } } }, yAxis: { labels: { style: { fontSize: '11px' } } } } }] },
+    };
+  }
+
   return (
     <Box maxWidth={600} mx="auto" mt={4}>
       <Typography variant="h4" fontWeight={700} gutterBottom align="center">
@@ -240,6 +307,15 @@ const Performance = () => {
           ) : (
             <>
               <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+              {/* --- New Weekly Sets Chart --- */}
+              {weeklySetsChartOptions && (
+                <Box mt={4}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Weekly Sets for {muscleGroup}
+                  </Typography>
+                  <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
+                </Box>
+              )}
               {/* Table of all sets */}
               <Box mt={4}>
                 <Typography variant="h6" fontWeight={600} gutterBottom>All Logged Sets</Typography>
