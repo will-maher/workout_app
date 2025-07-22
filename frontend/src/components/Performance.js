@@ -17,6 +17,7 @@ import {
   TableHead,
   TableRow,
   Paper,
+  ListSubheader,
 } from '@mui/material';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
@@ -279,7 +280,7 @@ const Performance = () => {
   return (
     <Box maxWidth={600} mx="auto" mt={4}>
       <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-        Performance vTEST123
+        Performance
       </Typography>
       <Card sx={{ mb: 4 }}>
         <CardContent>
@@ -290,9 +291,20 @@ const Performance = () => {
               onChange={e => setSelectedExercise(e.target.value)}
               label="Exercise"
             >
-              {Array.isArray(exercises) && exercises.map(ex => (
-                <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
-              ))}
+              {Array.isArray(exercises) && (() => {
+                // Group exercises by muscle group
+                const groups = {};
+                exercises.forEach(ex => {
+                  if (!groups[ex.muscle_group]) groups[ex.muscle_group] = [];
+                  groups[ex.muscle_group].push(ex);
+                });
+                return Object.entries(groups).map(([group, items]) => [
+                  <ListSubheader key={group} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: 14 }}>{group}</ListSubheader>,
+                  ...items.map(ex => (
+                    <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
+                  ))
+                ]);
+              })()}
             </Select>
           </FormControl>
           {loading ? (
