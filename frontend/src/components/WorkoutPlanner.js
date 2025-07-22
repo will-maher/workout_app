@@ -28,6 +28,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
 const defaultDays = ['Monday AM', 'Tuesday AM', 'Wednesday AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
 
@@ -133,7 +134,7 @@ const WorkoutPlanner = () => {
   useEffect(() => {
     const fetchPlan = async () => {
       try {
-        const res = await axios.get('/api/plan');
+        const res = await axios.get(`${API_BASE_URL}/api/plan`);
         if (res.data) setProgram(res.data);
       } catch {}
     };
@@ -162,7 +163,7 @@ const WorkoutPlanner = () => {
     const fetchExercises = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/exercises');
+        const res = await axios.get(`${API_BASE_URL}/api/exercises`);
         // Ensure exercises is always an array
         const exercisesData = Array.isArray(res.data) ? res.data : [];
         setExercises(exercisesData);
@@ -225,7 +226,7 @@ const WorkoutPlanner = () => {
 
   const handleSave = async () => {
     try {
-      await axios.post('/api/plan', { plan_json: program });
+      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       setSnackbarOpen(true);
     } catch (error) {
       console.error('Error saving plan:', error);

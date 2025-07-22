@@ -23,6 +23,7 @@ import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
 import { format, parseISO } from 'date-fns';
 import { OPTIMAL_RANGES } from './WorkoutPlanner';
+import { API_BASE_URL } from '../App';
 
 function calc1RM(weight, reps) {
   if (!weight || !reps) return 0;
@@ -105,7 +106,7 @@ const Performance = () => {
     }
     async function fetchWeeklySetsData() {
       try {
-        const res = await axios.get('/api/stats/weekly-sets-by-muscle-group');
+        const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
         // Filter for the selected muscle group
         setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
       } catch (err) {
@@ -117,7 +118,7 @@ const Performance = () => {
   const fetchExercises = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/api/exercises');
+      const res = await axios.get(`${API_BASE_URL}/api/exercises`);
       // Ensure exercises is always an array
       setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -133,7 +134,7 @@ const Performance = () => {
     try {
       setLoading(true);
       setError('');
-      const res = await axios.get(`/api/stats/performance/sets?exercise_id=${exerciseId}`);
+      const res = await axios.get(`${API_BASE_URL}/api/stats/performance/sets?exercise_id=${exerciseId}`);
       setAllSets(res.data);
       // Calculate 1RM for each set
       const points = res.data.map(set => ({

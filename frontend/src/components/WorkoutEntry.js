@@ -23,6 +23,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
 // Custom Scrollable Picker Component (Apple-style)
 const ScrollablePicker = ({ 
@@ -417,7 +418,7 @@ const WorkoutEntry = () => {
 
   const fetchExercises = async () => {
     try {
-      const response = await axios.get('/api/exercises');
+      const response = await axios.get(`${API_BASE_URL}/api/exercises`);
       // Ensure exercises is always an array
       setExercises(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
@@ -431,7 +432,7 @@ const WorkoutEntry = () => {
 
   const fetchUserPlan = async () => {
     try {
-      const response = await axios.get('/api/plan');
+      const response = await axios.get(`${API_BASE_URL}/api/plan`);
       if (response.data) {
         // Migrate 'Wed AM' to 'Wednesday AM' if present
         let plan = { ...response.data };
@@ -454,7 +455,7 @@ const WorkoutEntry = () => {
     }
     try {
       setLoadingData(true);
-      const response = await axios.get(`/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`);
+      const response = await axios.get(`${API_BASE_URL}/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`);
       setRecentSets(response.data);
     } catch (error) {
       console.error('Error fetching recent data:', error);
@@ -548,7 +549,7 @@ const WorkoutEntry = () => {
       
       // Save each date as a separate workout
       for (const [date, dateSets] of Object.entries(setsByDate)) {
-        await axios.post('/api/workouts', {
+        await axios.post(`${API_BASE_URL}/api/workouts`, {
           date: date,
           sets: dateSets,
         });

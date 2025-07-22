@@ -38,6 +38,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, parseISO } from 'date-fns';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
 const WorkoutHistory = () => {
   const [workouts, setWorkouts] = useState([]);
@@ -59,7 +60,7 @@ const WorkoutHistory = () => {
       setError('');
       
       const params = date ? { date: format(date, 'yyyy-MM-dd') } : {};
-      const response = await axios.get('/api/workouts', { params });
+      const response = await axios.get(`${API_BASE_URL}/api/workouts`, { params });
       // Ensure workouts is always an array
       setWorkouts(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
@@ -73,7 +74,7 @@ const WorkoutHistory = () => {
 
   const handleViewWorkout = async (workoutId) => {
     try {
-      const response = await axios.get(`/api/workouts/${workoutId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/workouts/${workoutId}`);
       setSelectedWorkout(response.data);
       setViewDialogOpen(true);
     } catch (err) {
@@ -86,7 +87,7 @@ const WorkoutHistory = () => {
     if (!workoutToDelete) return;
 
     try {
-      await axios.delete(`/api/workouts/${workoutToDelete}`);
+      await axios.delete(`${API_BASE_URL}/api/workouts/${workoutToDelete}`);
       setWorkouts(workouts.filter(w => w.id !== workoutToDelete));
       setDeleteDialogOpen(false);
       setWorkoutToDelete(null);

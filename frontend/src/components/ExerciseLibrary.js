@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
 const muscleGroups = [
   'Chest',
@@ -58,7 +59,7 @@ const ExerciseLibrary = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get('/api/exercises');
+      const res = await axios.get(`${API_BASE_URL}/api/exercises`);
       // Ensure exercises is always an array
       setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -78,7 +79,7 @@ const ExerciseLibrary = () => {
     setAddError('');
     setAdding(true);
     try {
-      await axios.post('/api/exercises', {
+      await axios.post(`${API_BASE_URL}/api/exercises`, {
         name: newName.trim(),
         muscle_group: newMuscle,
       });

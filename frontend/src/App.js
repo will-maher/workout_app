@@ -36,10 +36,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 // API base URL configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://workoutapp-production-3c56.up.railway.app' 
-    : 'http://localhost:5001');
+export const API_BASE_URL = 'https://workoutapp-production-3c56.up.railway.app';
 
 // Debug logging (commented out to prevent console errors)
 // console.log('Environment:', process.env.NODE_ENV);
