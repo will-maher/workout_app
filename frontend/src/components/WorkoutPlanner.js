@@ -23,6 +23,7 @@ import {
   useTheme,
   Snackbar,
   Alert as MuiAlert,
+  ListSubheader,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -179,6 +180,24 @@ const WorkoutPlanner = () => {
     fetchExercises();
   }, []);
 
+  // Group exercises by muscle group for dropdown
+  const groupedExercises = React.useMemo(() => {
+    if (!Array.isArray(exercises) || exercises.length === 0) return [];
+    const grouped = exercises.reduce((acc, exercise) => {
+      const muscleGroup = exercise.muscle_group || 'Other';
+      if (!acc[muscleGroup]) acc[muscleGroup] = [];
+      acc[muscleGroup].push(exercise);
+      return acc;
+    }, {});
+    // Sort muscle groups and exercises alphabetically
+    return Object.keys(grouped)
+      .sort()
+      .map(muscleGroup => ({
+        label: muscleGroup,
+        items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
+      }));
+  }, [exercises]);
+
   const handleChange = (day, idx, field, value) => {
     setProgram(prev => {
       const updated = { ...prev };
@@ -263,9 +282,12 @@ const WorkoutPlanner = () => {
                                   sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}
                                 >
                                   <MenuItem value=""><em>None</em></MenuItem>
-                                  {Array.isArray(exercises) && exercises.map(exOpt => (
-                                    <MenuItem key={exOpt.id} value={exOpt.name} sx={{ fontSize: isMobile ? 12 : 15 }}>{exOpt.name}</MenuItem>
-                                  ))}
+                                  {groupedExercises.map(group => [
+                                    <ListSubheader key={group.label} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: isMobile ? 12 : 15 }}>{group.label}</ListSubheader>,
+                                    ...group.items.map(exOpt => (
+                                      <MenuItem key={exOpt.id} value={exOpt.name} sx={{ fontSize: isMobile ? 12 : 15, pl: 3 }}>{exOpt.name}</MenuItem>
+                                    ))
+                                  ])}
                                 </Select>
                               </FormControl>
                             </TableCell>

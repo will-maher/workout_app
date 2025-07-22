@@ -19,7 +19,7 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching plan:', err);
     res.status(500).json({ error: 'Failed to fetch plan' });
-  }
+    }
 });
 
 // POST or update user's plan

@@ -164,12 +164,18 @@ const ScrollablePicker = ({
         sx={{ 
           justifyContent: 'space-between',
           textAlign: 'left',
-          py: 1.5,
-          px: 2,
+          py: 1.2,
+          px: 1.5,
           borderColor: 'grey.300',
-          '&:hover': { borderColor: 'primary.main' },
+          backgroundColor: 'grey.50', // Match other menus
+          borderRadius: 1.5,
+          boxShadow: '0 1px 4px 0 rgba(34,34,59,0.04)',
+          fontWeight: 500,
+          fontSize: 15,
+          '&:hover': { borderColor: 'primary.main', backgroundColor: 'grey.100' },
           minWidth: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          height: 44,
         }}
       >
         <Typography
@@ -567,16 +573,16 @@ const WorkoutEntry = () => {
             {message}
           </Alert>
         )}
-        <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 2px 16px 0 rgba(34,34,59,0.04)', position: 'relative' }}> {/* More compact */}
-          <CardContent sx={{ p: 1, overflow: 'visible' }}>
+        <Card sx={{ mb: 3, p: 1.2, boxShadow: '0 1px 4px 0 rgba(34,34,59,0.04)', borderRadius: 1.5, position: 'relative' }}> {/* More compact */}
+          <CardContent sx={{ p: 1.5, overflow: 'visible' }}>
             <Grid container spacing={1} alignItems="center"> {/* More compact spacing */}
               
               {/* Planned Workout Selector */}
               {userPlan && Object.keys(userPlan).length > 0 && (
                 <Grid item xs={12}>
-                  <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                  <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'grey.200', boxShadow: '0 1px 4px 0 rgba(34,34,59,0.04)' }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                      <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                      <Typography variant="subtitle2" fontWeight={700} color="primary.main" sx={{ fontSize: 16 }}>
                         📋 Planned Workout
                       </Typography>
                     </Box>
@@ -807,7 +813,7 @@ const WorkoutEntry = () => {
               {/* Compact Sets Display - Directly under Add Set button */}
               {sets.length > 0 && (
                 <Grid item xs={12}>
-                  <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                  <Box sx={{ mt: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'grey.200', boxShadow: '0 1px 4px 0 rgba(34,34,59,0.04)' }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                       <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
                         Sets Added ({sets.length})
@@ -818,7 +824,7 @@ const WorkoutEntry = () => {
                         onClick={handleSaveSets}
                         disabled={saving}
                         size="small"
-                        sx={{ fontWeight: 600, fontSize: 12, py: 0.5, px: 1.5 }}
+                        sx={{ fontWeight: 600, fontSize: 13, py: 0.7, px: 2, borderRadius: 1.2 }}
                       >
                         {saving ? 'Saving...' : 'Save All'}
                       </Button>

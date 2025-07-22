@@ -50,7 +50,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching workout:', err);
     res.status(500).json({ error: 'Failed to fetch workout' });
-  }
+      }
 });
 
 // POST create a new workout (and sets)
@@ -76,7 +76,7 @@ router.post('/', authenticateToken, async (req, res) => {
           [userId, workout.id, set.exercise_id, set.weight, set.reps, set.set_number || idx + 1]
         );
         insertedSets.push(setResult.rows[0]);
-      }
+              }
     }
     await client.query('COMMIT');
     res.status(201).json({ ...workout, sets: insertedSets });
@@ -93,7 +93,7 @@ router.post('/', authenticateToken, async (req, res) => {
     });
   } finally {
     client.release();
-  }
+      }
 });
 
 // PUT update a workout
@@ -107,13 +107,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
       [date, notes, id, userId]
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Workout not found' });
-    }
-    res.json({ message: 'Workout updated successfully' });
+        return res.status(404).json({ error: 'Workout not found' });
+      }
+      res.json({ message: 'Workout updated successfully' });
   } catch (err) {
     console.error('Error updating workout:', err);
     res.status(500).json({ error: 'Failed to update workout' });
-  }
+    }
 });
 
 // DELETE a workout
@@ -146,7 +146,7 @@ router.post('/:id/sets', authenticateToken, async (req, res) => {
   }
 
   try {
-    // Check if workout exists
+  // Check if workout exists
     const workoutResult = await pool.query('SELECT id FROM workouts WHERE id = $1 AND user_id = $2', [id, userId]);
     if (workoutResult.rows.length === 0) {
       return res.status(404).json({ error: 'Workout not found' });
@@ -156,14 +156,14 @@ router.post('/:id/sets', authenticateToken, async (req, res) => {
       'INSERT INTO workout_sets (user_id, workout_id, exercise_id, weight, reps, set_number) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [userId, id, exercise_id, weight, reps, set_number]
     );
-    res.status(201).json({
+        res.status(201).json({
       ...setResult.rows[0],
-      message: 'Set added successfully'
-    });
+          message: 'Set added successfully'
+        });
   } catch (err) {
     console.error('Error adding set:', err);
     res.status(500).json({ error: 'Failed to add set' });
-  }
+      }
 });
 
 // DELETE set from workout (user-specific)

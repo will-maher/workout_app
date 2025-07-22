@@ -172,7 +172,7 @@ function App() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* App Bar */}
-      <AppBar position="static" elevation={0} sx={{ borderRadius: { xs: 0, sm: 0 } }}> {/* Ensure square on mobile */}
+      <AppBar position="fixed" elevation={0} sx={{ borderRadius: { xs: 0, sm: 0 }, zIndex: 1201 }}> {/* Fixed and above other content */}
         <Toolbar>
           <WorkoutIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -235,10 +235,10 @@ function App() {
           py: 3,
           pb: isMobile ? 10 : 3, // Add bottom padding for mobile navigation
           maxWidth: 'lg',
-          // Ensure content doesn't interfere with bottom nav
           position: 'relative',
           zIndex: 1,
-          minHeight: isMobile ? 'calc(100vh - 72px)' : 'auto', // Account for bottom nav height
+          minHeight: isMobile ? 'calc(100vh - 72px)' : 'auto',
+          pt: { xs: 8, sm: 9 }, // Add top padding for fixed AppBar (64px/72px)
         }}
       >
         <Routes>

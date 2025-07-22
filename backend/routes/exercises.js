@@ -27,9 +27,9 @@ router.get('/', async (req, res) => {
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching exercises:', err);
+      console.error('Error fetching exercises:', err);
     res.status(500).json({ error: 'Failed to fetch exercises' });
-  }
+    }
 });
 
 // GET exercise by ID
@@ -61,13 +61,13 @@ router.post('/', async (req, res) => {
       'INSERT INTO exercises (name, muscle_group, category) VALUES ($1, $2, $3) RETURNING id',
       [name, muscle_group, category]
     );
-    res.status(201).json({
+      res.status(201).json({
       id: result.rows[0].id,
-      name,
-      muscle_group,
-      category,
-      message: 'Exercise created successfully'
-    });
+        name,
+        muscle_group,
+        category,
+        message: 'Exercise created successfully'
+      });
   } catch (err) {
     console.error('Error creating exercise:', err);
     if (err.code === '23505') { // unique_violation
@@ -92,13 +92,13 @@ router.put('/:id', async (req, res) => {
       [name, muscle_group, category, id]
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Exercise not found' });
-    }
-    res.json({ message: 'Exercise updated successfully' });
+        return res.status(404).json({ error: 'Exercise not found' });
+      }
+      res.json({ message: 'Exercise updated successfully' });
   } catch (err) {
     console.error('Error updating exercise:', err);
     res.status(500).json({ error: 'Failed to update exercise' });
-  }
+    }
 });
 
 // DELETE exercise

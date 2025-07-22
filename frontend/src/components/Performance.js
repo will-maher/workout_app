@@ -176,7 +176,7 @@ const Performance = () => {
     title: { text: '' },
     xAxis: {
       type: 'datetime',
-      title: { text: 'Date' },
+      title: { text: null }, // Remove the x-axis label
       labels: { style: { fontSize: '14px' } },
     },
     yAxis: {

@@ -26,18 +26,18 @@ import axios from 'axios';
 
 const muscleGroups = [
   'Chest',
+  'Back',
+  'Quad',
+  'Hamstring',
+  'Glutes',
+  'Calf',
+  'Trapezius',
   'Anterior deltoid',
+  'Lateral deltoid',
+  'Posterior deltoid',
   'Triceps',
   'Bicep',
-  'Lateral deltoid',
-  'Quad',
-  'Calf',
-  'Glutes',
-  'Back',
-  'Hamstring',
-  'Trapezius',
   'Abs',
-  'Posterior deltoid',
 ];
 
 const ExerciseLibrary = () => {
@@ -93,13 +93,17 @@ const ExerciseLibrary = () => {
     }
   };
 
-  // Group exercises by muscle group
+  // Group exercises by muscle group, using muscleGroups order
   const grouped = exercises.reduce((acc, ex) => {
     if (!acc[ex.muscle_group]) acc[ex.muscle_group] = [];
     acc[ex.muscle_group].push(ex);
     return acc;
   }, {});
-  const sortedGroups = Object.keys(grouped).sort();
+  // Use muscleGroups order, then any extra groups alphabetically
+  const sortedGroups = [
+    ...muscleGroups.filter(mg => grouped[mg]),
+    ...Object.keys(grouped).filter(mg => !muscleGroups.includes(mg)).sort()
+  ];
 
   return (
     <Box maxWidth={480} mx="auto" mt={4}>
@@ -129,16 +133,19 @@ const ExerciseLibrary = () => {
                   {mg}
                 </Typography>
                 <List dense disablePadding>
-                  {Array.isArray(grouped[mg]) && grouped[mg].map((ex, i) => (
-                    <React.Fragment key={ex.id}>
-                      <ListItem sx={{ py: 0.5 }}>
-                        <ListItemText
-                          primary={<Typography fontWeight={600} sx={{ fontSize: 14 }}>{ex.name}</Typography>}
-                        />
-                      </ListItem>
-                      {i < grouped[mg].length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
+                  {Array.isArray(grouped[mg]) && grouped[mg]
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((ex, i) => (
+                      <React.Fragment key={ex.id}>
+                        <ListItem sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={<Typography fontWeight={600} sx={{ fontSize: 14 }}>{ex.name}</Typography>}
+                          />
+                        </ListItem>
+                        {i < grouped[mg].length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
                 </List>
               </Box>
             ))}
