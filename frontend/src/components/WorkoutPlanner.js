@@ -238,7 +238,7 @@ const WorkoutPlanner = () => {
     <Box maxWidth={isMobile ? 400 : 700} mx="auto" mt={2}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
         <Typography variant="h5" fontWeight={700} gutterBottom align="center" sx={{ fontSize: isMobile ? 20 : 28 }}>
-          Workout Planner
+          Workout Planner (Plan Tab)
         </Typography>
         <Button variant="contained" color="primary" onClick={handleSave} sx={{ fontSize: isMobile ? 12 : 16, minWidth: 0, px: isMobile ? 1 : 2 }}>
           Save
