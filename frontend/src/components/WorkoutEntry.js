@@ -414,7 +414,12 @@ const WorkoutEntry = () => {
   useEffect(() => {
     fetchExercises();
     fetchUserPlan();
-  }, []);
+    console.log('WorkoutEntry component mounted');
+    
+    return () => {
+      console.log('WorkoutEntry component unmounting, current sets:', sets);
+    };
+  }, [sets]);
 
   const fetchExercises = async () => {
     try {
@@ -513,16 +518,30 @@ const WorkoutEntry = () => {
     const savedSets = localStorage.getItem('workout_sets');
     if (savedSets) {
       try {
-        setSets(JSON.parse(savedSets));
+        const parsedSets = JSON.parse(savedSets);
+        console.log('Loading sets from localStorage:', parsedSets);
+        setSets(parsedSets);
       } catch (e) {
-        // Ignore parse errors
+        console.error('Error parsing localStorage sets:', e);
+        // Clear corrupted localStorage
+        localStorage.removeItem('workout_sets');
       }
     }
   }, []);
 
   // Save sets to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('workout_sets', JSON.stringify(sets));
+    if (sets.length > 0) {
+      console.log('Saving sets to localStorage:', sets);
+      localStorage.setItem('workout_sets', JSON.stringify(sets));
+    } else {
+      // Only clear localStorage if sets are empty and we're not in the middle of loading
+      const savedSets = localStorage.getItem('workout_sets');
+      if (savedSets) {
+        console.log('Clearing localStorage - sets are empty');
+        localStorage.removeItem('workout_sets');
+      }
+    }
   }, [sets]);
 
   const handleSaveSets = async () => {
@@ -557,6 +576,7 @@ const WorkoutEntry = () => {
       
       setMessage('Sets saved successfully!');
       setSets([]);
+      console.log('Clearing localStorage after successful save');
       localStorage.removeItem('workout_sets'); // Clear localStorage after saving
     } catch (error) {
       console.error('Error saving sets:', error);
