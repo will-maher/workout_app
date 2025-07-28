@@ -46,6 +46,10 @@ const ScrollablePicker = ({
   // Click-away logic
   useEffect(() => {
     if (!isOpen) return;
+    
+    // Prevent body scroll when dropdown is open
+    document.body.style.overflow = 'hidden';
+    
     function handleClickAway(event) {
       if (
         buttonRef &&
@@ -61,6 +65,8 @@ const ScrollablePicker = ({
     return () => {
       document.removeEventListener('mousedown', handleClickAway);
       document.removeEventListener('touchstart', handleClickAway);
+      // Restore body scroll when dropdown closes
+      document.body.style.overflow = 'unset';
     };
   }, [isOpen, buttonRef, menuRef]);
 
