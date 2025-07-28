@@ -547,6 +547,24 @@ const WorkoutEntry = () => {
     }
   }, [sets]);
 
+  // --- LocalStorage persistence for selected planned workout ---
+  // Load selected planned workout from localStorage on mount
+  useEffect(() => {
+    const savedPlannedWorkout = localStorage.getItem('selected_planned_workout');
+    if (savedPlannedWorkout) {
+      setSelectedPlannedWorkout(savedPlannedWorkout);
+    }
+  }, []);
+
+  // Save selected planned workout to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedPlannedWorkout) {
+      localStorage.setItem('selected_planned_workout', selectedPlannedWorkout);
+    } else {
+      localStorage.removeItem('selected_planned_workout');
+    }
+  }, [selectedPlannedWorkout]);
+
   const handleSaveSets = async () => {
     if (sets.length === 0) {
       setMessage('Please add at least one set');
