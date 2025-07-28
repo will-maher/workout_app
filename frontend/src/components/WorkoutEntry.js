@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Box,
@@ -392,9 +392,13 @@ const WorkoutEntry = () => {
   };
 
   // Group exercises by muscle group
-  const groupedExercises = React.useMemo(() => {
-    if (!Array.isArray(exercises) || exercises.length === 0) return [];
-    
+  const groupedExercises = useMemo(() => {
+    console.log('Calculating groupedExercises with exercises:', exercises);
+    if (!Array.isArray(exercises) || exercises.length === 0) {
+      console.log('No exercises available, returning empty array');
+      return [];
+    }
+
     const grouped = exercises.reduce((acc, exercise) => {
       const muscleGroup = exercise.muscle_group || 'Other';
       if (!acc[muscleGroup]) {
@@ -405,18 +409,28 @@ const WorkoutEntry = () => {
     }, {});
 
     // Convert to array format and sort
-    return Object.keys(grouped)
+    const result = Object.keys(grouped)
       .sort()
       .map(muscleGroup => ({
         label: muscleGroup,
         items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
       }));
+    
+    console.log('groupedExercises result:', result);
+    return result;
   }, [exercises]);
 
   useEffect(() => {
     const initializeComponent = async () => {
       console.log('WorkoutEntry component mounting...');
       setIsInitializing(true);
+      
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        console.log('Initialization timeout reached, forcing completion');
+        setIsInitializing(false);
+      }, 10000); // 10 second timeout
+      
       try {
         await fetchExercises();
         await fetchUserPlan();
@@ -424,6 +438,7 @@ const WorkoutEntry = () => {
       } catch (error) {
         console.error('Error initializing WorkoutEntry component:', error);
       } finally {
+        clearTimeout(timeoutId);
         setIsInitializing(false);
       }
     };
@@ -436,22 +451,28 @@ const WorkoutEntry = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchExercises = async () => {
+    console.log('fetchExercises called');
     try {
       const response = await axios.get(`${API_BASE_URL}/api/exercises`);
+      console.log('fetchExercises response:', response.data);
       // Ensure exercises is always an array
-      setExercises(Array.isArray(response.data) ? response.data : []);
+      const exercisesArray = Array.isArray(response.data) ? response.data : [];
+      console.log('Setting exercises to:', exercisesArray);
+      setExercises(exercisesArray);
     } catch (error) {
       console.error('Error loading exercises:', error);
       setMessage('Error loading exercises');
       setExercises([]); // Set empty array on error
     } finally {
-      // setLoading(false); // This line was removed
+      console.log('fetchExercises completed');
     }
   };
 
   const fetchUserPlan = async () => {
+    console.log('fetchUserPlan called');
     try {
       const response = await axios.get(`${API_BASE_URL}/api/plan`);
+      console.log('fetchUserPlan response:', response.data);
       if (response.data) {
         // Migrate 'Wed AM' to 'Wednesday AM' if present
         let plan = { ...response.data };
@@ -459,11 +480,17 @@ const WorkoutEntry = () => {
           plan['Wednesday AM'] = plan['Wed AM'];
           delete plan['Wed AM'];
         }
+        console.log('Setting userPlan to:', plan);
         setUserPlan(plan);
+      } else {
+        console.log('No user plan data, setting to null');
+        setUserPlan(null);
       }
     } catch (error) {
       console.error('Error loading user plan:', error);
       setUserPlan(null);
+    } finally {
+      console.log('fetchUserPlan completed');
     }
   };
 
@@ -641,6 +668,7 @@ const WorkoutEntry = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box maxWidth={480} mx="auto" mt={2}>
+        {console.log('WorkoutEntry render - isInitializing:', isInitializing, 'exercises:', exercises.length, 'userPlan:', userPlan)}
         {isInitializing ? (
           <Box display="flex" justifyContent="center" py={4}>
             <CircularProgress />
@@ -652,6 +680,11 @@ const WorkoutEntry = () => {
                 {message}
               </Alert>
             )}
+            
+            {/* Debug info */}
+            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', fontSize: 12 }}>
+              Debug: exercises={exercises.length}, userPlan={userPlan ? Object.keys(userPlan).length : 'null'}
+            </Box>
             
             {/* Planned Workout Selector */}
             {userPlan && Object.keys(userPlan).length > 0 && (
@@ -768,7 +801,7 @@ const WorkoutEntry = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <ScrollablePicker
-                    items={groupedExercises}
+                    items={groupedExercises.length > 0 ? groupedExercises : [{ label: 'Loading...', items: [] }]}
                     value={selectedExercise}
                     onChange={setSelectedExercise}
                     label="Select Exercise"
