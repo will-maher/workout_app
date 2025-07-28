@@ -153,7 +153,7 @@ const ExerciseLibrary = () => {
   return (
     <Box maxWidth={480} mx="auto" mt={4}>
       <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-        Exercise Library
+        Exercise Library vBUILD_TEST
       </Typography>
       <Button
         variant="contained"
