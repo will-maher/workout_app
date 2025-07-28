@@ -222,6 +222,7 @@ function App() {
         <Container maxWidth="lg" sx={{ px: 2 }}>
           <Routes>
             <Route path="/" element={<WorkoutEntry />} />
+            <Route path="/add" element={<WorkoutEntry />} />
             <Route path="/history" element={<WorkoutHistory />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/library" element={<ExerciseLibrary />} />
