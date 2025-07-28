@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   TextField,
   Button,
@@ -650,8 +648,7 @@ const WorkoutEntry = () => {
                       }}
                       sx={{ 
                         display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
+                        flexDirection: 'column',
                         py: 1,
                         px: 1.5,
                         borderRadius: 0.5,
@@ -668,32 +665,48 @@ const WorkoutEntry = () => {
                         transition: 'all 0.2s ease'
                       }}
                     >
-                      <Typography 
-                        variant="body2" 
-                        color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                        sx={{ 
-                          flex: 1,
-                          minWidth: 0,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontSize: 13
-                        }}
-                      >
-                        {exercise.exercise}
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                        sx={{ 
-                          flexShrink: 0,
-                          ml: 1,
-                          fontWeight: 600,
-                          fontSize: 12
-                        }}
-                      >
-                        {exercise.sets} sets • {exercise.targetReps || '?'} reps
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Typography 
+                          variant="body2" 
+                          color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                          sx={{ 
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: 13
+                          }}
+                        >
+                          {exercise.exercise}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                          sx={{ 
+                            flexShrink: 0,
+                            ml: 1,
+                            fontWeight: 600,
+                            fontSize: 12
+                          }}
+                        >
+                          {exercise.sets} sets • {exercise.targetReps || '?'} reps
+                        </Typography>
+                      </Box>
+                      {exercise.notes && (
+                        <Typography 
+                          variant="caption" 
+                          color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                          sx={{ 
+                            mt: 0.5,
+                            fontSize: 11,
+                            fontStyle: 'italic',
+                            opacity: 0.8
+                          }}
+                        >
+                          {exercise.notes}
+                        </Typography>
+                      )}
                     </Box>
                   );
                 })}

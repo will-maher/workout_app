@@ -9,12 +9,8 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
-  useTheme,
-  useMediaQuery,
-  Button,
 } from '@mui/material';
 import {
-  FitnessCenter as WorkoutIcon,
   Add as AddIcon,
   EventNote as PlanIcon,
   BarChart,
@@ -46,8 +42,6 @@ export const API_BASE_URL = 'https://workoutapp-production-3c56.up.railway.app';
 function App() {
   const [value, setValue] = useState(0);
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
@@ -150,13 +144,6 @@ function App() {
     else if (newValue === 1) navigate('/plan');
     else if (newValue === 2) navigate('/performance');
   };
-
-  // Desktop nav links (for AppBar)
-  const navLinks = [
-    { label: 'Add', path: '/add', icon: <AddIcon /> },
-    { label: 'Plan', path: '/plan', icon: <PlanIcon /> },
-    { label: 'Performance', path: '/performance', icon: <BarChart /> },
-  ];
 
   if (!user) {
     return showRegister ? (
