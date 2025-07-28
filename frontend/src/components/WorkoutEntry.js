@@ -810,6 +810,26 @@ const WorkoutEntry = () => {
                     grouped={true}
                     getGroupLabel={(group) => group.label}
                   />
+                  {/* Exercise Notes Display */}
+                  {selectedExercise && (() => {
+                    const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
+                    return selectedExerciseData && selectedExerciseData.notes ? (
+                      <Box sx={{ mt: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary" 
+                          sx={{ 
+                            fontSize: 11,
+                            fontStyle: 'italic',
+                            display: 'block',
+                            lineHeight: 1.4
+                          }}
+                        >
+                          {selectedExerciseData.notes}
+                        </Typography>
+                      </Box>
+                    ) : null;
+                  })()}
                 </Grid>
                 <Grid item xs={6}>
                   <ScrollablePicker
