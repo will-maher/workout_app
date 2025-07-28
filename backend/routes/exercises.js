@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 
 // POST new exercise
 router.post('/', async (req, res) => {
-  const { name, muscle_group, category = 'strength' } = req.body;
+  const { name, muscle_group, category = 'strength', notes } = req.body;
 
   if (!name || !muscle_group) {
     return res.status(400).json({ error: 'Name and muscle_group are required' });
@@ -58,14 +58,15 @@ router.post('/', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO exercises (name, muscle_group, category) VALUES ($1, $2, $3) RETURNING id',
-      [name, muscle_group, category]
+      'INSERT INTO exercises (name, muscle_group, category, notes) VALUES ($1, $2, $3, $4) RETURNING id',
+      [name, muscle_group, category, notes]
     );
       res.status(201).json({
       id: result.rows[0].id,
         name,
         muscle_group,
         category,
+        notes,
         message: 'Exercise created successfully'
       });
   } catch (err) {
@@ -80,7 +81,7 @@ router.post('/', async (req, res) => {
 // PUT update exercise
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, muscle_group, category } = req.body;
+  const { name, muscle_group, category, notes } = req.body;
 
   if (!name || !muscle_group) {
     return res.status(400).json({ error: 'Name and muscle_group are required' });
@@ -88,8 +89,8 @@ router.put('/:id', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'UPDATE exercises SET name = $1, muscle_group = $2, category = $3 WHERE id = $4',
-      [name, muscle_group, category, id]
+      'UPDATE exercises SET name = $1, muscle_group = $2, category = $3, notes = $4 WHERE id = $5',
+      [name, muscle_group, category, notes, id]
     );
     if (result.rowCount === 0) {
         return res.status(404).json({ error: 'Exercise not found' });
@@ -98,7 +99,7 @@ router.put('/:id', async (req, res) => {
   } catch (err) {
     console.error('Error updating exercise:', err);
     res.status(500).json({ error: 'Failed to update exercise' });
-    }
+  }
 });
 
 // DELETE exercise
