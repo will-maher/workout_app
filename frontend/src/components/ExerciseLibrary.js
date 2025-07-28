@@ -23,21 +23,22 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
 const muscleGroups = [
   'Chest',
+  'Back',
+  'Quad',
+  'Hamstring',
+  'Glutes',
+  'Calf',
+  'Trapezius',
   'Anterior deltoid',
+  'Lateral deltoid',
+  'Posterior deltoid',
   'Triceps',
   'Bicep',
-  'Lateral deltoid',
-  'Quad',
-  'Calf',
-  'Glutes',
-  'Back',
-  'Hamstring',
-  'Trapezius',
   'Abs',
-  'Posterior deltoid',
 ];
 
 const ExerciseLibrary = () => {
@@ -49,6 +50,15 @@ const ExerciseLibrary = () => {
   const [newMuscle, setNewMuscle] = useState('');
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
+  
+  // Edit exercise state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editMuscle, setEditMuscle] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     fetchExercises();
@@ -58,7 +68,7 @@ const ExerciseLibrary = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get('/api/exercises');
+      const res = await axios.get(`${API_BASE_URL}/api/exercises`);
       // Ensure exercises is always an array
       setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -78,7 +88,7 @@ const ExerciseLibrary = () => {
     setAddError('');
     setAdding(true);
     try {
-      await axios.post('/api/exercises', {
+      await axios.post(`${API_BASE_URL}/api/exercises`, {
         name: newName.trim(),
         muscle_group: newMuscle,
       });
@@ -93,18 +103,57 @@ const ExerciseLibrary = () => {
     }
   };
 
-  // Group exercises by muscle group
+  const handleEdit = (exercise) => {
+    setEditingExercise(exercise);
+    setEditName(exercise.name);
+    setEditMuscle(exercise.muscle_group);
+    setEditNotes(exercise.notes || '');
+    setEditError('');
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim() || !editMuscle) {
+      setEditError('Name and muscle group are required');
+      return;
+    }
+    setEditError('');
+    setEditing(true);
+    try {
+      await axios.put(`${API_BASE_URL}/api/exercises/${editingExercise.id}`, {
+        name: editName.trim(),
+        muscle_group: editMuscle,
+        notes: editNotes.trim(),
+      });
+      setEditOpen(false);
+      setEditingExercise(null);
+      setEditName('');
+      setEditMuscle('');
+      setEditNotes('');
+      fetchExercises();
+    } catch (err) {
+      setEditError(err.response?.data?.error || 'Failed to update exercise');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  // Group exercises by muscle group, using muscleGroups order
   const grouped = exercises.reduce((acc, ex) => {
     if (!acc[ex.muscle_group]) acc[ex.muscle_group] = [];
     acc[ex.muscle_group].push(ex);
     return acc;
   }, {});
-  const sortedGroups = Object.keys(grouped).sort();
+  // Use muscleGroups order, then any extra groups alphabetically
+  const sortedGroups = [
+    ...muscleGroups.filter(mg => grouped[mg]),
+    ...Object.keys(grouped).filter(mg => !muscleGroups.includes(mg)).sort()
+  ];
 
   return (
     <Box maxWidth={480} mx="auto" mt={4}>
       <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-        Exercise Library
+        Exercise Library vBUILD_TEST
       </Typography>
       <Button
         variant="contained"
@@ -129,16 +178,46 @@ const ExerciseLibrary = () => {
                   {mg}
                 </Typography>
                 <List dense disablePadding>
-                  {Array.isArray(grouped[mg]) && grouped[mg].map((ex, i) => (
-                    <React.Fragment key={ex.id}>
-                      <ListItem sx={{ py: 0.5 }}>
-                        <ListItemText
-                          primary={<Typography fontWeight={600} sx={{ fontSize: 14 }}>{ex.name}</Typography>}
-                        />
-                      </ListItem>
-                      {i < grouped[mg].length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
+                  {Array.isArray(grouped[mg]) && grouped[mg]
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((ex, i) => (
+                      <React.Fragment key={ex.id}>
+                        <ListItem 
+                          sx={{ 
+                            py: 0.5,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'grey.50' }
+                          }}
+                          onClick={() => handleEdit(ex)}
+                        >
+                          <ListItemText
+                            primary={
+                              <Box>
+                                <Typography fontWeight={600} sx={{ fontSize: 14 }}>
+                                  {ex.name}
+                                </Typography>
+                                {ex.notes && (
+                                  <Typography 
+                                    variant="caption" 
+                                    color="text.secondary" 
+                                    sx={{ 
+                                      fontSize: 11,
+                                      fontStyle: 'italic',
+                                      display: 'block',
+                                      mt: 0.5
+                                    }}
+                                  >
+                                    {ex.notes}
+                                  </Typography>
+                                )}
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {i < grouped[mg].length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
                 </List>
               </Box>
             ))}
@@ -179,6 +258,50 @@ const ExerciseLibrary = () => {
           <Button onClick={() => setOpen(false)} disabled={adding}>Cancel</Button>
           <Button onClick={handleAdd} variant="contained" disabled={adding}>
             {adding ? 'Adding...' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Edit Exercise Dialog */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Exercise</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Exercise Name"
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+            fullWidth
+            sx={{ mb: 2 }}
+            autoFocus
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Muscle Group</InputLabel>
+            <Select
+              value={editMuscle}
+              onChange={e => setEditMuscle(e.target.value)}
+              label="Muscle Group"
+            >
+              {Array.isArray(muscleGroups) && muscleGroups.map(mg => (
+                <MenuItem key={mg} value={mg}>{mg}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Notes (optional)"
+            value={editNotes}
+            onChange={e => setEditNotes(e.target.value)}
+            fullWidth
+            multiline
+            rows={3}
+            placeholder="Add notes about variations, form cues, or specific instructions..."
+            sx={{ mb: 2 }}
+          />
+          {editError && <Alert severity="error" sx={{ mb: 1 }}>{editError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)} disabled={editing}>Cancel</Button>
+          <Button onClick={handleSaveEdit} variant="contained" disabled={editing}>
+            {editing ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

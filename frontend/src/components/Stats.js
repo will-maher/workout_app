@@ -19,6 +19,7 @@ import axios from 'axios';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import { format, startOfISOWeek } from 'date-fns';
+import { API_BASE_URL } from '../App';
 
 const Stats = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -34,7 +35,7 @@ const Stats = () => {
 
   const fetchWeeklySetsData = async () => {
     try {
-      const res = await axios.get('/api/stats/weekly-sets-by-muscle-group');
+      const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
       // Ensure weeklySetsData is always an array
       setWeeklySetsData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -49,8 +50,8 @@ const Stats = () => {
       setError('');
 
       await Promise.all([
-        axios.get('/api/stats/one-rep-max'),
-        axios.get('/api/stats/weekly-volume'),
+        axios.get(`${API_BASE_URL}/api/stats/one-rep-max`),
+        axios.get(`${API_BASE_URL}/api/stats/weekly-volume`),
       ]);
 
       // setOneRepMaxData(oneRepMaxResponse.data); // This line was removed

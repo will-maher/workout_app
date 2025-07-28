@@ -217,7 +217,7 @@ root.render(
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
-);
+); 
 
 // Register service worker for PWA support
 if ('serviceWorker' in navigator) {

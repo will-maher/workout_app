@@ -34,7 +34,7 @@ router.post('/register', async (req, res) => {
     );
     const userId = insertResult.rows[0].id;
     const token = jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, username });
+      res.json({ token, username });
   } catch (err) {
     console.error('Registration error:', err);
     if (err.message && err.message.includes('string did not match')) {

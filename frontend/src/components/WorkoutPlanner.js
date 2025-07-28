@@ -23,12 +23,14 @@ import {
   useTheme,
   Snackbar,
   Alert as MuiAlert,
+  ListSubheader,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
+import { API_BASE_URL } from '../App';
 
-const defaultDays = ['Monday AM', 'Tuesday AM', 'Wed AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
+const defaultDays = ['Monday AM', 'Tuesday AM', 'Wednesday AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
 
 const initialProgram = {
   'Monday AM': [
@@ -46,7 +48,7 @@ const initialProgram = {
     { exercise: 'Lunges', sets: 3, targetReps: 10 },
     { exercise: 'Leg extension', sets: 3, targetReps: 12 },
   ],
-  'Wed AM': [
+  'Wednesday AM': [
     { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
     { exercise: 'Barbell row', sets: 3, targetReps: 8 },
     { exercise: 'Seated cable row', sets: 3, targetReps: 10 },
@@ -87,7 +89,7 @@ function getWeeklyVolumeAndFrequency(program, exerciseMap) {
   const freqDays = {};
   for (const day of defaultDays) {
     const musclesToday = new Set();
-    for (const ex of program[day]) {
+    for (const ex of (Array.isArray(program[day]) ? program[day] : [])) {
       if (!ex || !ex.exercise) continue;
       const muscle = exerciseMap[ex.exercise]?.muscle_group;
       if (!muscle) continue;
@@ -102,7 +104,7 @@ function getWeeklyVolumeAndFrequency(program, exerciseMap) {
 }
 
 // Add this lookup table for optimal values
-const OPTIMAL_RANGES = {
+export const OPTIMAL_RANGES = {
   'Chest': { sets: '12-20', freq: '1.5-3x' },
   'Anterior deltoid': { sets: '6-8', freq: '2-4x' },
   'Triceps': { sets: '10-14', freq: '2-4x' },
@@ -132,18 +134,36 @@ const WorkoutPlanner = () => {
   useEffect(() => {
     const fetchPlan = async () => {
       try {
-        const res = await axios.get('/api/plan');
+        const res = await axios.get(`${API_BASE_URL}/api/plan`);
         if (res.data) setProgram(res.data);
       } catch {}
     };
     fetchPlan();
   }, []);
 
+  // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM' and normalize days
+  useEffect(() => {
+    setProgram(prev => {
+      let migrated = { ...prev };
+      if (migrated['Wed AM']) {
+        migrated['Wednesday AM'] = migrated['Wed AM'];
+        delete migrated['Wed AM'];
+      }
+      // Ensure every day in defaultDays exists as an array
+      defaultDays.forEach(day => {
+        if (!Array.isArray(migrated[day])) {
+          migrated[day] = [];
+        }
+      });
+      return migrated;
+    });
+  }, []);
+
   useEffect(() => {
     const fetchExercises = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/exercises');
+        const res = await axios.get(`${API_BASE_URL}/api/exercises`);
         // Ensure exercises is always an array
         const exercisesData = Array.isArray(res.data) ? res.data : [];
         setExercises(exercisesData);
@@ -160,6 +180,24 @@ const WorkoutPlanner = () => {
     };
     fetchExercises();
   }, []);
+
+  // Group exercises by muscle group for dropdown
+  const groupedExercises = React.useMemo(() => {
+    if (!Array.isArray(exercises) || exercises.length === 0) return [];
+    const grouped = exercises.reduce((acc, exercise) => {
+      const muscleGroup = exercise.muscle_group || 'Other';
+      if (!acc[muscleGroup]) acc[muscleGroup] = [];
+      acc[muscleGroup].push(exercise);
+      return acc;
+    }, {});
+    // Sort muscle groups and exercises alphabetically
+    return Object.keys(grouped)
+      .sort()
+      .map(muscleGroup => ({
+        label: muscleGroup,
+        items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
+      }));
+  }, [exercises]);
 
   const handleChange = (day, idx, field, value) => {
     setProgram(prev => {
@@ -188,7 +226,7 @@ const WorkoutPlanner = () => {
 
   const handleSave = async () => {
     try {
-      await axios.post('/api/plan', { plan_json: program });
+      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       setSnackbarOpen(true);
     } catch (error) {
       console.error('Error saving plan:', error);
@@ -211,82 +249,88 @@ const WorkoutPlanner = () => {
         <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>
       ) : (
         <Stack spacing={2}>
-          {defaultDays.map(day => (
-            <Card key={day} sx={{ mb: 1, p: isMobile ? 0.5 : 2 }}>
-              <CardContent sx={{ p: isMobile ? 1 : 2 }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: isMobile ? 15 : 20 }}>{day}</Typography>
-                  <Button startIcon={<AddIcon sx={{ fontSize: isMobile ? 16 : 20 }} />} onClick={() => handleAddExercise(day)} size={isMobile ? 'small' : 'medium'} sx={{ fontSize: isMobile ? 12 : 16, minWidth: 0, px: isMobile ? 1 : 2 }}>
-                    Add
-                  </Button>
-                </Box>
-                <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
-                  <Table size="small" sx={{ minWidth: 320 }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Exercise</TableCell>
-                        <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Muscle</TableCell>
-                        <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Sets</TableCell>
-                        <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Reps</TableCell>
-                        <TableCell align="center" sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Remove</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {program[day].map((ex, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell sx={{ minWidth: 120, fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
-                            <FormControl fullWidth size="small" sx={{ fontSize: isMobile ? 12 : 15 }}>
-                              <Select
-                                value={ex.exercise}
-                                onChange={e => handleChange(day, idx, 'exercise', e.target.value)}
-                                displayEmpty
-                                sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}
-                              >
-                                <MenuItem value=""><em>None</em></MenuItem>
-                                {Array.isArray(exercises) && exercises.map(exOpt => (
-                                  <MenuItem key={exOpt.id} value={exOpt.name} sx={{ fontSize: isMobile ? 12 : 15 }}>{exOpt.name}</MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 15 }}>
-                              {exerciseMap[ex.exercise]?.muscle_group || ''}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
-                            <TextField
-                              type="number"
-                              value={ex.sets}
-                              onChange={e => handleChange(day, idx, 'sets', e.target.value)}
-                              size="small"
-                              inputProps={{ min: 1, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
-                              sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
-                            <TextField
-                              type="number"
-                              value={ex.targetReps || ''}
-                              onChange={e => handleChange(day, idx, 'targetReps', e.target.value)}
-                              size="small"
-                              inputProps={{ min: 1, max: 50, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
-                              sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
-                            />
-                          </TableCell>
-                          <TableCell align="center" sx={{ py: isMobile ? 0.5 : 1 }}>
-                            <IconButton onClick={() => handleRemoveExercise(day, idx)} size={isMobile ? 'small' : 'medium'} color="error" sx={{ fontSize: isMobile ? 16 : 20 }}>
-                              <DeleteIcon sx={{ fontSize: isMobile ? 16 : 20 }} />
-                            </IconButton>
-                          </TableCell>
+          {defaultDays.map(day => {
+            console.log('Rendering day:', day, 'program[day]:', program[day]);
+            return (
+              <Card key={day} sx={{ mb: 1, p: isMobile ? 0.5 : 2 }}>
+                <CardContent sx={{ p: isMobile ? 1 : 2 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: isMobile ? 15 : 20 }}>{day}</Typography>
+                    <Button startIcon={<AddIcon sx={{ fontSize: isMobile ? 16 : 20 }} />} onClick={() => handleAddExercise(day)} size={isMobile ? 'small' : 'medium'} sx={{ fontSize: isMobile ? 12 : 16, minWidth: 0, px: isMobile ? 1 : 2 }}>
+                      Add
+                    </Button>
+                  </Box>
+                  <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+                    <Table size="small" sx={{ minWidth: 320 }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Exercise</TableCell>
+                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Muscle</TableCell>
+                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Sets</TableCell>
+                          <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Target Reps</TableCell>
+                          <TableCell align="center" sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>Remove</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </CardContent>
-            </Card>
-          ))}
+                      </TableHead>
+                      <TableBody>
+                        {(Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell sx={{ minWidth: 120, fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
+                              <FormControl fullWidth size="small" sx={{ fontSize: isMobile ? 12 : 15 }}>
+                                <Select
+                                  value={ex.exercise}
+                                  onChange={e => handleChange(day, idx, 'exercise', e.target.value)}
+                                  displayEmpty
+                                  sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}
+                                >
+                                  <MenuItem value=""><em>None</em></MenuItem>
+                                  {groupedExercises.map(group => [
+                                    <ListSubheader key={group.label} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: isMobile ? 12 : 15 }}>{group.label}</ListSubheader>,
+                                    ...group.items.map(exOpt => (
+                                      <MenuItem key={exOpt.id} value={exOpt.name} sx={{ fontSize: isMobile ? 12 : 15, pl: 3 }}>{exOpt.name}</MenuItem>
+                                    ))
+                                  ])}
+                                </Select>
+                              </FormControl>
+                            </TableCell>
+                            <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 15 }}>
+                                {exerciseMap[ex.exercise]?.muscle_group || ''}
+                              </Typography>
+                            </TableCell>
+                            <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
+                              <TextField
+                                type="number"
+                                value={ex.sets}
+                                onChange={e => handleChange(day, idx, 'sets', e.target.value)}
+                                size="small"
+                                inputProps={{ min: 1, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
+                                sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontSize: isMobile ? 12 : 15, py: isMobile ? 0.5 : 1 }}>
+                              <TextField
+                                type="number"
+                                value={ex.targetReps || ''}
+                                onChange={e => handleChange(day, idx, 'targetReps', e.target.value)}
+                                size="small"
+                                inputProps={{ min: 1, max: 50, style: { width: isMobile ? 30 : 50, fontSize: isMobile ? 12 : 15, padding: isMobile ? 2 : 8 } }}
+                                sx={{ fontSize: isMobile ? 12 : 15, width: isMobile ? 50 : 80, py: isMobile ? 0.5 : 1 }}
+                              />
+                            </TableCell>
+                            <TableCell align="center" sx={{ py: isMobile ? 0.5 : 1 }}>
+                              <IconButton onClick={() => handleRemoveExercise(day, idx)} size={isMobile ? 'small' : 'medium'} color="error" sx={{ fontSize: isMobile ? 16 : 20 }}>
+                                <DeleteIcon sx={{ fontSize: isMobile ? 16 : 20 }} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
+            );
+          })}
         </Stack>
       )}
       <Card sx={{ mt: 2 }}>
