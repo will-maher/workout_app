@@ -420,7 +420,7 @@ const WorkoutEntry = () => {
     return () => {
       console.log('WorkoutEntry component unmounting, current sets:', sets);
     };
-  }, [sets]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchExercises = async () => {
     try {
