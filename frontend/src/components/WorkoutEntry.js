@@ -849,7 +849,12 @@ const WorkoutEntry = () => {
                     onChange={(e) => setWeight(e.target.value)}
                     fullWidth
                     size="small"
-                    inputProps={{ min: 0, step: 0.5 }}
+                    inputProps={{ 
+                      min: 0, 
+                      step: 0.5,
+                      inputMode: 'decimal',
+                      pattern: '[0-9]*[.]?[0-9]*'
+                    }}
                     error={!!weight && !isNumeric(weight)}
                     helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
                   />
