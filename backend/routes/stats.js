@@ -25,16 +25,16 @@ router.get('/one-rep-max', authenticateToken, (req, res) => {
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     JOIN workouts w ON ws.workout_id = w.id
-    WHERE ws.user_id = ?
+    WHERE ws.user_id = $1
   `;
   const params = [userId];
 
   if (exercise_id) {
-    query += ' AND e.id = ?';
+    query += ' AND e.id = $' + (params.length + 1);
     params.push(exercise_id);
   }
 
-  query += ' ORDER BY one_rep_max DESC LIMIT ?';
+  query += ' ORDER BY one_rep_max DESC LIMIT $' + (params.length + 1);
   params.push(parseInt(limit));
 
   pool.query(query, params, (err, result) => {
@@ -61,14 +61,14 @@ router.get('/weekly-volume', authenticateToken, (req, res) => {
   const userId = req.user.userId;
   const { start_date, end_date } = req.query;
   
-  let dateFilter = 'WHERE ws.user_id = ?';
+  let dateFilter = 'WHERE ws.user_id = $1';
   const params = [userId];
   
   if (start_date && end_date) {
-    dateFilter += ' AND w.date BETWEEN ? AND ?';
+    dateFilter += ' AND w.date BETWEEN $' + (params.length + 1) + ' AND $' + (params.length + 2);
     params.push(start_date, end_date);
   } else if (start_date) {
-    dateFilter += ' AND w.date >= ?';
+    dateFilter += ' AND w.date >= $' + (params.length + 1);
     params.push(start_date);
   }
 
@@ -113,12 +113,12 @@ router.get('/personal-records', authenticateToken, (req, res) => {
       MAX(ws.weight * (1 + ws.reps / 30)) as max_one_rep_max
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
-    WHERE ws.user_id = ?
+    WHERE ws.user_id = $1
   `;
 
   const params = [userId];
   if (exercise_id) {
-    query += ' AND e.id = ?';
+    query += ' AND e.id = $' + (params.length + 1);
     params.push(exercise_id);
   }
 
@@ -143,7 +143,7 @@ router.get('/workout-frequency', authenticateToken, (req, res) => {
       date,
       COUNT(*) as workout_count
     FROM workouts
-    WHERE user_id = ? AND date >= date('now', '-${days} days')
+    WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '${days} days'
     GROUP BY date
     ORDER BY date DESC
   `;
@@ -175,8 +175,8 @@ router.get('/exercise-progress', authenticateToken, (req, res) => {
       MAX(ws.weight * (1 + ws.reps / 30)) as max_one_rep_max
     FROM workout_sets ws
     JOIN workouts w ON ws.workout_id = w.id
-    WHERE ws.user_id = ? AND ws.exercise_id = ? 
-      AND w.date >= date('now', '-${days} days')
+    WHERE ws.user_id = $1 AND ws.exercise_id = $2 
+      AND w.date >= CURRENT_DATE - INTERVAL '${days} days'
     GROUP BY w.date
     ORDER BY w.date DESC
   `;
@@ -204,7 +204,7 @@ router.get('/muscle-group-distribution', authenticateToken, (req, res) => {
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     JOIN workouts w ON ws.workout_id = w.id
-    WHERE ws.user_id = ? AND w.date >= date('now', '-${days} days')
+    WHERE ws.user_id = $1 AND w.date >= CURRENT_DATE - INTERVAL '${days} days'
     GROUP BY e.muscle_group
     ORDER BY total_volume DESC
   `;
@@ -233,10 +233,10 @@ router.get('/recent-summary', authenticateToken, (req, res) => {
       COUNT(DISTINCT ws.exercise_id) as exercises_count
     FROM workouts w
     LEFT JOIN workout_sets ws ON w.id = ws.workout_id
-    WHERE w.user_id = ?
+    WHERE w.user_id = $1
     GROUP BY w.id
     ORDER BY w.date DESC
-    LIMIT ?
+    LIMIT $2
   `;
 
   pool.query(query, [userId, parseInt(limit)], (err, result) => {
@@ -291,12 +291,9 @@ router.get('/weekly-sets-by-muscle-group', authenticateToken, (req, res) => {
     query += ' WHERE ws.user_id = $1';
   }
   query += ' GROUP BY e.muscle_group, week ORDER BY e.muscle_group, week';
-  // Debug: log the final SQL and params
-  console.log('WEEKLY SETS SQL:', query);
-  console.log('WEEKLY SETS PARAMS:', params);
+  
   pool.query(query, params, (err, result) => {
     if (err) {
-      console.error('WEEKLY SETS SQL ERROR:', err, '\nQUERY:', query, '\nPARAMS:', params);
       console.error('Error fetching weekly sets by muscle group:', err);
       return res.status(500).json({ error: 'Failed to fetch weekly sets by muscle group' });
     }

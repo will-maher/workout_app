@@ -250,7 +250,7 @@ const WorkoutPlanner = () => {
       ) : (
         <Stack spacing={2}>
           {defaultDays.map(day => {
-            console.log('Rendering day:', day, 'program[day]:', program[day]);
+        
             return (
               <Card key={day} sx={{ mb: 1, p: isMobile ? 0.5 : 2 }}>
                 <CardContent sx={{ p: isMobile ? 1 : 2 }}>

@@ -26,6 +26,7 @@ import { format, parseISO } from 'date-fns';
 import { OPTIMAL_RANGES } from './WorkoutPlanner';
 import { API_BASE_URL } from '../App';
 
+// Utility functions
 function calc1RM(weight, reps) {
   if (!weight || !reps) return 0;
   return weight / (1.0278 - 0.0278 * reps);
@@ -48,6 +49,7 @@ function loess(xs, ys, bandwidth = 0.08) {
   const n = xs.length;
   const bw = Math.max(2, Math.floor(bandwidth * n));
   const result = [];
+  
   for (let i = 0; i < n; i++) {
     const distances = xs.map(x => Math.abs(x - xs[i]));
     const idxs = distances
@@ -55,6 +57,7 @@ function loess(xs, ys, bandwidth = 0.08) {
       .sort((a, b) => a[0] - b[0])
       .slice(0, bw)
       .map(pair => pair[1]);
+    
     const xw = idxs.map(j => xs[j]);
     const yw = idxs.map(j => ys[j]);
     const xbar = xw.reduce((a, b) => a + b, 0) / bw;
@@ -78,18 +81,22 @@ const Performance = () => {
   const [weeklySetsData, setWeeklySetsData] = useState([]);
   const [muscleGroup, setMuscleGroup] = useState('');
 
+  // Fetch exercises on component mount
   useEffect(() => {
     fetchExercises();
   }, []);
 
+  // Fetch performance data when exercise selection changes
   useEffect(() => {
-    if (selectedExercise) fetchPerformanceData(selectedExercise);
-    else {
+    if (selectedExercise) {
+      fetchPerformanceData(selectedExercise);
+    } else {
       setDailyMaxPoints([]);
       setAllSets([]);
     }
   }, [selectedExercise]);
 
+  // Update muscle group when exercise changes
   useEffect(() => {
     if (selectedExercise && exercises.length > 0) {
       const ex = exercises.find(e => e.id === selectedExercise);
@@ -99,20 +106,12 @@ const Performance = () => {
     }
   }, [selectedExercise, exercises]);
 
+  // Fetch weekly sets data when muscle group changes
   useEffect(() => {
     if (muscleGroup) {
       fetchWeeklySetsData();
     } else {
       setWeeklySetsData([]);
-    }
-    async function fetchWeeklySetsData() {
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
-        // Filter for the selected muscle group
-        setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
-      } catch (err) {
-        setWeeklySetsData([]);
-      }
     }
   }, [muscleGroup]);
 
@@ -120,12 +119,11 @@ const Performance = () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-      // Ensure exercises is always an array
       setExercises(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error loading exercises:', err);
       setError('Failed to load exercises');
-      setExercises([]); // Set empty array on error
+      setExercises([]);
     } finally {
       setLoading(false);
     }
@@ -137,20 +135,33 @@ const Performance = () => {
       setError('');
       const res = await axios.get(`${API_BASE_URL}/api/stats/performance/sets?exercise_id=${exerciseId}`);
       setAllSets(res.data);
+      
       // Calculate 1RM for each set
       const points = res.data.map(set => ({
         date: set.date,
         one_rm: calc1RM(set.weight, set.reps),
       }));
+      
       // Get daily max 1RM (unique per day, highest value)
       const dailyMax = getDailyMax1RM(points);
       setDailyMaxPoints(dailyMax);
     } catch (err) {
+      console.error('Error fetching performance data:', err);
       setError('Failed to load performance data');
       setDailyMaxPoints([]);
       setAllSets([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWeeklySetsData = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
+      setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
+    } catch (err) {
+      console.error('Error fetching weekly sets data:', err);
+      setWeeklySetsData([]);
     }
   };
 
@@ -165,7 +176,7 @@ const Performance = () => {
   if (scatterData.length > 2) {
     const xs = scatterData.map(d => d[0]);
     const ys = scatterData.map(d => d[1]);
-    loessLine = loess(xs, ys, 0.08); // 0.08 = more variation
+    loessLine = loess(xs, ys, 0.08);
   }
 
   const chartOptions = {
@@ -178,7 +189,7 @@ const Performance = () => {
     title: { text: '' },
     xAxis: {
       type: 'datetime',
-      title: { text: null }, // Remove the x-axis label
+      title: { text: null },
       labels: { style: { fontSize: '14px' } },
     },
     yAxis: {
@@ -239,14 +250,14 @@ const Performance = () => {
     },
   };
 
-  // --- Weekly Sets Chart ---
+  // Weekly Sets Chart configuration
   let weeklySetsChartOptions = null;
   if (weeklySetsData.length > 0 && muscleGroup) {
     const weeks = weeklySetsData.map(row => row.week);
     const sets = weeklySetsData.map(row => parseInt(row.total_sets, 10));
-    // Get optimal range for this muscle group
     const optimal = OPTIMAL_RANGES[muscleGroup];
     let minOpt = 0, maxOpt = 0;
+    
     if (optimal && optimal.sets) {
       const match = optimal.sets.match(/(\d+)[^\d]+(\d+)/);
       if (match) {
@@ -254,10 +265,19 @@ const Performance = () => {
         maxOpt = parseInt(match[2], 10);
       }
     }
+    
     weeklySetsChartOptions = {
-      chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'inherit' } },
+      chart: { 
+        type: 'column', 
+        backgroundColor: 'transparent', 
+        style: { fontFamily: 'inherit' } 
+      },
       title: { text: '' },
-      xAxis: { categories: weeks, title: { text: 'Week' }, labels: { style: { fontSize: '14px' } } },
+      xAxis: { 
+        categories: weeks, 
+        title: { text: 'Week' }, 
+        labels: { style: { fontSize: '14px' } } 
+      },
       yAxis: {
         min: 0,
         title: { text: 'Sets per Week' },
@@ -265,7 +285,10 @@ const Performance = () => {
           from: minOpt,
           to: maxOpt,
           color: 'rgba(76, 175, 80, 0.15)',
-          label: { text: `Optimal: ${minOpt}-${maxOpt}`, style: { color: '#388e3c', fontWeight: 600 } }
+          label: { 
+            text: `Optimal: ${minOpt}-${maxOpt}`, 
+            style: { color: '#388e3c', fontWeight: 600 } 
+          }
         }] : [],
         labels: { style: { fontSize: '14px' } },
       },
@@ -273,9 +296,25 @@ const Performance = () => {
       series: [{ name: muscleGroup, data: sets, color: '#2196f3' }],
       credits: { enabled: false },
       legend: { enabled: false },
-      responsive: { rules: [{ condition: { maxWidth: 600 }, chartOptions: { chart: { height: 300 }, xAxis: { labels: { style: { fontSize: '11px' } } }, yAxis: { labels: { style: { fontSize: '11px' } } } } }] },
+      responsive: { 
+        rules: [{ 
+          condition: { maxWidth: 600 }, 
+          chartOptions: { 
+            chart: { height: 300 }, 
+            xAxis: { labels: { style: { fontSize: '11px' } } }, 
+            yAxis: { labels: { style: { fontSize: '11px' } } } 
+          } 
+        }] 
+      },
     };
   }
+
+  // Group exercises by muscle group for the dropdown
+  const groupedExercises = exercises.reduce((groups, ex) => {
+    if (!groups[ex.muscle_group]) groups[ex.muscle_group] = [];
+    groups[ex.muscle_group].push(ex);
+    return groups;
+  }, {});
 
   return (
     <Box maxWidth={600} mx="auto" mt={4}>
@@ -291,22 +330,17 @@ const Performance = () => {
               onChange={e => setSelectedExercise(e.target.value)}
               label="Exercise"
             >
-              {Array.isArray(exercises) && (() => {
-                // Group exercises by muscle group
-                const groups = {};
-                exercises.forEach(ex => {
-                  if (!groups[ex.muscle_group]) groups[ex.muscle_group] = [];
-                  groups[ex.muscle_group].push(ex);
-                });
-                return Object.entries(groups).map(([group, items]) => [
-                  <ListSubheader key={group} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: 14 }}>{group}</ListSubheader>,
-                  ...items.map(ex => (
-                    <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
-                  ))
-                ]);
-              })()}
+              {Object.entries(groupedExercises).map(([group, items]) => [
+                <ListSubheader key={group} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: 14 }}>
+                  {group}
+                </ListSubheader>,
+                ...items.map(ex => (
+                  <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
+                ))
+              ])}
             </Select>
           </FormControl>
+          
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
               <CircularProgress />
@@ -320,7 +354,7 @@ const Performance = () => {
           ) : (
             <>
               <HighchartsReact highcharts={Highcharts} options={chartOptions} />
-              {/* --- New Weekly Sets Chart --- */}
+              
               {weeklySetsChartOptions && (
                 <Box mt={4}>
                   <Typography variant="h6" fontWeight={600} gutterBottom>
@@ -329,9 +363,11 @@ const Performance = () => {
                   <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
                 </Box>
               )}
-              {/* Table of all sets */}
+              
               <Box mt={4}>
-                <Typography variant="h6" fontWeight={600} gutterBottom>All Logged Sets</Typography>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  All Logged Sets
+                </Typography>
                 <TableContainer component={Paper}>
                   <Table size="small">
                     <TableHead>
@@ -343,14 +379,17 @@ const Performance = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {allSets.slice().sort((a, b) => b.date.localeCompare(a.date)).map((row, idx) => (
-                        <TableRow key={row.date + '-' + row.set_number + '-' + idx}>
-                          <TableCell>{format(parseISO(row.date), 'yyyy-MM-dd')}</TableCell>
-                          <TableCell align="right">{row.weight}</TableCell>
-                          <TableCell align="right">{row.reps}</TableCell>
-                          <TableCell align="right">{calc1RM(row.weight, row.reps).toFixed(1)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {allSets
+                        .slice()
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .map((row, idx) => (
+                          <TableRow key={`${row.date}-${row.set_number}-${idx}`}>
+                            <TableCell>{format(parseISO(row.date), 'yyyy-MM-dd')}</TableCell>
+                            <TableCell align="right">{row.weight}</TableCell>
+                            <TableCell align="right">{row.reps}</TableCell>
+                            <TableCell align="right">{calc1RM(row.weight, row.reps).toFixed(1)}</TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </TableContainer>

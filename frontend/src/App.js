@@ -9,17 +9,17 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
+  Menu,
+  MenuItem,
+  IconButton,
 } from '@mui/material';
 import {
   Add as AddIcon,
   EventNote as PlanIcon,
   BarChart,
+  AccountCircle,
 } from '@mui/icons-material';
 import axios from 'axios';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import IconButton from '@mui/material/IconButton';
-import AccountCircle from '@mui/icons-material/AccountCircle';
 
 // Import components
 import WorkoutEntry from './components/WorkoutEntry';
@@ -34,18 +34,14 @@ import Register from './components/Register';
 // API base URL configuration
 export const API_BASE_URL = 'https://workoutapp-production-3c56.up.railway.app';
 
-// Debug logging (commented out to prevent console errors)
-// console.log('Environment:', process.env.NODE_ENV);
-// console.log('API Base URL:', API_BASE_URL);
-// console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-
 function App() {
   const [value, setValue] = useState(0);
-  const location = useLocation();
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  
+  const location = useLocation();
+  const navigate = useNavigate();
   const menuOpen = Boolean(anchorEl);
 
   // Check for token on mount
@@ -57,37 +53,18 @@ function App() {
         setUser({ username: payload.username });
       } catch {
         setUser(null);
+        localStorage.removeItem('token');
       }
     }
   }, []);
 
-  // Attach token to all fetch requests and use correct base URL
-  useEffect(() => {
-    const origFetch = window.fetch;
-    window.fetch = (url, options = {}) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = 'Bearer ' + token;
-      }
-      
-      // Prepend API base URL if the URL starts with /api
-      if (url.startsWith('/api')) {
-        url = API_BASE_URL + url;
-      }
-      
-      return origFetch(url, options);
-    };
-    return () => { window.fetch = origFetch; };
-  }, []);
-
   // Axios interceptor to attach JWT token to all requests
-  React.useEffect(() => {
+  useEffect(() => {
     const interceptor = axios.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('token');
         if (token) {
-          config.headers['Authorization'] = 'Bearer ' + token;
+          config.headers['Authorization'] = `Bearer ${token}`;
         }
         
         // Prepend API base URL if the URL starts with /api
@@ -99,17 +76,44 @@ function App() {
       },
       (error) => Promise.reject(error)
     );
-    return () => axios.interceptors.request.eject(interceptor);
-  }, []);
+
+    // Response interceptor to handle token expiration
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          localStorage.removeItem('token');
+          setUser(null);
+          navigate('/login');
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [navigate]);
+
+  // Update navigation value based on current route
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/' || path === '/add') setValue(0);
+    else if (path === '/plan') setValue(1);
+    else if (path === '/performance') setValue(2);
+  }, [location]);
 
   const handleLogin = (data) => {
     setUser({ username: data.username });
     setShowRegister(false);
   };
+
   const handleRegister = (data) => {
     setUser({ username: data.username });
     setShowRegister(false);
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
@@ -118,25 +122,20 @@ function App() {
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
+
   const handleMenuNavigate = (path) => {
     navigate(path);
     handleClose();
   };
+
   const handleMenuLogout = () => {
     handleLogout();
     handleClose();
   };
-
-  // Update navigation value based on current route
-  React.useEffect(() => {
-    const path = location.pathname;
-    if (path === '/' || path === '/add') setValue(0);
-    else if (path === '/plan') setValue(1);
-    else if (path === '/performance') setValue(2);
-  }, [location]);
 
   const handleNavigationChange = (event, newValue) => {
     setValue(newValue);
@@ -173,15 +172,13 @@ function App() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: 18 }}>
             Workout App
           </Typography>
-          {user && (
-            <IconButton
-              size="large"
-              onClick={handleMenu}
-              sx={{ color: 'text.primary' }}
-            >
-              <AccountCircle />
-            </IconButton>
-          )}
+          <IconButton
+            size="large"
+            onClick={handleMenu}
+            sx={{ color: 'text.primary' }}
+          >
+            <AccountCircle />
+          </IconButton>
         </Toolbar>
       </AppBar>
       

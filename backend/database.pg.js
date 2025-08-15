@@ -2,8 +2,8 @@ const { Pool } = require('pg');
 
 // Use Railway's DATABASE_URL environment variable
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:sAAucHrsUpBWiUzVGipPzLodrgyOXJcM@yamabiko.proxy.rlwy.net:28629/railway',
-  ssl: { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Test the connection
