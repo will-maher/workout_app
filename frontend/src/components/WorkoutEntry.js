@@ -810,6 +810,26 @@ const WorkoutEntry = () => {
                     grouped={true}
                     getGroupLabel={(group) => group.label}
                   />
+                  {/* Exercise Notes Display */}
+                  {selectedExercise && (() => {
+                    const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
+                    return selectedExerciseData && selectedExerciseData.notes ? (
+                      <Box sx={{ mt: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary" 
+                          sx={{ 
+                            fontSize: 11,
+                            fontStyle: 'italic',
+                            display: 'block',
+                            lineHeight: 1.4
+                          }}
+                        >
+                          {selectedExerciseData.notes}
+                        </Typography>
+                      </Box>
+                    ) : null;
+                  })()}
                 </Grid>
                 <Grid item xs={6}>
                   <ScrollablePicker
@@ -829,7 +849,12 @@ const WorkoutEntry = () => {
                     onChange={(e) => setWeight(e.target.value)}
                     fullWidth
                     size="small"
-                    inputProps={{ min: 0, step: 0.5 }}
+                    inputProps={{ 
+                      min: 0, 
+                      step: 0.5,
+                      inputMode: 'decimal',
+                      pattern: '[0-9]*[.]?[0-9]*'
+                    }}
                     error={!!weight && !isNumeric(weight)}
                     helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
                   />
