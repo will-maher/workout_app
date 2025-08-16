@@ -778,7 +778,6 @@ const WorkoutEntry = () => {
                         <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
                           {getSelectedWorkoutExercises().map((exercise, index) => {
                             if (!exercise.notes) return null;
-                            const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
                             return (
                               <Typography 
                                 key={index}

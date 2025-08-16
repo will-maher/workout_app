@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -106,6 +106,16 @@ const Performance = () => {
     }
   }, [selectedExercise, exercises]);
 
+  const fetchWeeklySetsData = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
+      setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
+    } catch (err) {
+      console.error('Error fetching weekly sets data:', err);
+      setWeeklySetsData([]);
+    }
+  }, [muscleGroup]);
+
   // Fetch weekly sets data when muscle group changes
   useEffect(() => {
     if (muscleGroup) {
@@ -113,7 +123,7 @@ const Performance = () => {
     } else {
       setWeeklySetsData([]);
     }
-  }, [muscleGroup]);
+  }, [muscleGroup, fetchWeeklySetsData]);
 
   const fetchExercises = async () => {
     try {
@@ -152,16 +162,6 @@ const Performance = () => {
       setAllSets([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchWeeklySetsData = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/stats/weekly-sets-by-muscle-group`);
-      setWeeklySetsData(res.data.filter(row => row.muscle_group === muscleGroup));
-    } catch (err) {
-      console.error('Error fetching weekly sets data:', err);
-      setWeeklySetsData([]);
     }
   };
 

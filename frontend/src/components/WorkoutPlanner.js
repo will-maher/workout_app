@@ -15,7 +15,6 @@ import {
   TextField,
   MenuItem,
   Button,
-  Select,
   FormControl,
   CircularProgress,
   Stack,
@@ -218,15 +217,7 @@ const WorkoutPlanner = () => {
       }));
   }, [exercises]);
 
-  const handleChange = (day, idx, field, value) => {
-    setProgram(prev => {
-      const updated = { ...prev };
-      updated[day] = updated[day].map((ex, i) =>
-        i === idx ? { ...ex, [field]: value } : ex
-      );
-      return updated;
-    });
-  };
+
 
   const handleAddExercise = (day) => {
     setProgram(prev => ({
