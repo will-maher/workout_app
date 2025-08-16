@@ -152,17 +152,19 @@ const ExerciseLibrary = () => {
 
   return (
     <Box maxWidth={480} mx="auto" mt={4}>
-      <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-        Exercise Library vBUILD_TEST
-      </Typography>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        sx={{ mb: 2, fontWeight: 600 }}
-        onClick={() => setOpen(true)}
-      >
-        Add Exercise
-      </Button>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4" fontWeight={700}>
+          Exercise Library
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          sx={{ fontWeight: 600 }}
+          onClick={() => setOpen(true)}
+        >
+          Add Exercise
+        </Button>
+      </Box>
       {loading ? (
         <Box display="flex" justifyContent="center" py={4}>
           <CircularProgress />
@@ -187,7 +189,7 @@ const ExerciseLibrary = () => {
                           sx={{ 
                             py: 0.5,
                             cursor: 'pointer',
-                            '&:hover': { bgcolor: 'grey.50' }
+                            '&:hover': { bgcolor: 'background.default' }
                           }}
                           onClick={() => handleEdit(ex)}
                         >

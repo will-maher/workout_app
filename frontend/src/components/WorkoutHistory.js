@@ -191,7 +191,7 @@ const WorkoutHistory = () => {
         {workouts.length === 0 ? (
           <Card>
             <CardContent>
-              <Typography color="textSecondary" align="center" py={4}>
+              <Typography color="text.secondary" align="center" py={4}>
                 {searchDate ? 'No workouts found for the selected date' : 'No workouts recorded yet'}
               </Typography>
             </CardContent>
@@ -257,7 +257,7 @@ const WorkoutHistory = () => {
                                   }}
                                 />
                               </Box>
-                              <Typography variant="h6" color="primary">
+                              <Typography variant="h6" color="primary.main">
                                 {set.weight} lbs × {set.reps} reps
                               </Typography>
                             </CardContent>

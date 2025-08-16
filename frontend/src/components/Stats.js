@@ -114,7 +114,7 @@ const Stats = () => {
     },
     plotOptions: {
       column: {
-        borderRadius: 3,
+        borderRadius: 2,
         color: '#1976d2',
         pointPadding: 0.1,
         groupPadding: 0.05,
@@ -197,7 +197,7 @@ const Stats = () => {
                 {filteredWeekly.length > 0 ? (
                   <HighchartsReact highcharts={Highcharts} options={weeklySetsOptions} />
                 ) : (
-                  <Typography color="textSecondary" align="center" py={4}>
+                  <Typography color="text.secondary" align="center" py={4}>
                     No weekly sets data available
                   </Typography>
                 )}

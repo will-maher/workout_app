@@ -32,7 +32,9 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 // API base URL configuration
-export const API_BASE_URL = 'https://workoutapp-production-3c56.up.railway.app';
+export const API_BASE_URL = process.env.NODE_ENV === 'development'
+  ? 'http://192.168.1.237:5001'
+  : 'https://workoutapp-production-3c56.up.railway.app';
 
 function App() {
   const [value, setValue] = useState(0);
@@ -156,21 +158,18 @@ function App() {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar 
         position="fixed" 
+        elevation={0}
         sx={{ 
           top: 0, 
           left: 0, 
           right: 0, 
           zIndex: 1100,
-          backgroundColor: 'white',
-          color: 'text.primary',
-          borderBottom: '1px solid',
-          borderColor: 'grey.200',
-          boxShadow: 'none'
+          borderRadius: 0
         }}
       >
-        <Toolbar sx={{ minHeight: 56, px: 2 }}>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: 18 }}>
-            Workout App
+        <Toolbar sx={{ minHeight: 64, px: 3 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            Workout Tracker
           </Typography>
           <IconButton
             size="large"
@@ -189,34 +188,31 @@ function App() {
         PaperProps={{
           sx: {
             mt: 1,
-            minWidth: 150,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: '1px solid',
-            borderColor: 'grey.200'
+            minWidth: 180
           }
         }}
       >
-        <MenuItem onClick={handleClose} disabled sx={{ color: 'text.secondary', fontSize: 14 }}>
+        <MenuItem onClick={handleClose} disabled sx={{ color: 'text.secondary' }}>
           {user?.username}
         </MenuItem>
-        <MenuItem onClick={() => handleMenuNavigate('/history')} sx={{ fontSize: 14 }}>
+        <MenuItem onClick={() => handleMenuNavigate('/history')}>
           History
         </MenuItem>
-        <MenuItem onClick={() => handleMenuNavigate('/library')} sx={{ fontSize: 14 }}>
+        <MenuItem onClick={() => handleMenuNavigate('/library')}>
           Exercise Library
         </MenuItem>
-        <MenuItem onClick={handleMenuLogout} sx={{ fontSize: 14 }}>
+        <MenuItem onClick={handleMenuLogout}>
           Logout
         </MenuItem>
       </Menu>
 
       <Box sx={{ 
-        pt: 7, // Account for fixed AppBar
-        pb: 8, // Account for BottomNavigation
+        pt: 8, // Account for fixed AppBar
+        pb: 9, // Account for BottomNavigation
         minHeight: '100vh',
-        backgroundColor: 'grey.50'
+        backgroundColor: 'background.default'
       }}>
-        <Container maxWidth="lg" sx={{ px: 2 }}>
+        <Container maxWidth="md" sx={{ px: 2 }}>
           <Routes>
             <Route path="/" element={<WorkoutEntry />} />
             <Route path="/add" element={<WorkoutEntry />} />
@@ -237,10 +233,7 @@ function App() {
           bottom: 0, 
           left: 0, 
           right: 0, 
-          zIndex: 1100,
-          borderTop: '1px solid',
-          borderColor: 'grey.200',
-          boxShadow: 'none'
+          zIndex: 1100
         }} 
         elevation={0}
       >
@@ -248,36 +241,23 @@ function App() {
           value={value}
           onChange={handleNavigationChange}
           sx={{ 
-            height: 64,
-            backgroundColor: 'white'
+            height: 72
           }}
         >
           <BottomNavigationAction
             label="Add"
             value={0}
             icon={<AddIcon />}
-            sx={{ 
-              '&.Mui-selected': { color: 'primary.main' },
-              fontSize: 12
-            }}
           />
           <BottomNavigationAction
             label="Plan"
             value={1}
             icon={<PlanIcon />}
-            sx={{ 
-              '&.Mui-selected': { color: 'primary.main' },
-              fontSize: 12
-            }}
           />
           <BottomNavigationAction
             label="Performance"
             value={2}
             icon={<BarChart />}
-            sx={{ 
-              '&.Mui-selected': { color: 'primary.main' },
-              fontSize: 12
-            }}
           />
         </BottomNavigation>
       </Paper>

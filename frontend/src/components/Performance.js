@@ -190,12 +190,22 @@ const Performance = () => {
     xAxis: {
       type: 'datetime',
       title: { text: null },
-      labels: { style: { fontSize: '14px' } },
+      labels: { 
+        style: { 
+          fontSize: '14px',
+          color: '#ffffff'
+        } 
+      },
     },
     yAxis: {
       title: { text: '1RM (kg)' },
       min: 0,
-      labels: { style: { fontSize: '14px' } },
+      labels: { 
+        style: { 
+          fontSize: '14px',
+          color: '#ffffff'
+        } 
+      },
     },
     legend: { enabled: false },
     tooltip: {
@@ -208,14 +218,14 @@ const Performance = () => {
       scatter: {
         marker: {
           radius: 4,
-          fillColor: 'rgba(255, 152, 0, 0.6)',
-          lineColor: '#fff',
+          fillColor: '#00d4aa',
+          lineColor: '#ffffff',
           lineWidth: 1,
         },
         states: {
           hover: {
             enabled: true,
-            lineColor: '#2196f3',
+            lineColor: '#00d4aa',
           },
         },
       },
@@ -230,8 +240,8 @@ const Performance = () => {
         name: 'LOESS Smoothed',
         data: loessLine,
         type: 'line',
-        color: '#2196f3',
-        lineWidth: 3,
+        color: '#ff6b35',
+        lineWidth: 4,
         marker: { enabled: false },
         enableMouseTracking: false,
         tooltip: { enabled: false },
@@ -243,8 +253,8 @@ const Performance = () => {
         condition: { maxWidth: 600 },
         chartOptions: {
           chart: { height: 350 },
-          xAxis: { labels: { style: { fontSize: '11px' } } },
-          yAxis: { labels: { style: { fontSize: '11px' } } },
+          xAxis: { labels: { style: { fontSize: '11px', color: '#ffffff' } } },
+          yAxis: { labels: { style: { fontSize: '11px', color: '#ffffff' } } },
         },
       }],
     },
@@ -276,7 +286,12 @@ const Performance = () => {
       xAxis: { 
         categories: weeks, 
         title: { text: 'Week' }, 
-        labels: { style: { fontSize: '14px' } } 
+        labels: { 
+          style: { 
+            fontSize: '14px',
+            color: '#ffffff'
+          } 
+        } 
       },
       yAxis: {
         min: 0,
@@ -284,16 +299,21 @@ const Performance = () => {
         plotBands: minOpt && maxOpt ? [{
           from: minOpt,
           to: maxOpt,
-          color: 'rgba(76, 175, 80, 0.15)',
+          color: 'rgba(0, 212, 170, 0.15)',
           label: { 
             text: `Optimal: ${minOpt}-${maxOpt}`, 
-            style: { color: '#388e3c', fontWeight: 600 } 
+            style: { color: '#00d4aa', fontWeight: 600 } 
           }
         }] : [],
-        labels: { style: { fontSize: '14px' } },
+        labels: { 
+          style: { 
+            fontSize: '14px',
+            color: '#ffffff'
+          } 
+        },
       },
       tooltip: { valueSuffix: ' sets', style: { fontSize: '15px' } },
-      series: [{ name: muscleGroup, data: sets, color: '#2196f3' }],
+      series: [{ name: muscleGroup, data: sets, color: '#00d4aa' }],
       credits: { enabled: false },
       legend: { enabled: false },
       responsive: { 
@@ -301,8 +321,8 @@ const Performance = () => {
           condition: { maxWidth: 600 }, 
           chartOptions: { 
             chart: { height: 300 }, 
-            xAxis: { labels: { style: { fontSize: '11px' } } }, 
-            yAxis: { labels: { style: { fontSize: '11px' } } } 
+            xAxis: { labels: { style: { fontSize: '11px', color: '#ffffff' } } }, 
+            yAxis: { labels: { style: { fontSize: '11px', color: '#ffffff' } } } 
           } 
         }] 
       },
@@ -331,7 +351,7 @@ const Performance = () => {
               label="Exercise"
             >
               {Object.entries(groupedExercises).map(([group, items]) => [
-                <ListSubheader key={group} sx={{ bgcolor: 'grey.50', fontWeight: 700, fontSize: 14 }}>
+                <ListSubheader key={group} sx={{ bgcolor: 'background.default', fontWeight: 700, fontSize: 14 }}>
                   {group}
                 </ListSubheader>,
                 ...items.map(ex => (

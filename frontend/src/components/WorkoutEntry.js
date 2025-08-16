@@ -11,6 +11,9 @@ import {
   Paper,
   Slider,
   CircularProgress,
+  Card,
+  CardContent,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -98,9 +101,9 @@ const ScrollablePicker = ({
             sx={{
               py: 1,
               px: 2,
-              backgroundColor: 'grey.100',
+              backgroundColor: 'background.default',
               borderBottom: '1px solid',
-              borderColor: 'grey.200',
+              borderColor: 'divider',
               fontWeight: 600,
               fontSize: '0.875rem',
               color: 'text.secondary',
@@ -120,10 +123,10 @@ const ScrollablePicker = ({
                 backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
                 color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
                 '&:hover': {
-                  backgroundColor: getItemValue(item) === value ? 'primary.light' : 'grey.100',
+                  backgroundColor: getItemValue(item) === value ? 'primary.light' : 'background.default',
                 },
                 borderBottom: index < group.items.length - 1 ? '1px solid' : 'none',
-                borderColor: 'grey.200',
+                borderColor: 'divider',
               }}
             >
               <Typography variant="body2">
@@ -145,10 +148,10 @@ const ScrollablePicker = ({
             backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
             color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
             '&:hover': {
-              backgroundColor: getItemValue(item) === value ? 'primary.light' : 'grey.100',
+              backgroundColor: getItemValue(item) === value ? 'primary.light' : 'background.default',
             },
             borderBottom: index < items.length - 1 ? '1px solid' : 'none',
-            borderColor: 'grey.200',
+            borderColor: 'divider',
           }}
         >
           <Typography variant="body2">
@@ -171,15 +174,19 @@ const ScrollablePicker = ({
           textAlign: 'left',
           py: 1.2,
           px: 1.5,
-          borderColor: 'grey.300',
-          backgroundColor: 'white',
-          borderRadius: 1,
+          borderColor: 'divider',
+          backgroundColor: 'background.default',
+          color: 'text.primary',
+                      borderRadius: 2,
           fontWeight: 500,
           fontSize: 14,
-          '&:hover': { borderColor: 'primary.main', backgroundColor: 'grey.50' },
+          '&:hover': { 
+            borderColor: 'primary.main', 
+            backgroundColor: 'background.paper' 
+          },
           minWidth: 0,
           overflow: 'hidden',
-          height: 44,
+          height: 40,
         }}
       >
         <Typography
@@ -209,8 +216,9 @@ const ScrollablePicker = ({
             maxHeight: containerHeight,
             overflow: 'hidden',
             border: '1px solid',
-            borderColor: 'grey.200',
-            borderRadius: 1,
+            borderColor: 'divider',
+            borderRadius: 2,
+            backgroundColor: 'background.paper',
             top: buttonRef.getBoundingClientRect().bottom + 4,
             left: buttonRef.getBoundingClientRect().left,
             transform: 'translateZ(0)',
@@ -393,9 +401,7 @@ const WorkoutEntry = () => {
 
   // Group exercises by muscle group
   const groupedExercises = useMemo(() => {
-    console.log('Calculating groupedExercises with exercises:', exercises);
     if (!Array.isArray(exercises) || exercises.length === 0) {
-      console.log('No exercises available, returning empty array');
       return [];
     }
 
@@ -409,32 +415,26 @@ const WorkoutEntry = () => {
     }, {});
 
     // Convert to array format and sort
-    const result = Object.keys(grouped)
+    return Object.keys(grouped)
       .sort()
       .map(muscleGroup => ({
         label: muscleGroup,
         items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
       }));
-    
-    console.log('groupedExercises result:', result);
-    return result;
   }, [exercises]);
 
   useEffect(() => {
     const initializeComponent = async () => {
-      console.log('WorkoutEntry component mounting...');
       setIsInitializing(true);
       
       // Add timeout to prevent hanging
       const timeoutId = setTimeout(() => {
-        console.log('Initialization timeout reached, forcing completion');
         setIsInitializing(false);
       }, 10000); // 10 second timeout
       
       try {
         await fetchExercises();
         await fetchUserPlan();
-        console.log('WorkoutEntry component mounted successfully');
       } catch (error) {
         console.error('Error initializing WorkoutEntry component:', error);
       } finally {
@@ -444,35 +444,24 @@ const WorkoutEntry = () => {
     };
     
     initializeComponent();
-    
-    return () => {
-      console.log('WorkoutEntry component unmounting, current sets:', sets);
-    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchExercises = async () => {
-    console.log('fetchExercises called');
     try {
       const response = await axios.get(`${API_BASE_URL}/api/exercises`);
-      console.log('fetchExercises response:', response.data);
       // Ensure exercises is always an array
       const exercisesArray = Array.isArray(response.data) ? response.data : [];
-      console.log('Setting exercises to:', exercisesArray);
       setExercises(exercisesArray);
     } catch (error) {
       console.error('Error loading exercises:', error);
       setMessage('Error loading exercises');
       setExercises([]); // Set empty array on error
-    } finally {
-      console.log('fetchExercises completed');
     }
   };
 
   const fetchUserPlan = async () => {
-    console.log('fetchUserPlan called');
     try {
       const response = await axios.get(`${API_BASE_URL}/api/plan`);
-      console.log('fetchUserPlan response:', response.data);
       if (response.data) {
         // Migrate 'Wed AM' to 'Wednesday AM' if present
         let plan = { ...response.data };
@@ -480,17 +469,13 @@ const WorkoutEntry = () => {
           plan['Wednesday AM'] = plan['Wed AM'];
           delete plan['Wed AM'];
         }
-        console.log('Setting userPlan to:', plan);
         setUserPlan(plan);
       } else {
-        console.log('No user plan data, setting to null');
         setUserPlan(null);
       }
     } catch (error) {
       console.error('Error loading user plan:', error);
       setUserPlan(null);
-    } finally {
-      console.log('fetchUserPlan completed');
     }
   };
 
@@ -560,7 +545,6 @@ const WorkoutEntry = () => {
       const savedSets = localStorage.getItem('workout_sets');
       if (savedSets) {
         const parsedSets = JSON.parse(savedSets);
-        console.log('Loading sets from localStorage:', parsedSets);
         if (Array.isArray(parsedSets)) {
           setSets(parsedSets);
         } else {
@@ -579,13 +563,11 @@ const WorkoutEntry = () => {
   useEffect(() => {
     try {
       if (sets.length > 0) {
-        console.log('Saving sets to localStorage:', sets);
         localStorage.setItem('workout_sets', JSON.stringify(sets));
       } else {
         // Only clear localStorage if sets are empty and we're not in the middle of loading
         const savedSets = localStorage.getItem('workout_sets');
         if (savedSets) {
-          console.log('Clearing localStorage - sets are empty');
           localStorage.removeItem('workout_sets');
         }
       }
@@ -600,7 +582,6 @@ const WorkoutEntry = () => {
     try {
       const savedPlannedWorkout = localStorage.getItem('selected_planned_workout');
       if (savedPlannedWorkout) {
-        console.log('Loading selected planned workout from localStorage:', savedPlannedWorkout);
         setSelectedPlannedWorkout(savedPlannedWorkout);
       }
     } catch (error) {
@@ -613,7 +594,6 @@ const WorkoutEntry = () => {
   useEffect(() => {
     try {
       if (selectedPlannedWorkout) {
-        console.log('Saving selected planned workout to localStorage:', selectedPlannedWorkout);
         localStorage.setItem('selected_planned_workout', selectedPlannedWorkout);
       } else {
         localStorage.removeItem('selected_planned_workout');
@@ -655,7 +635,6 @@ const WorkoutEntry = () => {
       
       setMessage('Sets saved successfully!');
       setSets([]);
-      console.log('Clearing localStorage after successful save');
       localStorage.removeItem('workout_sets'); // Clear localStorage after saving
     } catch (error) {
       console.error('Error saving sets:', error);
@@ -667,139 +646,185 @@ const WorkoutEntry = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box maxWidth={480} mx="auto" mt={2}>
-        {console.log('WorkoutEntry render - isInitializing:', isInitializing, 'exercises:', exercises.length, 'userPlan:', userPlan)}
+      <Box sx={{ maxWidth: 480, mx: 'auto', mt: 2 }}>
         {isInitializing ? (
-          <Box display="flex" justifyContent="center" py={4}>
+          <Box display="flex" justifyContent="center" py={6}>
             <CircularProgress />
           </Box>
         ) : (
           <>
-            {message && (
-              <Alert severity={message.includes('Error') ? 'error' : 'success'} sx={{ mb: 2 }}>
+            <Snackbar
+              open={!!message}
+              autoHideDuration={4000}
+              onClose={() => setMessage('')}
+              anchorOrigin={{ vertical: 'center', horizontal: 'center' }}
+              sx={{
+                '& .MuiSnackbar-root': {
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }
+              }}
+            >
+              <Alert 
+                severity={message.includes('Error') ? 'error' : 'success'} 
+                sx={{ 
+                  borderRadius: 2,
+                  minWidth: 300,
+                  boxShadow: 3
+                }}
+                onClose={() => setMessage('')}
+              >
                 {message}
               </Alert>
-            )}
+            </Snackbar>
             
-            {/* Debug info */}
-            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', fontSize: 12 }}>
-              Debug: exercises={exercises.length}, userPlan={userPlan ? Object.keys(userPlan).length : 'null'}
-            </Box>
+
             
             {/* Planned Workout Selector */}
             {userPlan && Object.keys(userPlan).length > 0 && (
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'white', borderRadius: 1 }}>
-                <Typography variant="subtitle2" fontWeight={600} color="primary.main" sx={{ mb: 1, fontSize: 14 }}>
-                  Planned Workout
-                </Typography>
+              <Card sx={{ mb: 2 }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Planned Workout
+                  </Typography>
+                  
+                  <ScrollablePicker
+                    items={getPlannedWorkoutOptions()}
+                    value={selectedPlannedWorkout}
+                    onChange={setSelectedPlannedWorkout}
+                    label="Select Planned Workout"
+                    getItemLabel={(item) => item.name}
+                    getItemValue={(item) => item.id}
+                  />
                 
-                <ScrollablePicker
-                  items={getPlannedWorkoutOptions()}
-                  value={selectedPlannedWorkout}
-                  onChange={setSelectedPlannedWorkout}
-                  label="Select Planned Workout"
-                  getItemLabel={(item) => item.name}
-                  getItemValue={(item) => item.id}
-                />
-                
-                {/* Show exercises for selected workout */}
-                {selectedPlannedWorkout && (
-                  <Box sx={{ mt: 2 }}>
-                    {getSelectedWorkoutExercises().map((exercise, index) => {
-                      const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
-                      return (
-                        <Box 
-                          key={index} 
-                          onClick={() => {
-                            if (exerciseData) {
-                              setSelectedExercise(exerciseData.id);
-                              if (exercise.targetReps) {
-                                setReps(exercise.targetReps.toString());
-                              }
-                            }
-                          }}
-                          sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            py: 1,
-                            px: 1.5,
-                            borderRadius: 0.5,
-                            bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.light' : 'grey.50',
-                            mb: 0.5,
-                            border: '1px solid',
-                            borderColor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'grey.200',
-                            '&:hover': { 
-                              bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.light' : 'grey.100',
-                              cursor: exerciseData ? 'pointer' : 'default'
-                            },
-                            minWidth: 0,
-                            width: '100%',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Typography 
-                              variant="body2" 
-                              color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                  {/* Show exercises for selected workout */}
+                  {selectedPlannedWorkout && (
+                    <Box sx={{ mt: 2 }}>
+                      <Box sx={{ 
+                        display: 'table', 
+                        width: '100%',
+                        borderCollapse: 'collapse'
+                      }}>
+                        {getSelectedWorkoutExercises().map((exercise, index) => {
+                          const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
+                          return (
+                            <Box 
+                              key={index} 
+                              onClick={() => {
+                                if (exerciseData) {
+                                  setSelectedExercise(exerciseData.id);
+                                  if (exercise.targetReps) {
+                                    setReps(exercise.targetReps.toString());
+                                  }
+                                }
+                              }}
                               sx={{ 
-                                flex: 1,
-                                minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                fontSize: 13
+                                display: 'table-row',
+                                cursor: exerciseData ? 'pointer' : 'default',
+                                '&:hover': { 
+                                  bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.dark' : 'background.paper'
+                                },
+                                bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'transparent',
+                                transition: 'all 0.2s ease'
                               }}
                             >
-                              {exercise.exercise}
-                            </Typography>
-                            <Typography 
-                              variant="body2" 
-                              color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                              sx={{ 
-                                flexShrink: 0,
-                                ml: 1,
-                                fontWeight: 600,
-                                fontSize: 12
-                              }}
-                            >
-                              {exercise.sets} sets • {exercise.targetReps || '?'} reps
-                            </Typography>
-                          </Box>
-                          {exercise.notes && (
-                            <Typography 
-                              variant="caption" 
-                              color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                              sx={{ 
-                                mt: 0.5,
-                                fontSize: 11,
-                                fontStyle: 'italic',
-                                opacity: 0.8
-                              }}
-                            >
-                              {exercise.notes}
-                            </Typography>
-                          )}
+                              <Box sx={{ 
+                                display: 'table-cell', 
+                                py: 1, 
+                                px: 2,
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                verticalAlign: 'middle'
+                              }}>
+                                <Typography 
+                                  variant="body2" 
+                                  color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.primary'}
+                                  sx={{ 
+                                    fontSize: 13,
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  {exercise.exercise}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                display: 'table-cell', 
+                                py: 1, 
+                                px: 2,
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                verticalAlign: 'middle',
+                                textAlign: 'right',
+                                width: '120px'
+                              }}>
+                                <Typography 
+                                  variant="body2" 
+                                  color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                                  sx={{ 
+                                    fontWeight: 600,
+                                    fontSize: 12
+                                  }}
+                                >
+                                  {exercise.sets} × {exercise.targetReps || '?'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                      {/* Show notes if any exercise has them */}
+                      {getSelectedWorkoutExercises().some(ex => ex.notes) && (
+                        <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                          {getSelectedWorkoutExercises().map((exercise, index) => {
+                            if (!exercise.notes) return null;
+                            const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
+                            return (
+                              <Typography 
+                                key={index}
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{ 
+                                  display: 'block',
+                                  fontSize: 11,
+                                  fontStyle: 'italic',
+                                  opacity: 0.8,
+                                  mb: 0.5
+                                }}
+                              >
+                                <strong>{exercise.exercise}:</strong> {exercise.notes}
+                              </Typography>
+                            );
+                          })}
                         </Box>
-                      );
-                    })}
-                  </Box>
-                )}
-              </Box>
+                      )}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             )}
             
             {/* Main Form */}
-            <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 1 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <DatePicker
-                    label="Date"
-                    value={date}
-                    onChange={setDate}
-                    maxDate={new Date()}
-                    renderInput={(params) => <TextField {...params} fullWidth size="small" />}
-                  />
-                </Grid>
-                <Grid item xs={12}>
+            <Card sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2 }}>
+                {/* Header with inline date */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Add Exercise
+                  </Typography>
+                  <Box sx={{ width: { xs: 150, sm: 200 } }}>
+                    <DatePicker
+                      label="Date"
+                      value={date}
+                      onChange={setDate}
+                      maxDate={new Date()}
+                      renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                    />
+                  </Box>
+                </Box>
+                
+                {/* Exercise Selection */}
+                <Box sx={{ mb: 2 }}>
                   <ScrollablePicker
                     items={groupedExercises.length > 0 ? groupedExercises : [{ label: 'Loading...', items: [] }]}
                     value={selectedExercise}
@@ -814,15 +839,13 @@ const WorkoutEntry = () => {
                   {selectedExercise && (() => {
                     const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
                     return selectedExerciseData && selectedExerciseData.notes ? (
-                      <Box sx={{ mt: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                      <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
                         <Typography 
-                          variant="caption" 
+                          variant="body2" 
                           color="text.secondary" 
                           sx={{ 
-                            fontSize: 11,
                             fontStyle: 'italic',
-                            display: 'block',
-                            lineHeight: 1.4
+                            lineHeight: 1.5
                           }}
                         >
                           {selectedExerciseData.notes}
@@ -830,137 +853,160 @@ const WorkoutEntry = () => {
                       </Box>
                     ) : null;
                   })()}
-                </Grid>
-                <Grid item xs={6}>
-                  <ScrollablePicker
-                    items={repsOptions}
-                    value={reps ? parseInt(reps) : ''}
-                    onChange={(value) => setReps(value.toString())}
-                    label="Select Reps"
-                    getItemLabel={(item) => item.name}
-                    getItemValue={(item) => item.id}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Weight (kg)"
-                    type="number"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                    fullWidth
-                    size="small"
-                    inputProps={{ 
-                      min: 0, 
-                      step: 0.5,
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.]?[0-9]*'
-                    }}
-                    error={!!weight && !isNumeric(weight)}
-                    helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
-                  />
-                </Grid>
+                </Box>
                 
                 {/* Weight Calculator Slider */}
                 {selectedExercise && getEstimatedOneRepMax() > 0 && (
-                  <Grid item xs={12}>
-                    <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ fontSize: 13 }}>
-                          Weight Calculator
-                        </Typography>
-                        <Typography variant="body2" color="primary.main" fontWeight={600}>
-                          {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg
-                        </Typography>
-                      </Box>
-                      
-                      <Box sx={{ px: 0.5 }}>
-                        <Slider
-                          value={sliderReps}
-                          onChange={(event, newValue) => setSliderReps(newValue)}
-                          min={1}
-                          max={20}
-                          step={1}
-                          marks={[
-                            { value: 1, label: '1' },
-                            { value: 5, label: '5' },
-                            { value: 10, label: '10' },
-                            { value: 15, label: '15' },
-                            { value: 20, label: '20' }
-                          ]}
-                          valueLabelDisplay="auto"
-                          valueLabelFormat={(value) => `${value} reps`}
-                          sx={{
-                            '& .MuiSlider-markLabel': {
-                              fontSize: '0.7rem',
-                            },
-                            '& .MuiSlider-valueLabel': {
-                              fontSize: '0.7rem',
-                            },
-                            '& .MuiSlider-track': {
-                              height: 3,
-                            },
-                            '& .MuiSlider-thumb': {
-                              width: 16,
-                              height: 16,
-                            }
-                          }}
-                        />
-                      </Box>
-                      
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
-                          {sliderReps} reps
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => {
-                            setReps(sliderReps.toString());
-                            setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
-                          }}
-                          sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
-                        >
-                          Use
-                        </Button>
-                      </Box>
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 2, position: 'relative' }}>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '12px',
+                        px: 1,
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        zIndex: 1
+                      }}
+                    >
+                      Weight Calculator
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                      <Typography variant="h6" color="primary.main" fontWeight={600}>
+                        {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => {
+                          setReps(sliderReps.toString());
+                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
+                        }}
+                        sx={{ 
+                          py: 0.75, 
+                          px: 2, 
+                          fontWeight: 600,
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        Use Weight
+                      </Button>
                     </Box>
-                  </Grid>
+                    
+                    <Box sx={{ px: 0.5 }}>
+                      <Slider
+                        value={sliderReps}
+                        onChange={(event, newValue) => setSliderReps(newValue)}
+                        min={1}
+                        max={20}
+                        step={1}
+                        marks={[
+                          { value: 1, label: '1' },
+                          { value: 5, label: '5' },
+                          { value: 10, label: '10' },
+                          { value: 15, label: '15' },
+                          { value: 20, label: '20' }
+                        ]}
+                        valueLabelDisplay="auto"
+                        valueLabelFormat={(value) => `${value} reps`}
+                        sx={{
+                          '& .MuiSlider-markLabel': {
+                            fontSize: '0.7rem',
+                          },
+                          '& .MuiSlider-valueLabel': {
+                            fontSize: '0.7rem',
+                          },
+                          '& .MuiSlider-track': {
+                            height: 3,
+                          },
+                          '& .MuiSlider-thumb': {
+                            width: 16,
+                            height: 16,
+                          }
+                        }}
+                      />
+                    </Box>
+                    
+
+                  </Box>
                 )}
                 
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddSet}
-                    fullWidth
-                    size="large"
-                    sx={{ fontWeight: 600, fontSize: 16, py: 1.2 }}
-                  >
-                    Add Set
-                  </Button>
+                {/* Reps and Weight on one line */}
+                <Grid container sx={{ mb: 3 }}>
+                  <Grid item xs={6} sx={{ pr: 1.5 }}>
+                    <ScrollablePicker
+                      items={repsOptions}
+                      value={reps ? parseInt(reps) : ''}
+                      onChange={(value) => setReps(value.toString())}
+                      label="Select Reps"
+                      getItemLabel={(item) => item.name}
+                      getItemValue={(item) => item.id}
+                    />
+                  </Grid>
+                  <Grid item xs={6} sx={{ pl: 1.5 }}>
+                    <TextField
+                      label="Weight (kg)"
+                      type="number"
+                      value={weight}
+                      onChange={(e) => setWeight(e.target.value)}
+                      fullWidth
+                      size="small"
+                      inputProps={{ 
+                        min: 0, 
+                        step: 0.5,
+                        inputMode: 'decimal',
+                        pattern: '[0-9]*[.]?[0-9]*'
+                      }}
+                      error={!!weight && !isNumeric(weight)}
+                      helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
+                    />
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Box>
+                
+                {/* Add Set Button */}
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddSet}
+                  fullWidth
+                  size="medium"
+                  sx={{ 
+                    py: 1, 
+                    fontWeight: 600, 
+                    mt: 2,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Add Set
+                </Button>
+              </CardContent>
+            </Card>
             
             {/* Sets Display */}
             {sets.length > 0 && (
-              <Box sx={{ mt: 3, bgcolor: 'white', p: 2, borderRadius: 1 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+              <Card sx={{ mb: 2 }}>
+                <CardContent sx={{ p: 2, position: 'relative' }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
                     Sets Added ({sets.length})
                   </Typography>
                   <Button
                     variant="contained"
-                    color="secondary"
                     onClick={handleSaveSets}
                     disabled={saving}
-                    size="small"
-                    sx={{ fontWeight: 600, fontSize: 13, py: 0.7, px: 2 }}
+                    sx={{ 
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      py: 0.75,
+                      px: 2,
+                      fontWeight: 600,
+                      fontSize: '0.875rem'
+                    }}
                   >
                     {saving ? 'Saving...' : 'Save All'}
                   </Button>
-                </Box>
                 
                 {/* Group sets by exercise */}
                 {(() => {
@@ -973,67 +1019,81 @@ const WorkoutEntry = () => {
                   }, {});
                   
                   return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => (
-                    <Box key={exerciseName} sx={{ mb: 2 }}>
-                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: 13 }}>
+                    <Box key={exerciseName} sx={{ mb: 1.5 }}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: '0.875rem' }}>
                         {exerciseName}
                       </Typography>
-                      <Box sx={{ pl: 1 }}>
+                      <Box sx={{ 
+                        display: 'table', 
+                        width: '100%',
+                        borderCollapse: 'collapse'
+                      }}>
                         {exerciseSets.map((set, index) => (
                           <Box 
                             key={set.id} 
                             sx={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              py: 0.8,
-                              px: 1.5,
-                              borderRadius: 0.5,
-                              bgcolor: 'grey.50',
-                              mb: 0.5,
-                              border: '1px solid',
-                              borderColor: 'grey.200',
-                              '&:hover': { bgcolor: 'grey.100' },
-                              minWidth: 0,
-                              width: '100%'
+                              display: 'table-row',
+                              '&:hover': { 
+                                bgcolor: 'background.paper'
+                              },
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            <Typography 
-                              variant="body2" 
-                              color="text.secondary"
-                              sx={{ 
-                                flex: 1,
-                                minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                fontSize: 13
-                              }}
-                            >
-                              {set.reps} reps @ {set.weight} kg
-                            </Typography>
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleRemoveSet(set.id)} 
-                              color="error"
-                              sx={{ p: 0.5, ml: 1, flexShrink: 0 }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
+                            <Box sx={{ 
+                              display: 'table-cell', 
+                              py: 1, 
+                              px: 2,
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              verticalAlign: 'middle'
+                            }}>
+                              <Typography 
+                                variant="body2" 
+                                color="text.primary"
+                                sx={{ 
+                                  fontSize: 13,
+                                  fontWeight: 500
+                                }}
+                              >
+                                {set.reps} reps @ {set.weight} kg
+                              </Typography>
+                            </Box>
+                            <Box sx={{ 
+                              display: 'table-cell', 
+                              py: 1, 
+                              px: 2,
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              verticalAlign: 'middle',
+                              textAlign: 'right',
+                              width: '60px'
+                            }}>
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleRemoveSet(set.id)} 
+                                color="error"
+                                sx={{ p: 0.5 }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Box>
                           </Box>
                         ))}
                       </Box>
                     </Box>
                   ));
                 })()}
-              </Box>
+                </CardContent>
+              </Card>
             )}
             
             {/* Recent Sets Section */}
             {selectedExercise && (
-              <Box sx={{ mt: 3, bgcolor: 'white', p: 2, borderRadius: 1 }}>
-                <Typography variant="subtitle2" fontWeight={600} mb={2} sx={{ fontSize: 14 }}>
-                  Recent Sets
-                </Typography>
+              <Card sx={{ mt: 2 }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+                    Recent Sets
+                  </Typography>
                 
                 {loadingData ? (
                   <Box display="flex" justifyContent="center" py={2}>
@@ -1042,25 +1102,52 @@ const WorkoutEntry = () => {
                 ) : (
                   <Box>
                     {recentSets.length > 0 ? (
-                      <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                      <Box sx={{ 
+                        display: 'table', 
+                        width: '100%',
+                        borderCollapse: 'collapse'
+                      }}>
                         {recentSets.map((set, index) => (
                           <Box 
                             key={index} 
                             sx={{ 
-                              p: 1.5, 
-                              mb: 1, 
-                              borderRadius: 0.5, 
-                              bgcolor: 'grey.50',
-                              border: '1px solid',
-                              borderColor: 'grey.200'
+                              display: 'table-row',
+                              '&:hover': { 
+                                bgcolor: 'background.paper'
+                              },
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            <Typography variant="body2" fontWeight={500} sx={{ fontSize: 13 }}>
-                              {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
-                              Set {set.set_number} • 1RM: {set.one_rep_max.toFixed(1)}kg
-                            </Typography>
+                            <Box sx={{ 
+                              display: 'table-cell', 
+                              py: 1, 
+                              px: 2,
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              verticalAlign: 'middle'
+                            }}>
+                              <Typography 
+                                variant="body2" 
+                                color="text.primary"
+                                sx={{ 
+                                  fontSize: 13,
+                                  fontWeight: 500
+                                }}
+                              >
+                                {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
+                                <Typography 
+                                  component="span"
+                                  variant="caption" 
+                                  color="text.secondary"
+                                  sx={{ 
+                                    fontSize: 11,
+                                    ml: 1
+                                  }}
+                                >
+                                  (1RM: {set.one_rep_max.toFixed(1)}kg)
+                                </Typography>
+                              </Typography>
+                            </Box>
                           </Box>
                         ))}
                       </Box>
@@ -1071,7 +1158,8 @@ const WorkoutEntry = () => {
                     )}
                   </Box>
                 )}
-              </Box>
+                </CardContent>
+              </Card>
             )}
           </>
         )}
