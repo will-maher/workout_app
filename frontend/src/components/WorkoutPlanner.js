@@ -127,7 +127,7 @@ export const OPTIMAL_RANGES = {
 };
 
 const WorkoutPlanner = () => {
-  const [program, setProgram] = useState(initialProgram);
+  const [program, setProgram] = useState(null); // Start with null to indicate loading
   const [exercises, setExercises] = useState([]);
   const [exerciseMap, setExerciseMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -150,30 +150,48 @@ const WorkoutPlanner = () => {
   useEffect(() => {
     const fetchPlan = async () => {
       try {
+        console.log('🔄 Loading plan from database...');
         const res = await axios.get(`${API_BASE_URL}/api/plan`);
-        if (res.data) setProgram(res.data);
-      } catch {}
+        console.log('📊 Plan data received:', res.data);
+        
+        if (res.data && Object.keys(res.data).length > 0) {
+          // We have data from the database, use it
+          console.log('✅ Using plan from database');
+          setProgram(res.data);
+        } else {
+          // No data in database, use initial program
+          console.log('ℹ️ No plan in database, using initial program');
+          setProgram(initialProgram);
+        }
+      } catch (error) {
+        console.error('❌ Error loading plan:', error);
+        // On error, use initial program
+        console.log('🔄 Using initial program due to error');
+        setProgram(initialProgram);
+      }
     };
     fetchPlan();
   }, []);
 
   // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM' and normalize days
   useEffect(() => {
-    setProgram(prev => {
-      let migrated = { ...prev };
-      if (migrated['Wed AM']) {
-        migrated['Wednesday AM'] = migrated['Wed AM'];
-        delete migrated['Wed AM'];
-      }
-      // Ensure every day in defaultDays exists as an array
-      defaultDays.forEach(day => {
-        if (!Array.isArray(migrated[day])) {
-          migrated[day] = [];
+    if (program) {
+      setProgram(prev => {
+        let migrated = { ...prev };
+        if (migrated['Wed AM']) {
+          migrated['Wednesday AM'] = migrated['Wed AM'];
+          delete migrated['Wed AM'];
         }
+        // Ensure every day in defaultDays exists as an array
+        defaultDays.forEach(day => {
+          if (!Array.isArray(migrated[day])) {
+            migrated[day] = [];
+          }
+        });
+        return migrated;
       });
-      return migrated;
-    });
-  }, []);
+    }
+  }, [program]);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -270,10 +288,12 @@ const WorkoutPlanner = () => {
 
   const handleSave = async () => {
     try {
+      console.log('💾 Saving plan to database:', program);
       await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
+      console.log('✅ Plan saved successfully');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error saving plan:', error);
+      console.error('❌ Error saving plan:', error);
     }
   };
 
@@ -343,7 +363,7 @@ const WorkoutPlanner = () => {
           Save Plan
         </Button>
       </Box>
-      {loading ? (
+      {loading || !program ? (
         <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>
       ) : (
         <Stack spacing={2}>
