@@ -41,11 +41,11 @@ const defaultDays = ['Monday AM', 'Tuesday AM', 'Wednesday AM', 'Thursday AM', '
 const initialProgram = {
   'Monday AM': [
     { exercise: 'Barbell bench press', sets: 3, targetReps: 8 },
-    { exercise: 'Dumbbell shoulder press', sets: 3, targetReps: 8 },
+    { exercise: 'Dumbell shoulder press', sets: 3, targetReps: 8 },
     { exercise: 'Dips', sets: 3, targetReps: 8 },
     { exercise: 'Cable flies', sets: 3, targetReps: 12 },
-    { exercise: 'EZ bar curl', sets: 3, targetReps: 10 },
-    { exercise: 'Dumbbell lateral raise', sets: 3, targetReps: 12 },
+    { exercise: 'Ez bar curl', sets: 3, targetReps: 10 },
+    { exercise: 'Dumbell lateral raise', sets: 3, targetReps: 12 },
   ],
   'Tuesday AM': [
     { exercise: 'Low bar squat', sets: 3, targetReps: 5 },
@@ -55,16 +55,16 @@ const initialProgram = {
     { exercise: 'Leg extension', sets: 3, targetReps: 12 },
   ],
   'Wednesday AM': [
-    { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
+    { exercise: 'Pull ups', sets: 3, targetReps: 8 },
     { exercise: 'Barbell row', sets: 3, targetReps: 8 },
     { exercise: 'Seated cable row', sets: 3, targetReps: 10 },
-    { exercise: 'Stiff-legged DL', sets: 3, targetReps: 8 },
+    { exercise: 'Stiff legged deadlift', sets: 3, targetReps: 8 },
     { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
   ],
   'Thursday AM': [
     { exercise: 'Incline barbell bench press', sets: 3, targetReps: 8 },
-    { exercise: 'Preacher curl', sets: 3, targetReps: 10 },
-    { exercise: 'Overhead tricep extension', sets: 3, targetReps: 12 },
+    { exercise: 'Machine preacher', sets: 3, targetReps: 10 },
+    { exercise: 'Overhead tricep extension rope', sets: 3, targetReps: 12 },
     { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
     { exercise: 'Dips', sets: 3, targetReps: 8 },
     { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
@@ -76,14 +76,14 @@ const initialProgram = {
     { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
   ],
   'Saturday AM': [
-    { exercise: 'Dumbbell shoulder press', sets: 3, targetReps: 8 },
-    { exercise: 'Dumbbell lateral raise', sets: 3, targetReps: 12 },
+    { exercise: 'Dumbell shoulder press', sets: 3, targetReps: 8 },
+    { exercise: 'Dumbell lateral raise', sets: 3, targetReps: 12 },
     { exercise: 'Rear delt cable fly', sets: 3, targetReps: 12 },
     { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
   ],
   'Sunday AM': [
     { exercise: 'Deadlift', sets: 3, targetReps: 5 },
-    { exercise: 'Pull-ups', sets: 3, targetReps: 8 },
+    { exercise: 'Pull ups', sets: 3, targetReps: 8 },
     { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
     { exercise: 'Cable lat pulldown', sets: 3, targetReps: 10 },
     { exercise: 'Ab cable crunch', sets: 3, targetReps: 15 },
