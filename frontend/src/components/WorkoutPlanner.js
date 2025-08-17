@@ -295,7 +295,7 @@ const WorkoutPlanner = () => {
   const handleSave = async () => {
     try {
       console.log('💾 Saving plan to database:', program);
-      const res = await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
+      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       console.log('✅ Plan saved successfully');
       
       // Force a refresh of the plan to ensure we have the latest data
