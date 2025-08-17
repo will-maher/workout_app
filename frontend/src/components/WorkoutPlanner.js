@@ -165,9 +165,15 @@ const WorkoutPlanner = () => {
         }
       } catch (error) {
         console.error('❌ Error loading plan:', error);
-        // On error, use initial program
-        console.log('🔄 Using initial program due to error');
-        setProgram(initialProgram);
+        if (error.response && error.response.status === 404) {
+          // No plan exists, use initial program
+          console.log('ℹ️ No plan found (404), using initial program');
+          setProgram(initialProgram);
+        } else {
+          // Other error, use initial program
+          console.log('🔄 Using initial program due to error');
+          setProgram(initialProgram);
+        }
       }
     };
     fetchPlan();
@@ -289,8 +295,16 @@ const WorkoutPlanner = () => {
   const handleSave = async () => {
     try {
       console.log('💾 Saving plan to database:', program);
-      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
+      const res = await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       console.log('✅ Plan saved successfully');
+      
+      // Force a refresh of the plan to ensure we have the latest data
+      const refreshRes = await axios.get(`${API_BASE_URL}/api/plan`);
+      if (refreshRes.data && Object.keys(refreshRes.data).length > 0) {
+        console.log('🔄 Refreshing plan from database');
+        setProgram(refreshRes.data);
+      }
+      
       setSnackbarOpen(true);
     } catch (error) {
       console.error('❌ Error saving plan:', error);
@@ -359,9 +373,18 @@ const WorkoutPlanner = () => {
         <Typography variant="h4" fontWeight={700}>
           Workout Planner
         </Typography>
-        <Button variant="contained" onClick={handleSave}>
-          Save Plan
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => window.location.reload()}
+            size="small"
+          >
+            Refresh
+          </Button>
+          <Button variant="contained" onClick={handleSave}>
+            Save Plan
+          </Button>
+        </Box>
       </Box>
       {loading || !program ? (
         <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>

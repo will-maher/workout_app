@@ -25,7 +25,14 @@ router.get('/', authenticateToken, async (req, res) => {
         console.log('✅ Successfully parsed plan from string');
       } catch (parseError) {
         console.error('❌ Error parsing plan string:', parseError);
+        return res.status(500).json({ error: 'Invalid plan data' });
       }
+    }
+    
+    // Validate plan structure
+    if (!plan || typeof plan !== 'object') {
+      console.log('❌ Invalid plan structure');
+      return res.status(500).json({ error: 'Invalid plan structure' });
     }
     
     console.log('📤 Sending plan to frontend');
