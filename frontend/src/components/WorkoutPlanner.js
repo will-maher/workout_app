@@ -171,6 +171,23 @@ const WorkoutPlanner = () => {
           // No plan exists, use initial program
           console.log('ℹ️ No plan found (404), using initial program');
           setProgram(initialProgram);
+        } else if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          // Authentication error - try to refresh token or use cached plan
+          console.log('🔐 Authentication error, checking for cached plan...');
+          const cachedPlan = localStorage.getItem('cachedPlan');
+          if (cachedPlan) {
+            try {
+              const parsedPlan = JSON.parse(cachedPlan);
+              console.log('📋 Using cached plan');
+              setProgram(parsedPlan);
+            } catch {
+              console.log('🔄 Using initial program due to cache parse error');
+              setProgram(initialProgram);
+            }
+          } else {
+            console.log('🔄 Using initial program due to auth error');
+            setProgram(initialProgram);
+          }
         } else {
           // Other error, use initial program
           console.log('🔄 Using initial program due to error');
@@ -304,12 +321,18 @@ const WorkoutPlanner = () => {
       await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       console.log('✅ Plan saved successfully');
       
+      // Cache the plan locally for offline/error recovery
+      localStorage.setItem('cachedPlan', JSON.stringify(program));
+      console.log('💾 Plan cached locally');
+      
       // Force a refresh of the plan to ensure we have the latest data
       const refreshRes = await axios.get(`${API_BASE_URL}/api/plan`);
       if (refreshRes.data && Object.keys(refreshRes.data).length > 0) {
         console.log('🔄 Refreshing plan from database');
         console.log('📋 Monday AM exercises after refresh:', refreshRes.data['Monday AM']);
         setProgram(refreshRes.data);
+        // Update cache with fresh data
+        localStorage.setItem('cachedPlan', JSON.stringify(refreshRes.data));
       }
       
       setSnackbarOpen(true);
