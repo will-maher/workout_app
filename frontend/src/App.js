@@ -9,9 +9,6 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
-  Menu,
-  MenuItem,
-  IconButton,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -28,7 +25,7 @@ import Stats from './components/Stats';
 import ExerciseLibrary from './components/ExerciseLibrary';
 import Performance from './components/Performance';
 import WorkoutPlanner from './components/WorkoutPlanner';
-import Menu from './components/Menu';
+import MenuPage from './components/Menu';
 import Login from './components/Login';
 import Register from './components/Register';
 
@@ -174,7 +171,7 @@ function App() {
             <Route path="/library" element={<ExerciseLibrary />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/plan" element={<WorkoutPlanner />} />
-            <Route path="/menu" element={<Menu user={user} onNavigate={navigate} onLogout={handleLogout} />} />
+            <Route path="/menu" element={<MenuPage user={user} onNavigate={navigate} onLogout={handleLogout} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />} />
             <Route path="/register" element={<Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />} />
           </Routes>

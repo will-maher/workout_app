@@ -10,7 +10,6 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Avatar,
 } from '@mui/material';
 import {
   History as HistoryIcon,
