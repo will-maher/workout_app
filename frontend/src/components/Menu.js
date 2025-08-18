@@ -36,6 +36,12 @@ const Menu = ({ user, onNavigate, onLogout }) => {
       text: 'Exercise Library',
       onClick: () => onNavigate('/library'),
     },
+    {
+      icon: <LogoutIcon />,
+      text: 'Logout',
+      onClick: onLogout,
+      isLogout: true,
+    },
   ];
 
   return (
@@ -54,7 +60,7 @@ const Menu = ({ user, onNavigate, onLogout }) => {
         Menu
       </Typography>
 
-      <Card sx={{ mb: 3 }}>
+      <Card>
         <CardContent sx={{ p: 0 }}>
           <List>
             {menuItems.map((item, index) => (
@@ -67,12 +73,13 @@ const Menu = ({ user, onNavigate, onLogout }) => {
                       py: 2,
                       px: 3,
                       '&:hover': {
-                        bgcolor: 'background.default',
+                        bgcolor: item.isLogout ? 'error.light' : 'background.default',
+                        color: item.isLogout ? 'error.contrastText' : 'inherit',
                       },
                     }}
                   >
                     <ListItemIcon sx={{ 
-                      color: item.disabled ? 'text.secondary' : 'primary.main',
+                      color: item.isLogout ? 'error.main' : 'text.primary',
                       minWidth: 40 
                     }}>
                       {item.icon}
@@ -80,8 +87,8 @@ const Menu = ({ user, onNavigate, onLogout }) => {
                     <ListItemText 
                       primary={item.text}
                       primaryTypographyProps={{
-                        fontWeight: item.disabled ? 400 : 500,
-                        color: item.disabled ? 'text.secondary' : 'text.primary',
+                        fontWeight: 500,
+                        color: item.isLogout ? 'error.main' : 'text.primary',
                       }}
                     />
                   </ListItemButton>
@@ -89,40 +96,6 @@ const Menu = ({ user, onNavigate, onLogout }) => {
                 {index < menuItems.length - 1 && <Divider />}
               </React.Fragment>
             ))}
-          </List>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent sx={{ p: 0 }}>
-          <List>
-            <ListItem disablePadding>
-              <ListItemButton
-                onClick={onLogout}
-                sx={{
-                  py: 2,
-                  px: 3,
-                  '&:hover': {
-                    bgcolor: 'error.light',
-                    color: 'error.contrastText',
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ 
-                  color: 'error.main',
-                  minWidth: 40 
-                }}>
-                  <LogoutIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Logout"
-                  primaryTypographyProps={{
-                    fontWeight: 500,
-                    color: 'error.main',
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
           </List>
         </CardContent>
       </Card>

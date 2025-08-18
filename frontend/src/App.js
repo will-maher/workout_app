@@ -31,7 +31,7 @@ import Register from './components/Register';
 
 // API base URL configuration
 export const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://192.168.1.237:5001'
+  ? 'http://localhost:5001'
   : 'https://workoutapp-production-3c56.up.railway.app';
 
 function App() {

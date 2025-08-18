@@ -817,7 +817,51 @@ const WorkoutEntry = () => {
                       value={date}
                       onChange={setDate}
                       maxDate={new Date()}
-                      renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          fullWidth 
+                          size="small"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              height: '32px !important',
+                              minHeight: '32px !important',
+                              maxHeight: '32px !important',
+                              '& fieldset': {
+                                borderColor: 'divider'
+                              },
+                              '&:hover fieldset': {
+                                borderColor: 'primary.main'
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: 'primary.main'
+                              }
+                            },
+                            '& .MuiInputLabel-root': {
+                              color: 'text.secondary',
+                              transform: 'translate(14px, 4px) scale(1)',
+                              fontSize: '13px',
+                              '&.Mui-focused': {
+                                transform: 'translate(14px, -9px) scale(0.75)'
+                              },
+                              '&.MuiFormLabel-filled': {
+                                transform: 'translate(14px, -9px) scale(0.75)'
+                              }
+                            },
+                            '& .MuiInputBase-input': {
+                              color: 'text.primary',
+                              padding: '2px 14px',
+                              height: '12px',
+                              fontSize: '13px'
+                            },
+                            '& .MuiInputBase-root': {
+                              height: '32px !important',
+                              minHeight: '32px !important',
+                              maxHeight: '32px !important'
+                            }
+                          }}
+                        />
+                      )}
                     />
                   </Box>
                 </Box>
@@ -960,6 +1004,37 @@ const WorkoutEntry = () => {
                       }}
                       error={!!weight && !isNumeric(weight)}
                       helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          height: 40,
+                          minHeight: 40,
+                          maxHeight: 40,
+                          '& fieldset': {
+                            borderColor: 'divider'
+                          },
+                          '&:hover fieldset': {
+                            borderColor: 'primary.main'
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: 'primary.main'
+                          }
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'text.secondary',
+                          transform: 'translate(14px, 8px) scale(1)',
+                          '&.Mui-focused': {
+                            transform: 'translate(14px, -9px) scale(0.75)'
+                          },
+                          '&.MuiFormLabel-filled': {
+                            transform: 'translate(14px, -9px) scale(0.75)'
+                          }
+                        },
+                        '& .MuiInputBase-input': {
+                          color: 'text.primary',
+                          padding: '8px 14px',
+                          height: '24px'
+                        }
+                      }}
                     />
                   </Grid>
                 </Grid>

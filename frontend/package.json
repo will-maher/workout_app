@@ -20,7 +20,7 @@
     "serve": "^14.2.4"
   },
   "scripts": {
-    "start": "npm run build && serve -s build -l $PORT",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "dev": "react-scripts start",
     "test": "react-scripts test",
