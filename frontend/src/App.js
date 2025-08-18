@@ -34,6 +34,10 @@ export const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:5001'
   : 'https://workoutapp-production-3c56.up.railway.app';
 
+// For debugging - log the current environment and API URL
+console.log('Environment:', process.env.NODE_ENV);
+console.log('API Base URL:', API_BASE_URL);
+
 function App() {
   const [value, setValue] = useState(0);
   const [user, setUser] = useState(null);
