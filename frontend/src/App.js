@@ -170,7 +170,7 @@ function App() {
             <Route path="/stats" element={<Stats />} />
             <Route path="/library" element={<ExerciseLibrary />} />
             <Route path="/performance" element={<Performance />} />
-            <Route path="/plan" element={<WorkoutPlanner />} />
+            <Route path="/plan" element={<WorkoutPlanner user={user} />} />
             <Route path="/menu" element={<MenuPage user={user} onNavigate={navigate} onLogout={handleLogout} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />} />
             <Route path="/register" element={<Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />} />

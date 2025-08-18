@@ -128,7 +128,7 @@ export const OPTIMAL_RANGES = {
   'Posterior deltoid': { sets: '16-22', freq: '2-6x' },
 };
 
-const WorkoutPlanner = () => {
+const WorkoutPlanner = ({ user }) => {
   const [program, setProgram] = useState(null); // Start with null to indicate loading
   const [exercises, setExercises] = useState([]);
   const [exerciseMap, setExerciseMap] = useState({});
@@ -148,11 +148,16 @@ const WorkoutPlanner = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Load from backend on mount
+  // Load from backend when user is available
   useEffect(() => {
+    if (!user) {
+      console.log('👤 No user available, waiting...');
+      return;
+    }
+
     const fetchPlan = async () => {
       try {
-        console.log('🔄 Loading plan from database...');
+        console.log('🔄 Loading plan from database for user:', user.username);
         const res = await axios.get(`${API_BASE_URL}/api/plan`);
         console.log('📊 Plan data received:', res.data);
         
@@ -196,7 +201,7 @@ const WorkoutPlanner = () => {
       }
     };
     fetchPlan();
-  }, []);
+  }, [user]);
 
   // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM' and normalize days
   useEffect(() => {
