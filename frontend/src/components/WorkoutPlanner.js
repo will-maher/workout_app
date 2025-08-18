@@ -253,9 +253,12 @@ const WorkoutPlanner = () => {
   };
 
   const handleRemoveExercise = (day, idx) => {
+    console.log('🗑️ Removing exercise:', { day, idx });
     setProgram(prev => {
+      console.log('📋 Previous program state:', prev);
       const updated = { ...prev };
       updated[day] = updated[day].filter((_, i) => i !== idx);
+      console.log('📋 Updated program state:', updated);
       return updated;
     });
   };
@@ -297,6 +300,7 @@ const WorkoutPlanner = () => {
   const handleSave = async () => {
     try {
       console.log('💾 Saving plan to database:', program);
+      console.log('📋 Monday AM exercises being saved:', program['Monday AM']);
       await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
       console.log('✅ Plan saved successfully');
       
@@ -304,6 +308,7 @@ const WorkoutPlanner = () => {
       const refreshRes = await axios.get(`${API_BASE_URL}/api/plan`);
       if (refreshRes.data && Object.keys(refreshRes.data).length > 0) {
         console.log('🔄 Refreshing plan from database');
+        console.log('📋 Monday AM exercises after refresh:', refreshRes.data['Monday AM']);
         setProgram(refreshRes.data);
       }
       
