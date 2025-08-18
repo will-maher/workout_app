@@ -30,12 +30,18 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 // API base URL configuration
-export const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:5001'
-  : 'https://workoutapp-production-3c56.up.railway.app';
+// Check if we're running on Railway (production) by looking at the hostname
+const isProduction = window.location.hostname.includes('railway.app') || 
+                     window.location.hostname.includes('extraordinary-spirit-production');
+
+export const API_BASE_URL = isProduction
+  ? 'https://workoutapp-production-3c56.up.railway.app'
+  : 'http://localhost:5001';
 
 // For debugging - log the current environment and API URL
 console.log('Environment:', process.env.NODE_ENV);
+console.log('Hostname:', window.location.hostname);
+console.log('Is Production:', isProduction);
 console.log('API Base URL:', API_BASE_URL);
 
 function App() {
