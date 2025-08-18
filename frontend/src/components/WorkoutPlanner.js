@@ -405,18 +405,9 @@ const WorkoutPlanner = () => {
         <Typography variant="h4" fontWeight={700}>
           Workout Planner
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => window.location.reload()}
-            size="small"
-          >
-            Refresh
-          </Button>
-          <Button variant="contained" onClick={handleSave}>
-            Save Plan
-          </Button>
-        </Box>
+        <Button variant="contained" onClick={handleSave}>
+          Save Plan
+        </Button>
       </Box>
       {loading || !program ? (
         <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>
