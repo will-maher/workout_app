@@ -91,11 +91,13 @@ const initialProgram = {
 };
 
 function getWeeklyVolumeAndFrequency(program, exerciseMap) {
+  if (!program) return { volume: {}, freqDays: {} };
+  
   const volume = {};
   const freqDays = {};
   for (const day of defaultDays) {
     const musclesToday = new Set();
-    for (const ex of (Array.isArray(program[day]) ? program[day] : [])) {
+    for (const ex of (program && Array.isArray(program[day]) ? program[day] : [])) {
       if (!ex || !ex.exercise) continue;
       const muscle = exerciseMap[ex.exercise]?.muscle_group;
       if (!muscle) continue;
@@ -313,16 +315,18 @@ const WorkoutPlanner = () => {
 
 
 
-  const { volume: weeklyVolume, freqDays: weeklyFreq } = getWeeklyVolumeAndFrequency(program, exerciseMap);
+  const { volume: weeklyVolume, freqDays: weeklyFreq } = program ? getWeeklyVolumeAndFrequency(program, exerciseMap) : { volume: {}, freqDays: {} };
 
   // Function to get fortnight frequency data
   const getFortnightFrequencyData = (program, exerciseMap) => {
+    if (!program) return { muscleGroups: [], fortnightData: {} };
+    
     const muscleGroups = new Set();
     const fortnightData = {};
     
     // Get all unique muscle groups from the program
     for (const day of defaultDays) {
-      for (const ex of (Array.isArray(program[day]) ? program[day] : [])) {
+      for (const ex of (program && Array.isArray(program[day]) ? program[day] : [])) {
         if (!ex || !ex.exercise) continue;
         const muscle = exerciseMap[ex.exercise]?.muscle_group;
         if (muscle) {
@@ -351,7 +355,7 @@ const WorkoutPlanner = () => {
         const dayKey = `Week${week}_${dayName}`;
         
         // Check if this day has exercises in the program
-        const dayExercises = Array.isArray(program[dayName]) ? program[dayName] : [];
+        const dayExercises = program && Array.isArray(program[dayName]) ? program[dayName] : [];
         for (const ex of dayExercises) {
           if (!ex || !ex.exercise) continue;
           const muscle = exerciseMap[ex.exercise]?.muscle_group;
@@ -365,7 +369,7 @@ const WorkoutPlanner = () => {
     return { muscleGroups: Array.from(muscleGroups).sort(), fortnightData };
   };
 
-  const { muscleGroups, fortnightData } = getFortnightFrequencyData(program, exerciseMap);
+  const { muscleGroups, fortnightData } = program ? getFortnightFrequencyData(program, exerciseMap) : { muscleGroups: [], fortnightData: {} };
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2 }}>
@@ -443,7 +447,7 @@ const WorkoutPlanner = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {(Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
+                        {(program && Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
                           <TableRow key={idx} sx={{ '& .MuiTableCell-root': { py: 1 } }}>
                             <TableCell sx={{ 
                               fontSize: isMobile ? 11 : 14,
