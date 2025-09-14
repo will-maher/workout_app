@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { pool } = require('./database.pg');
+const { logMemoryUsage } = require('./memory-monitor');
 
 const authRoutes = require('./routes/auth');
 const exercisesRoutes = require('./routes/exercises');
@@ -70,4 +71,7 @@ app.use('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} on all interfaces`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Log initial memory usage
+  logMemoryUsage();
 }); 

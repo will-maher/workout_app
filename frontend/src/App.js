@@ -38,11 +38,13 @@ export const API_BASE_URL = isProduction
   ? 'https://workoutapp-production-3c56.up.railway.app'
   : 'http://localhost:5001';
 
-// For debugging - log the current environment and API URL
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Hostname:', window.location.hostname);
-console.log('Is Production:', isProduction);
-console.log('API Base URL:', API_BASE_URL);
+// For debugging - log the current environment and API URL (only in development)
+if (process.env.NODE_ENV === 'development') {
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Hostname:', window.location.hostname);
+  console.log('Is Production:', isProduction);
+  console.log('API Base URL:', API_BASE_URL);
+}
 
 function App() {
   const [value, setValue] = useState(0);

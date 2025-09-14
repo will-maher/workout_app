@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -165,19 +165,23 @@ const Performance = () => {
     }
   };
 
-  // Prepare data for Highcharts scatter plot
-  const scatterData = dailyMaxPoints.map(pt => [
-    new Date(pt.date).getTime(),
-    pt.one_rm
-  ]);
+  // Memoize expensive calculations
+  const scatterData = useMemo(() => 
+    dailyMaxPoints.map(pt => [
+      new Date(pt.date).getTime(),
+      pt.one_rm
+    ]), [dailyMaxPoints]
+  );
 
-  // Calculate LOESS smoothed line
-  let loessLine = [];
-  if (scatterData.length > 2) {
-    const xs = scatterData.map(d => d[0]);
-    const ys = scatterData.map(d => d[1]);
-    loessLine = loess(xs, ys, 0.08);
-  }
+  // Calculate LOESS smoothed line (memoized)
+  const loessLine = useMemo(() => {
+    if (scatterData.length > 2) {
+      const xs = scatterData.map(d => d[0]);
+      const ys = scatterData.map(d => d[1]);
+      return loess(xs, ys, 0.08);
+    }
+    return [];
+  }, [scatterData]);
 
   const chartOptions = {
     chart: {
