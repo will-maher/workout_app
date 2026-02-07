@@ -180,7 +180,7 @@ const components = {
       root: {
         '& .MuiOutlinedInput-root': {
           borderRadius: 12,
-          backgroundColor: colors.background.default,
+          backgroundColor: colors.background.paper,
           '& fieldset': {
             borderColor: colors.divider,
             borderWidth: '2px'
@@ -265,7 +265,7 @@ const components = {
   MuiSelect: {
     styleOverrides: {
       root: {
-        backgroundColor: colors.background.default,
+        backgroundColor: colors.background.paper,
         color: colors.text.primary
       }
     }

@@ -11,9 +11,8 @@ import {
   Paper,
   Slider,
   CircularProgress,
-  Card,
-  CardContent,
   Snackbar,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,11 +36,16 @@ const ScrollablePicker = ({
   getItemLabel = (item) => item.name || item.toString(),
   getItemValue = (item) => item.id || item,
   grouped = false,
-  getGroupLabel = (group) => group.label || group.name
+  getGroupLabel = (group) => group.label || group.name,
+  searchEnabled = false,
+  searchPlaceholder = 'Search...',
+  buttonHeight = 40,
+  inputBackground = 'background.paper'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [buttonRef, setButtonRef] = useState(null);
   const [menuRef, setMenuRef] = useState(null); // Add ref for menu
+  const [searchTerm, setSearchTerm] = useState('');
   const containerHeight = itemHeight * visibleItems;
 
   // Click-away logic
@@ -71,6 +75,12 @@ const ScrollablePicker = ({
     };
   }, [isOpen, buttonRef, menuRef]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('');
+    }
+  }, [isOpen]);
+
   const handleItemClick = (item) => {
     onChange(getItemValue(item));
     setIsOpen(false);
@@ -93,10 +103,31 @@ const ScrollablePicker = ({
   };
 
   const renderItems = () => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const matchesSearch = (item) => {
+      if (!normalizedSearch) return true;
+      const label = getItemLabel(item);
+      return String(label).toLowerCase().includes(normalizedSearch);
+    };
+
     if (grouped) {
-      return items.map((group, groupIndex) => (
+      const filteredGroups = items
+        .map((group) => ({
+          ...group,
+          items: group.items.filter(matchesSearch),
+        }))
+        .filter((group) => group.items.length > 0);
+
+      if (filteredGroups.length === 0) {
+        return (
+          <Box sx={{ py: 2, px: 2, color: 'text.secondary' }}>
+            <Typography variant="body2" sx={{ fontSize: 11 }}>No matches</Typography>
+          </Box>
+        );
+      }
+
+      return filteredGroups.map((group) => (
         <React.Fragment key={group.label || group.name}>
-          {/* Group Header */}
           <Box
             sx={{
               py: 1,
@@ -105,20 +136,19 @@ const ScrollablePicker = ({
               borderBottom: '1px solid',
               borderColor: 'divider',
               fontWeight: 600,
-              fontSize: '0.875rem',
+              fontSize: 11,
               color: 'text.secondary',
             }}
           >
             {getGroupLabel(group)}
           </Box>
-          {/* Group Items */}
           {group.items.map((item, index) => (
             <Box
               key={getItemValue(item)}
               onClick={() => handleItemClick(item)}
               sx={{
-                py: 1.5,
-                px: 3, // Indent items under group
+                py: 1,
+                px: 3,
                 cursor: 'pointer',
                 backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
                 color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
@@ -129,7 +159,7 @@ const ScrollablePicker = ({
                 borderColor: 'divider',
               }}
             >
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ fontSize: 12 }}>
                 {getItemLabel(item)}
               </Typography>
             </Box>
@@ -137,12 +167,22 @@ const ScrollablePicker = ({
         </React.Fragment>
       ));
     } else {
-      return items.map((item, index) => (
+      const filteredItems = items.filter(matchesSearch);
+
+      if (filteredItems.length === 0) {
+        return (
+          <Box sx={{ py: 2, px: 2, color: 'text.secondary' }}>
+            <Typography variant="body2" sx={{ fontSize: 11 }}>No matches</Typography>
+          </Box>
+        );
+      }
+
+      return filteredItems.map((item, index) => (
         <Box
           key={getItemValue(item)}
           onClick={() => handleItemClick(item)}
           sx={{
-            py: 1.5,
+            py: 1,
             px: 2,
             cursor: 'pointer',
             backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
@@ -150,11 +190,11 @@ const ScrollablePicker = ({
             '&:hover': {
               backgroundColor: getItemValue(item) === value ? 'primary.light' : 'background.default',
             },
-            borderBottom: index < items.length - 1 ? '1px solid' : 'none',
+            borderBottom: index < filteredItems.length - 1 ? '1px solid' : 'none',
             borderColor: 'divider',
           }}
         >
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ fontSize: 12 }}>
             {getItemLabel(item)}
           </Typography>
         </Box>
@@ -175,18 +215,18 @@ const ScrollablePicker = ({
           py: 1.2,
           px: 1.5,
           borderColor: 'divider',
-          backgroundColor: 'background.default',
+          backgroundColor: inputBackground,
           color: 'text.primary',
                       borderRadius: 2,
           fontWeight: 500,
-          fontSize: 14,
+          fontSize: 13,
           '&:hover': { 
             borderColor: 'primary.main', 
-            backgroundColor: 'background.paper' 
+            backgroundColor: inputBackground 
           },
           minWidth: 0,
           overflow: 'hidden',
-          height: 40,
+          height: buttonHeight,
         }}
       >
         <Typography
@@ -195,12 +235,13 @@ const ScrollablePicker = ({
             minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            fontSize: 13,
           }}
         >
           {getSelectedItemLabel()}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, ml: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, ml: 1, fontSize: 13 }}>
           ▼
         </Typography>
       </Button>
@@ -225,17 +266,43 @@ const ScrollablePicker = ({
             willChange: 'transform',
           }}
         >
-          <Box
-            sx={{
-              maxHeight: containerHeight,
-              overflow: 'auto',
-              '&::-webkit-scrollbar': { display: 'none' },
-              msOverflowStyle: 'none',
-              scrollbarWidth: 'none',
-            }}
-          >
-            {renderItems()}
-          </Box>
+          <>
+            {searchEnabled && (
+              <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <TextField
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder={searchPlaceholder}
+                  size="small"
+                  fullWidth
+                  autoFocus
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: 36,
+                      backgroundColor: inputBackground,
+                      '& fieldset': { borderColor: 'divider' },
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: 13,
+                    },
+                  }}
+                />
+              </Box>
+            )}
+            <Box
+              sx={{
+                maxHeight: containerHeight,
+                overflow: 'auto',
+                '&::-webkit-scrollbar': { display: 'none' },
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+              }}
+            >
+              {renderItems()}
+            </Box>
+          </>
         </Paper>,
         document.body
       )}
@@ -259,6 +326,28 @@ const WorkoutEntry = () => {
   const [userPlan, setUserPlan] = useState(null);
   const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
+  const [recentExerciseIds, setRecentExerciseIds] = useState([]);
+
+  const inputSurface = 'background.paper';
+
+  const mainTextSize = 13;
+  const smallTextSize = 11;
+
+  const sectionSx = {
+    mb: 2,
+    pb: 2,
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+  };
+
+  const sectionTitleSx = {
+    mb: 1.5,
+    fontWeight: 700,
+    fontSize: smallTextSize,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: 'text.secondary',
+  };
 
   // Generate reps options (1-50)
   const repsOptions = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `${i + 1} reps` }));
@@ -399,6 +488,36 @@ const WorkoutEntry = () => {
     return userPlan[selectedPlannedWorkout] || [];
   };
 
+  const plannedWorkoutStats = useMemo(() => {
+    const plannedExercises = getSelectedWorkoutExercises();
+    if (!plannedExercises.length) {
+      return { total: 0, completed: 0 };
+    }
+
+    const plannedCounts = plannedExercises.reduce((acc, ex) => {
+      const key = ex.exercise;
+      acc[key] = (acc[key] || 0) + (parseInt(ex.sets, 10) || 0);
+      return acc;
+    }, {});
+
+    const total = Object.values(plannedCounts).reduce((sum, count) => sum + count, 0);
+
+    const completedCounts = sets.reduce((acc, set) => {
+      const key = set.exercise_name;
+      if (!plannedCounts[key]) return acc;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const completed = Object.keys(plannedCounts).reduce((sum, key) => {
+      const planned = plannedCounts[key] || 0;
+      const done = completedCounts[key] || 0;
+      return sum + Math.min(planned, done);
+    }, 0);
+
+    return { total, completed };
+  }, [sets, userPlan, selectedPlannedWorkout]);
+
   // Group exercises by muscle group
   const groupedExercises = useMemo(() => {
     if (!Array.isArray(exercises) || exercises.length === 0) {
@@ -422,6 +541,43 @@ const WorkoutEntry = () => {
         items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
       }));
   }, [exercises]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('recent_exercises');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setRecentExerciseIds(parsed);
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to load recent exercises:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedExercise) return;
+    const selectedId = parseInt(selectedExercise, 10);
+    if (!selectedId) return;
+    setRecentExerciseIds((prev) => {
+      const updated = [selectedId, ...prev.filter((id) => id !== selectedId)].slice(0, 3);
+      try {
+        localStorage.setItem('recent_exercises', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('Unable to save recent exercises:', error);
+      }
+      return updated;
+    });
+  }, [selectedExercise]);
+
+  const recentExercises = useMemo(() => {
+    if (!recentExerciseIds.length) return [];
+    const exerciseMap = new Map(exercises.map((ex) => [ex.id, ex]));
+    return recentExerciseIds
+      .map((id) => exerciseMap.get(id))
+      .filter(Boolean);
+  }, [recentExerciseIds, exercises]);
 
   useEffect(() => {
     const initializeComponent = async () => {
@@ -486,7 +642,7 @@ const WorkoutEntry = () => {
     }
     try {
       setLoadingData(true);
-      const response = await axios.get(`${API_BASE_URL}/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=5`);
+      const response = await axios.get(`${API_BASE_URL}/api/stats/recent-sets?exercise_id=${selectedExercise}&limit=200`);
       setRecentSets(response.data);
     } catch (error) {
       console.error('Error fetching recent data:', error);
@@ -525,7 +681,7 @@ const WorkoutEntry = () => {
       muscle_group: exercise.muscle_group,
       weight: parseFloat(weight),
       reps: parseInt(reps),
-      date: format(date, 'yyyy-MM-dd'),
+      date: format(new Date(), 'yyyy-MM-dd'),
       notes: notes.trim(),
     };
     setSets([...sets, newSet]);
@@ -644,9 +800,87 @@ const WorkoutEntry = () => {
     }
   };
 
+  const recentBestSets = useMemo(() => {
+    if (!Array.isArray(recentSets) || recentSets.length === 0) {
+      return [];
+    }
+
+    const toDate = (value) => {
+      if (!value) return null;
+      if (typeof value === 'string' && value.includes('-')) {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      }
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const groupedByDate = recentSets.reduce((acc, set) => {
+      const key = set.date_formatted || set.date;
+      if (!key) return acc;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(set);
+      return acc;
+    }, {});
+
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+      const dateA = toDate(a);
+      const dateB = toDate(b);
+      if (!dateA || !dateB) return 0;
+      return dateB - dateA;
+    });
+
+    return sortedDates.slice(0, 10).map((dateKey) => {
+      const setsForDate = groupedByDate[dateKey];
+      const bestSet = setsForDate.reduce((best, current) => {
+        if (!best) return current;
+        return Number(current.weight) > Number(best.weight) ? current : best;
+      }, null);
+
+      return {
+        date: dateKey,
+        weight: bestSet?.weight ?? 0,
+        reps: bestSet?.reps ?? 0,
+      };
+    });
+  }, [recentSets]);
+
+  const bestSetPastYear = useMemo(() => {
+    if (!Array.isArray(recentSets) || recentSets.length === 0) {
+      return null;
+    }
+
+    const now = new Date();
+    const yearAgo = new Date(now);
+    yearAgo.setFullYear(now.getFullYear() - 1);
+
+    const filtered = recentSets.filter((set) => {
+      const rawDate = set.date || set.date_formatted;
+      const parsed = rawDate ? new Date(rawDate) : null;
+      if (!parsed || Number.isNaN(parsed.getTime())) return false;
+      return parsed >= yearAgo && parsed <= now;
+    });
+
+    if (filtered.length === 0) return null;
+
+    const bestSet = filtered.reduce((best, current) => {
+      if (!best) return current;
+      return Number(current.weight) > Number(best.weight) ? current : best;
+    }, null);
+
+    return {
+      label: 'Past year best',
+      weight: bestSet?.weight ?? 0,
+      reps: bestSet?.reps ?? 0,
+    };
+  }, [recentSets]);
+
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ maxWidth: 480, mx: 'auto', mt: 2 }}>
+      <Box sx={{ maxWidth: 520, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
         {isInitializing ? (
           <Box display="flex" justifyContent="center" py={6}>
             <CircularProgress />
@@ -683,20 +917,57 @@ const WorkoutEntry = () => {
             
             {/* Planned Workout Selector */}
             {userPlan && Object.keys(userPlan).length > 0 && (
-              <Card sx={{ mb: 2 }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Planned Workout
-                  </Typography>
+              <Box sx={{ ...sectionSx, px: 0 }}>
+                <Typography sx={sectionTitleSx}>
+                  Planned Workout
+                </Typography>
                   
-                  <ScrollablePicker
-                    items={getPlannedWorkoutOptions()}
-                    value={selectedPlannedWorkout}
-                    onChange={setSelectedPlannedWorkout}
-                    label="Select Planned Workout"
-                    getItemLabel={(item) => item.name}
-                    getItemValue={(item) => item.id}
-                  />
+                <ScrollablePicker
+                  items={getPlannedWorkoutOptions()}
+                  value={selectedPlannedWorkout}
+                  onChange={setSelectedPlannedWorkout}
+                  label="Select Planned Workout"
+                  getItemLabel={(item) => item.name}
+                  getItemValue={(item) => item.id}
+                      inputBackground={inputSurface}
+                />
+
+                {selectedPlannedWorkout && plannedWorkoutStats.total > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
+                        Workout progress
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
+                        {plannedWorkoutStats.completed}/{plannedWorkoutStats.total} sets
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${plannedWorkoutStats.total}, minmax(0, 1fr))`,
+                        gap: 0.5,
+                      }}
+                    >
+                      {Array.from({ length: plannedWorkoutStats.total }).map((_, index) => {
+                        const isComplete = index < plannedWorkoutStats.completed;
+                        return (
+                          <Box
+                            key={index}
+                            sx={{
+                              height: 10,
+                              borderRadius: 999,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              backgroundColor: isComplete ? 'primary.main' : 'transparent',
+                              transition: 'background-color 0.2s ease',
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                )}
                 
                   {/* Show exercises for selected workout */}
                   {selectedPlannedWorkout && (
@@ -763,7 +1034,7 @@ const WorkoutEntry = () => {
                                   color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
                                   sx={{ 
                                     fontWeight: 600,
-                                    fontSize: 12
+                                    fontSize: 13
                                   }}
                                 >
                                   {exercise.sets} × {exercise.targetReps || '?'}
@@ -799,77 +1070,26 @@ const WorkoutEntry = () => {
                       )}
                     </Box>
                   )}
-                </CardContent>
-              </Card>
+              </Box>
             )}
             
             {/* Main Form */}
-            <Card sx={{ mb: 2 }}>
-              <CardContent sx={{ p: 2 }}>
-                {/* Header with inline date */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Add Exercise
-                  </Typography>
-                  <Box sx={{ width: { xs: 150, sm: 200 } }}>
-                    <DatePicker
-                      label="Date"
-                      value={date}
-                      onChange={setDate}
-                      maxDate={new Date()}
-                      renderInput={(params) => (
-                        <TextField 
-                          {...params} 
-                          fullWidth 
-                          size="small"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              height: '32px !important',
-                              minHeight: '32px !important',
-                              maxHeight: '32px !important',
-                              '& fieldset': {
-                                borderColor: 'divider'
-                              },
-                              '&:hover fieldset': {
-                                borderColor: 'primary.main'
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: 'primary.main'
-                              }
-                            },
-                            '& .MuiInputLabel-root': {
-                              color: 'text.secondary',
-                              transform: 'translate(14px, 4px) scale(1)',
-                              fontSize: '13px',
-                              '&.Mui-focused': {
-                                transform: 'translate(14px, -9px) scale(0.75)'
-                              },
-                              '&.MuiFormLabel-filled': {
-                                transform: 'translate(14px, -9px) scale(0.75)'
-                              }
-                            },
-                            '& .MuiInputBase-input': {
-                              color: 'text.primary',
-                              padding: '2px 14px',
-                              height: '12px',
-                              fontSize: '13px'
-                            },
-                            '& .MuiInputBase-root': {
-                              height: '32px !important',
-                              minHeight: '32px !important',
-                              maxHeight: '32px !important'
-                            }
-                          }}
-                        />
-                      )}
-                    />
-                  </Box>
-                </Box>
+            <Box sx={{ ...sectionSx, px: 0 }}>
+                {/* Header spacer removed for compact layout */}
                 
                 {/* Exercise Selection */}
                 <Box sx={{ mb: 2 }}>
                   <ScrollablePicker
-                    items={groupedExercises.length > 0 ? groupedExercises : [{ label: 'Loading...', items: [] }]}
+                    items={
+                      groupedExercises.length > 0
+                        ? [
+                            ...(recentExercises.length > 0
+                              ? [{ label: 'Recent', items: recentExercises }]
+                              : []),
+                            ...groupedExercises,
+                          ]
+                        : [{ label: 'Loading...', items: [] }]
+                    }
                     value={selectedExercise}
                     onChange={setSelectedExercise}
                     label="Select Exercise"
@@ -877,12 +1097,15 @@ const WorkoutEntry = () => {
                     getItemValue={(item) => item.id}
                     grouped={true}
                     getGroupLabel={(group) => group.label}
+                    searchEnabled={true}
+                    searchPlaceholder="Search exercises..."
+                    inputBackground={inputSurface}
                   />
                   {/* Exercise Notes Display */}
                   {selectedExercise && (() => {
                     const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
                     return selectedExerciseData && selectedExerciseData.notes ? (
-                      <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                      <Box sx={{ mt: 2, p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
                         <Typography 
                           variant="body2" 
                           color="text.secondary" 
@@ -900,7 +1123,7 @@ const WorkoutEntry = () => {
                 
                 {/* Weight Calculator Slider */}
                 {selectedExercise && getEstimatedOneRepMax() > 0 && (
-                  <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 2, position: 'relative' }}>
+                  <Box sx={{ mb: 2, pt: 2, position: 'relative', borderTop: '1px solid', borderColor: 'divider' }}>
                     <Typography 
                       variant="body2" 
                       color="text.secondary" 
@@ -909,7 +1132,7 @@ const WorkoutEntry = () => {
                         top: '-8px',
                         left: '12px',
                         px: 1,
-                        fontSize: '0.75rem',
+                        fontSize: 11,
                         fontWeight: 500,
                         zIndex: 1
                       }}
@@ -917,9 +1140,14 @@ const WorkoutEntry = () => {
                       Weight Calculator
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                      <Typography variant="h6" color="primary.main" fontWeight={600}>
-                        {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
-                      </Typography>
+                      <Box>
+                        <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
+                          {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
+                          Est. 1RM: {roundToNearest2_5(getEstimatedOneRepMax())} kg
+                        </Typography>
+                      </Box>
                       <Button
                         variant="contained"
                         size="small"
@@ -931,7 +1159,7 @@ const WorkoutEntry = () => {
                           py: 0.75, 
                           px: 2, 
                           fontWeight: 600,
-                          fontSize: '0.875rem'
+                          fontSize: 13
                         }}
                       >
                         Use Weight
@@ -955,12 +1183,12 @@ const WorkoutEntry = () => {
                         valueLabelDisplay="auto"
                         valueLabelFormat={(value) => `${value} reps`}
                         sx={{
-                          '& .MuiSlider-markLabel': {
-                            fontSize: '0.7rem',
-                          },
-                          '& .MuiSlider-valueLabel': {
-                            fontSize: '0.7rem',
-                          },
+                        '& .MuiSlider-markLabel': {
+                          fontSize: 11,
+                        },
+                        '& .MuiSlider-valueLabel': {
+                          fontSize: 11,
+                        },
                           '& .MuiSlider-track': {
                             height: 3,
                           },
@@ -977,15 +1205,17 @@ const WorkoutEntry = () => {
                 )}
                 
                 {/* Reps and Weight on one line */}
-                <Grid container sx={{ mb: 3 }}>
+                <Grid container sx={{ mb: 2 }}>
                   <Grid item xs={6} sx={{ pr: 1.5 }}>
                     <ScrollablePicker
                       items={repsOptions}
                       value={reps ? parseInt(reps) : ''}
                       onChange={(value) => setReps(value.toString())}
-                      label="Select Reps"
+                      label="Reps"
                       getItemLabel={(item) => item.name}
                       getItemValue={(item) => item.id}
+                      buttonHeight={40}
+                      inputBackground={inputSurface}
                     />
                   </Grid>
                   <Grid item xs={6} sx={{ pl: 1.5 }}>
@@ -1009,6 +1239,7 @@ const WorkoutEntry = () => {
                           height: 40,
                           minHeight: 40,
                           maxHeight: 40,
+                          backgroundColor: inputSurface,
                           '& fieldset': {
                             borderColor: 'divider'
                           },
@@ -1020,9 +1251,11 @@ const WorkoutEntry = () => {
                           }
                         },
                         '& .MuiInputLabel-root': {
-                          color: 'text.secondary',
+                          color: 'text.primary',
+                          fontSize: 13,
                           transform: 'translate(14px, 8px) scale(1)',
                           '&.Mui-focused': {
+                            color: 'text.primary',
                             transform: 'translate(14px, -9px) scale(0.75)'
                           },
                           '&.MuiFormLabel-filled': {
@@ -1032,7 +1265,8 @@ const WorkoutEntry = () => {
                         '& .MuiInputBase-input': {
                           color: 'text.primary',
                           padding: '8px 14px',
-                          height: '24px'
+                          height: '24px',
+                          fontSize: 13
                         }
                       }}
                     />
@@ -1050,19 +1284,17 @@ const WorkoutEntry = () => {
                     py: 1, 
                     fontWeight: 600, 
                     mt: 2,
-                    fontSize: '0.875rem'
+                    fontSize: 13
                   }}
                 >
                   Add Set
                 </Button>
-              </CardContent>
-            </Card>
+            </Box>
             
             {/* Sets Display */}
             {sets.length > 0 && (
-              <Card sx={{ mb: 2 }}>
-                <CardContent sx={{ p: 2, position: 'relative' }}>
-                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+              <Box sx={{ ...sectionSx, px: 0, position: 'relative' }}>
+                  <Typography sx={sectionTitleSx}>
                     Sets Added ({sets.length})
                   </Typography>
                   <Button
@@ -1076,7 +1308,7 @@ const WorkoutEntry = () => {
                       py: 0.75,
                       px: 2,
                       fontWeight: 600,
-                      fontSize: '0.875rem'
+                      fontSize: 13
                     }}
                   >
                     {saving ? 'Saving...' : 'Save All'}
@@ -1094,7 +1326,7 @@ const WorkoutEntry = () => {
                   
                   return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => (
                     <Box key={exerciseName} sx={{ mb: 1.5 }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: '0.875rem' }}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: 13 }}>
                         {exerciseName}
                       </Typography>
                       <Box sx={{ 
@@ -1157,84 +1389,89 @@ const WorkoutEntry = () => {
                     </Box>
                   ));
                 })()}
-                </CardContent>
-              </Card>
+              </Box>
             )}
-            
-            {/* Recent Sets Section */}
+
+            {/* Recent Best Sets */}
             {selectedExercise && (
-              <Card sx={{ mt: 2 }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-                    Recent Sets
-                  </Typography>
-                
+              <Box sx={{ ...sectionSx, px: 0 }}>
+                <Typography sx={sectionTitleSx}>
+                  Best Set From Last 10 Workouts
+                </Typography>
+
                 {loadingData ? (
                   <Box display="flex" justifyContent="center" py={2}>
                     <CircularProgress size={24} />
                   </Box>
                 ) : (
                   <Box>
-                    {recentSets.length > 0 ? (
-                      <Box sx={{ 
-                        display: 'table', 
-                        width: '100%',
-                        borderCollapse: 'collapse'
-                      }}>
-                        {recentSets.map((set, index) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
+                    {recentBestSets.length > 0 ? (
+                      <Box sx={{ display: 'table', width: '100%', borderCollapse: 'collapse' }}>
+                        <Box sx={{ display: 'table-row', borderBottom: '1px solid', borderColor: 'divider' }}>
+                          <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
+                              Workout
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
+                              Best Set
+                            </Typography>
+                          </Box>
+                        </Box>
+                        {recentBestSets.map((set, index) => (
+                          <Box
+                            key={`${set.date}-${index}`}
+                            sx={{
                               display: 'table-row',
-                              '&:hover': { 
-                                bgcolor: 'background.paper'
-                              },
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <Box sx={{ 
-                              display: 'table-cell', 
-                              py: 1, 
-                              px: 2,
                               borderBottom: '1px solid',
                               borderColor: 'divider',
-                              verticalAlign: 'middle'
-                            }}>
-                              <Typography 
-                                variant="body2" 
-                                color="text.primary"
-                                sx={{ 
-                                  fontSize: 13,
-                                  fontWeight: 500
-                                }}
-                              >
-                                {(set.date_formatted || set.date)}: {set.weight}kg × {set.reps} reps
-                                <Typography 
-                                  component="span"
-                                  variant="caption" 
-                                  color="text.secondary"
-                                  sx={{ 
-                                    fontSize: 11,
-                                    ml: 1
-                                  }}
-                                >
-                                  (1RM: {set.one_rep_max.toFixed(1)}kg)
-                                </Typography>
+                            }}
+                          >
+                            <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {set.date}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                {set.weight} kg × {set.reps}
                               </Typography>
                             </Box>
                           </Box>
                         ))}
+                        {bestSetPastYear && (
+                          <Box
+                            sx={{
+                              display: 'table-row',
+                              borderTop: '2px solid',
+                              borderColor: 'divider',
+                              backgroundColor: 'background.default',
+                            }}
+                          >
+                            <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {bestSetPastYear.label}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                {bestSetPastYear.weight} kg × {bestSetPastYear.reps}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
                       </Box>
                     ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
                         No recent sets found
                       </Typography>
                     )}
                   </Box>
                 )}
-                </CardContent>
-              </Card>
+              </Box>
             )}
+            
           </>
         )}
       </Box>

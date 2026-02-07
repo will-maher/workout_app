@@ -147,6 +147,13 @@ const WorkoutPlanner = ({ user }) => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const sectionSx = {
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 0,
+    boxShadow: 'none',
+    bgcolor: 'transparent',
+  };
 
   // Load from backend when user is available
   useEffect(() => {
@@ -405,7 +412,7 @@ const WorkoutPlanner = ({ user }) => {
   const { muscleGroups, fortnightData } = program ? getFortnightFrequencyData(program, exerciseMap) : { muscleGroups: [], fortnightData: {} };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 } }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" fontWeight={700}>
           Workout Planner
@@ -421,7 +428,7 @@ const WorkoutPlanner = ({ user }) => {
           {defaultDays.map(day => {
         
             return (
-              <Card key={day} sx={{ mb: 1 }}>
+              <Card key={day} sx={{ ...sectionSx, mb: 1 }}>
                 <CardContent sx={{ p: 2 }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
                     <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: '0.875rem' }}>{day}</Typography>
@@ -440,7 +447,7 @@ const WorkoutPlanner = ({ user }) => {
                       Add Exercise
                     </Button>
                   </Box>
-                  <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+                  <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
                     <Table size="small">
                       <TableHead>
                         <TableRow>
@@ -552,12 +559,12 @@ const WorkoutPlanner = ({ user }) => {
           })}
         </Stack>
       )}
-      <Card sx={{ mt: 4 }}>
+      <Card sx={{ ...sectionSx, mt: 3 }}>
         <CardContent sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
             Weekly Volume Analysis
           </Typography>
-          <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+          <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -673,13 +680,13 @@ const WorkoutPlanner = ({ user }) => {
       </Card>
 
       {/* Fortnight Frequency Visual */}
-      <Card sx={{ mt: 4 }}>
+      <Card sx={{ ...sectionSx, mt: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3 }}>
             Muscle Group Frequency Over 2 Weeks
           </Typography>
           <Box sx={{ overflowX: 'auto' }}>
-            <TableContainer component={Paper} sx={{ boxShadow: 'none', minWidth: isMobile ? 400 : 500 }}>
+            <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent', minWidth: isMobile ? 400 : 500 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>

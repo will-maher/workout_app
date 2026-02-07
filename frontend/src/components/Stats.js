@@ -27,6 +27,13 @@ const Stats = () => {
   const [error, setError] = useState('');
   const [weeklySetsData, setWeeklySetsData] = useState([]);
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState('');
+  const sectionSx = {
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 0,
+    boxShadow: 'none',
+    bgcolor: 'transparent',
+  };
 
   useEffect(() => {
     fetchWeeklySetsData();
@@ -157,7 +164,7 @@ const Stats = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ mt: 2, px: { xs: 1.5, sm: 0 } }}>
       <Typography variant="h4" gutterBottom>
         Workout Statistics
       </Typography>
@@ -170,7 +177,7 @@ const Stats = () => {
       {activeTab === 0 && (
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Card>
+            <Card sx={sectionSx}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Weekly Sets by Muscle Group

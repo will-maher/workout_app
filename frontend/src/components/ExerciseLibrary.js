@@ -59,6 +59,13 @@ const ExerciseLibrary = () => {
   const [editNotes, setEditNotes] = useState('');
   const [editError, setEditError] = useState('');
   const [editing, setEditing] = useState(false);
+  const sectionSx = {
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 0,
+    boxShadow: 'none',
+    bgcolor: 'transparent',
+  };
 
   useEffect(() => {
     fetchExercises();
@@ -151,7 +158,7 @@ const ExerciseLibrary = () => {
   ];
 
   return (
-    <Box maxWidth={480} mx="auto" mt={4}>
+    <Box maxWidth={480} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4" fontWeight={700}>
           Exercise Library
@@ -172,7 +179,7 @@ const ExerciseLibrary = () => {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : (
-        <Card>
+        <Card sx={sectionSx}>
           <CardContent sx={{ p: 1 }}>
             {Array.isArray(sortedGroups) && sortedGroups.map((mg, idx) => (
               <Box key={mg} mb={1}>
