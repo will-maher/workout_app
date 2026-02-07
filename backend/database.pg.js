@@ -1,9 +1,15 @@
 const { Pool } = require('pg');
 
-// Use Railway's DATABASE_URL environment variable
+// Use Railway's DATABASE_URL environment variable with optimized pool settings
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:sAAucHrsUpBWiUzVGipPzLodrgyOXJcM@yamabiko.proxy.rlwy.net:28629/railway',
-  ssl: { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Optimize for memory usage
+  max: 5, // Reduce max connections from default 10
+  min: 1, // Keep minimum connections low
+  idleTimeoutMillis: 30000, // Close idle connections after 30s
+  connectionTimeoutMillis: 2000, // Fail fast on connection attempts
+  allowExitOnIdle: true // Allow process to exit when all connections are idle
 });
 
 // Test the connection

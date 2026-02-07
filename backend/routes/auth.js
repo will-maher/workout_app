@@ -4,11 +4,18 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../database.pg');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+
+// Use environment variable for JWT secret, with a fallback for development only
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev_secret_key');
+
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
+}
 
 // Register endpoint
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
+  
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });
   }
@@ -18,15 +25,18 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Password must be a string.' });
   }
   
+  // Validate password strength
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  }
+  
   try {
     const userResult = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length > 0) {
       return res.status(409).json({ error: 'Username already exists.' });
     }
     
-    console.log('Hashing password for user:', username);
     const password_hash = bcrypt.hashSync(password, 10);
-    console.log('Password hash generated successfully, length:', password_hash.length);
     
     const insertResult = await pool.query(
       'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id',
@@ -34,13 +44,9 @@ router.post('/register', async (req, res) => {
     );
     const userId = insertResult.rows[0].id;
     const token = jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ token, username });
+    res.json({ token, username });
   } catch (err) {
     console.error('Registration error:', err);
-    if (err.message && err.message.includes('string did not match')) {
-      console.error('Bcrypt error details:', err);
-      return res.status(500).json({ error: 'Password hashing failed. Please try again.' });
-    }
     res.status(500).json({ error: 'Failed to register user.' });
   }
 });
@@ -48,6 +54,7 @@ router.post('/register', async (req, res) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });
   }
@@ -62,9 +69,6 @@ router.post('/login', async (req, res) => {
     const user = userResult.rows[0];
     if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
     
-    console.log('Comparing password for user:', username);
-    console.log('Stored hash length:', user.password_hash ? user.password_hash.length : 'null');
-    
     if (!bcrypt.compareSync(password, user.password_hash)) {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
@@ -73,10 +77,6 @@ router.post('/login', async (req, res) => {
     res.json({ token, username });
   } catch (err) {
     console.error('Login error:', err);
-    if (err.message && err.message.includes('string did not match')) {
-      console.error('Bcrypt error details:', err);
-      return res.status(500).json({ error: 'Password verification failed. Please try again.' });
-    }
     res.status(500).json({ error: 'Database error.' });
   }
 });

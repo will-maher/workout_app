@@ -1,134 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
+import theme from './theme';
 
-// Create a custom theme
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#22223b', // deep blue-gray (keep existing dark blue)
-    },
-    secondary: {
-      main: '#9a8c98', // muted purple accent
-    },
-    background: {
-      default: '#F9F6EE', // eggshell white
-      paper: '#F9F6EE', // eggshell white
-    },
-    text: {
-      primary: '#22223b',
-      secondary: '#4a4e69',
-    },
-  },
-  typography: {
-    fontFamily: 'Courier, Courier New, monospace',
-    fontWeightLight: 300,
-    fontWeightRegular: 400,
-    fontWeightMedium: 500,
-    fontWeightBold: 700,
-    h4: {
-      fontWeight: 700,
-      letterSpacing: '-0.5px',
-      fontSize: '1.7rem', // was 2.125rem
-    },
-    h6: {
-      fontWeight: 600,
-      fontSize: '1.05rem', // was 1.25rem
-    },
-    body1: {
-      fontSize: '0.97rem', // was 1rem
-    },
-    body2: {
-      fontSize: '0.85rem', // was 0.875rem
-    },
-  },
-  shape: {
-    borderRadius: 10, // was 16
-  },
-  spacing: 6, // was 8
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          borderRadius: 8,
-          fontWeight: 500,
-          paddingLeft: 16,
-          paddingRight: 16,
-          minHeight: 32,
-        },
-      },
-    },
-    MuiContainer: {
-      styleOverrides: {
-        root: {
-          paddingLeft: 16,
-          paddingRight: 16,
-          '@media (max-width: 600px)': {
-            paddingLeft: 12,
-            paddingRight: 12,
-          },
-        },
-      },
-    },
-    MuiGrid: {
-      styleOverrides: {
-        root: {
-          '@media (max-width: 600px)': {
-            margin: 0,
-          },
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 10,
-          boxShadow: '0 2px 12px 0 rgba(34,34,59,0.04)',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 10,
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        root: {
-          padding: '6px 12px',
-        },
-        head: {
-          padding: '6px 12px',
-        },
-      },
-    },
-    MuiToolbar: {
-      styleOverrides: {
-        root: {
-          minHeight: 44,
-          paddingLeft: 8,
-          paddingRight: 8,
-        },
-      },
-    },
-  },
-});
-
-// Add global CSS to prevent horizontal overflow on mobile
+// Add global CSS for ReVanced-inspired dark theme
 const globalStyles = `
   * {
     box-sizing: border-box;
@@ -138,14 +16,45 @@ const globalStyles = `
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    color: #ffffff;
   }
   
   #root {
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    min-height: 100vh;
   }
   
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* ReVanced-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #00d4aa;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00e6b8;
+  }
+  
+  /* Mobile optimizations */
   @media (max-width: 600px) {
     body {
       padding: 0;
@@ -153,8 +62,8 @@ const globalStyles = `
     }
     
     .MuiContainer-root {
-      padding-left: 12px !important;
-      padding-right: 12px !important;
+      padding-left: 16px !important;
+      padding-right: 16px !important;
     }
     
     .MuiGrid-root {
@@ -171,9 +80,8 @@ const globalStyles = `
       will-change: transform !important;
     }
     
-    /* Prevent viewport issues on mobile */
+    /* iOS Safari specific fixes */
     @supports (-webkit-touch-callout: none) {
-      /* iOS Safari specific fixes */
       body {
         -webkit-overflow-scrolling: touch;
       }
@@ -198,6 +106,42 @@ const globalStyles = `
     .MuiCardContent-root {
       overflow: visible !important;
     }
+  }
+  
+  /* ReVanced-style focus styles */
+  .MuiButton-root:focus-visible,
+  .MuiTextField-root .MuiInputBase-root:focus-within,
+  .MuiIconButton-root:focus-visible {
+    outline: 2px solid #00d4aa;
+    outline-offset: 2px;
+  }
+  
+  /* Enhanced transitions */
+  .MuiButton-root,
+  .MuiCard-root,
+  .MuiPaper-root {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Glow effects for primary elements */
+  .MuiButton-contained {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .MuiButton-contained::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  .MuiButton-contained:hover::before {
+    left: 100%;
   }
 `;
 
