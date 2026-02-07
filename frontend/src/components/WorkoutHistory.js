@@ -49,6 +49,13 @@ const WorkoutHistory = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [workoutToDelete, setWorkoutToDelete] = useState(null);
   const [searchDate, setSearchDate] = useState(null);
+  const sectionSx = {
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 0,
+    boxShadow: 'none',
+    bgcolor: 'transparent',
+  };
 
   useEffect(() => {
     fetchWorkouts();
@@ -139,7 +146,7 @@ const WorkoutHistory = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
+      <Box sx={{ mt: 2, px: { xs: 1.5, sm: 0 } }}>
         <Typography variant="h4" gutterBottom>
           Workout History
         </Typography>
@@ -151,7 +158,7 @@ const WorkoutHistory = () => {
         )}
 
         {/* Search Section */}
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ ...sectionSx, mb: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Search Workouts
@@ -189,7 +196,7 @@ const WorkoutHistory = () => {
 
         {/* Workouts List */}
         {workouts.length === 0 ? (
-          <Card>
+          <Card sx={sectionSx}>
             <CardContent>
               <Typography color="text.secondary" align="center" py={4}>
                 {searchDate ? 'No workouts found for the selected date' : 'No workouts recorded yet'}
@@ -199,7 +206,7 @@ const WorkoutHistory = () => {
         ) : (
           <List>
             {Array.isArray(workouts) && workouts.map((workout) => (
-              <Card key={workout.id} sx={{ mb: 2 }}>
+              <Card key={workout.id} sx={{ ...sectionSx, mb: 2 }}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
@@ -242,7 +249,7 @@ const WorkoutHistory = () => {
                     <Grid container spacing={2}>
                       {Array.isArray(workout.sets) && workout.sets.map((set, index) => (
                         <Grid item xs={12} sm={6} md={4} key={set.id}>
-                          <Card variant="outlined">
+                          <Card variant="outlined" sx={{ ...sectionSx, borderBottom: 'none' }}>
                             <CardContent sx={{ py: 1 }}>
                               <Box display="flex" justifyContent="space-between" alignItems="center">
                                 <Typography variant="body2">
@@ -292,7 +299,7 @@ const WorkoutHistory = () => {
           <DialogContent>
             {selectedWorkout && (
               <Box>
-                <TableContainer component={Paper}>
+                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
                   <Table>
                     <TableHead>
                       <TableRow>

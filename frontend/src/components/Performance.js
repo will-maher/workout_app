@@ -8,6 +8,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Button,
+  ButtonGroup,
   CircularProgress,
   Alert,
   Table,
@@ -22,7 +24,7 @@ import {
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfISOWeek, subMonths, subYears } from 'date-fns';
 import { OPTIMAL_RANGES } from './WorkoutPlanner';
 import { API_BASE_URL } from '../App';
 
@@ -74,12 +76,19 @@ function loess(xs, ys, bandwidth = 0.08) {
 const Performance = () => {
   const [exercises, setExercises] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState('');
-  const [dailyMaxPoints, setDailyMaxPoints] = useState([]);
   const [allSets, setAllSets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [weeklySetsData, setWeeklySetsData] = useState([]);
   const [muscleGroup, setMuscleGroup] = useState('');
+  const [timeRange, setTimeRange] = useState('all');
+  const sectionSx = {
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 0,
+    boxShadow: 'none',
+    bgcolor: 'transparent',
+  };
 
   // Fetch exercises on component mount
   useEffect(() => {
@@ -91,7 +100,6 @@ const Performance = () => {
     if (selectedExercise) {
       fetchPerformanceData(selectedExercise);
     } else {
-      setDailyMaxPoints([]);
       setAllSets([]);
     }
   }, [selectedExercise]);
@@ -145,32 +153,60 @@ const Performance = () => {
       setError('');
       const res = await axios.get(`${API_BASE_URL}/api/stats/performance/sets?exercise_id=${exerciseId}`);
       setAllSets(res.data);
-      
-      // Calculate 1RM for each set
-      const points = res.data.map(set => ({
-        date: set.date,
-        one_rm: calc1RM(set.weight, set.reps),
-      }));
-      
-      // Get daily max 1RM (unique per day, highest value)
-      const dailyMax = getDailyMax1RM(points);
-      setDailyMaxPoints(dailyMax);
     } catch (err) {
       console.error('Error fetching performance data:', err);
       setError('Failed to load performance data');
-      setDailyMaxPoints([]);
       setAllSets([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const rangeStart = useMemo(() => {
+    if (timeRange === '3m') return subMonths(new Date(), 3);
+    if (timeRange === '6m') return subMonths(new Date(), 6);
+    if (timeRange === '1y') return subYears(new Date(), 1);
+    return null;
+  }, [timeRange]);
+
+  const filteredSets = useMemo(() => {
+    if (!rangeStart) return allSets;
+    return allSets.filter((set) => {
+      const parsed = parseISO(set.date);
+      return parsed >= rangeStart;
+    });
+  }, [allSets, rangeStart]);
+
+  const filteredDailyMaxPoints = useMemo(() => {
+    if (!filteredSets.length) return [];
+    const points = filteredSets.map((set) => ({
+      date: set.date,
+      one_rm: calc1RM(set.weight, set.reps),
+    }));
+    return getDailyMax1RM(points);
+  }, [filteredSets]);
+
+  const weeklySetsFiltered = useMemo(() => {
+    if (!weeklySetsData.length || !rangeStart) return weeklySetsData;
+    return weeklySetsData.filter((row) => {
+      if (!row.week) return false;
+      const [yearStr, weekStr] = row.week.split('-W');
+      const year = Number(yearStr);
+      const week = Number(weekStr);
+      if (!year || !week) return false;
+      const jan4 = new Date(year, 0, 4);
+      const weekStart = startOfISOWeek(jan4);
+      weekStart.setDate(weekStart.getDate() + (week - 1) * 7);
+      return weekStart >= rangeStart;
+    });
+  }, [weeklySetsData, rangeStart]);
+
   // Memoize expensive calculations
   const scatterData = useMemo(() => 
-    dailyMaxPoints.map(pt => [
+    filteredDailyMaxPoints.map(pt => [
       new Date(pt.date).getTime(),
       pt.one_rm
-    ]), [dailyMaxPoints]
+    ]), [filteredDailyMaxPoints]
   );
 
   // Calculate LOESS smoothed line (memoized)
@@ -266,9 +302,9 @@ const Performance = () => {
 
   // Weekly Sets Chart configuration
   let weeklySetsChartOptions = null;
-  if (weeklySetsData.length > 0 && muscleGroup) {
-    const weeks = weeklySetsData.map(row => row.week);
-    const sets = weeklySetsData.map(row => parseInt(row.total_sets, 10));
+  if (weeklySetsFiltered.length > 0 && muscleGroup) {
+    const weeks = weeklySetsFiltered.map(row => row.week);
+    const sets = weeklySetsFiltered.map(row => parseInt(row.total_sets, 10));
     const optimal = OPTIMAL_RANGES[muscleGroup];
     let minOpt = 0, maxOpt = 0;
     
@@ -341,11 +377,11 @@ const Performance = () => {
   }, {});
 
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
+    <Box maxWidth={600} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
       <Typography variant="h4" fontWeight={700} gutterBottom align="center">
         Performance
       </Typography>
-      <Card sx={{ mb: 4 }}>
+      <Card sx={{ ...sectionSx, mb: 2 }}>
         <CardContent>
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Exercise</InputLabel>
@@ -365,13 +401,46 @@ const Performance = () => {
             </Select>
           </FormControl>
           
+          <Box sx={{ mb: 2 }}>
+            <ButtonGroup size="small" variant="outlined" fullWidth sx={{ width: '100%' }}>
+              <Button
+                variant={timeRange === 'all' ? 'contained' : 'outlined'}
+                onClick={() => setTimeRange('all')}
+                sx={{ flex: 1 }}
+              >
+                All
+              </Button>
+              <Button
+                variant={timeRange === '1y' ? 'contained' : 'outlined'}
+                onClick={() => setTimeRange('1y')}
+                sx={{ flex: 1 }}
+              >
+                1 year
+              </Button>
+              <Button
+                variant={timeRange === '6m' ? 'contained' : 'outlined'}
+                onClick={() => setTimeRange('6m')}
+                sx={{ flex: 1 }}
+              >
+                6 months
+              </Button>
+              <Button
+                variant={timeRange === '3m' ? 'contained' : 'outlined'}
+                onClick={() => setTimeRange('3m')}
+                sx={{ flex: 1 }}
+              >
+                3 months
+              </Button>
+            </ButtonGroup>
+          </Box>
+
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
               <CircularProgress />
             </Box>
           ) : error ? (
             <Alert severity="error">{error}</Alert>
-          ) : dailyMaxPoints.length === 0 ? (
+          ) : filteredDailyMaxPoints.length === 0 ? (
             <Typography color="text.secondary" align="center" py={4}>
               No data for this exercise
             </Typography>
@@ -392,7 +461,7 @@ const Performance = () => {
                 <Typography variant="h6" fontWeight={600} gutterBottom>
                   All Logged Sets
                 </Typography>
-                <TableContainer component={Paper}>
+                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -403,7 +472,7 @@ const Performance = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {allSets
+                      {filteredSets
                         .slice()
                         .sort((a, b) => b.date.localeCompare(a.date))
                         .map((row, idx) => (

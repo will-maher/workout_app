@@ -2,8 +2,6 @@ import React from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
   List,
   ListItem,
   ListItemButton,
@@ -19,6 +17,11 @@ import {
 } from '@mui/icons-material';
 
 const Menu = ({ user, onNavigate, onLogout }) => {
+  const sectionSx = {
+    borderTop: '1px solid',
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+  };
   const menuItems = [
     {
       icon: <PersonIcon />,
@@ -60,45 +63,43 @@ const Menu = ({ user, onNavigate, onLogout }) => {
         Menu
       </Typography>
 
-      <Card>
-        <CardContent sx={{ p: 0 }}>
-          <List>
-            {menuItems.map((item, index) => (
-              <React.Fragment key={item.text}>
-                <ListItem disablePadding>
-                  <ListItemButton
-                    onClick={item.onClick}
-                    disabled={item.disabled}
-                    sx={{
-                      py: 2,
-                      px: 3,
-                      '&:hover': {
-                        bgcolor: item.isLogout ? 'error.light' : 'background.default',
-                        color: item.isLogout ? 'error.contrastText' : 'inherit',
-                      },
-                    }}
-                  >
-                    <ListItemIcon sx={{ 
+      <Box sx={sectionSx}>
+        <List>
+          {menuItems.map((item, index) => (
+            <React.Fragment key={item.text}>
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={item.onClick}
+                  disabled={item.disabled}
+                  sx={{
+                    py: 2,
+                    px: 3,
+                    '&:hover': {
+                      bgcolor: item.isLogout ? 'error.light' : 'background.default',
+                      color: item.isLogout ? 'error.contrastText' : 'inherit',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ 
+                    color: item.isLogout ? 'error.main' : 'text.primary',
+                    minWidth: 40 
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontWeight: 500,
                       color: item.isLogout ? 'error.main' : 'text.primary',
-                      minWidth: 40 
-                    }}>
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={item.text}
-                      primaryTypographyProps={{
-                        fontWeight: 500,
-                        color: item.isLogout ? 'error.main' : 'text.primary',
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-                {index < menuItems.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+              {index < menuItems.length - 1 && <Divider />}
+            </React.Fragment>
+          ))}
+        </List>
+      </Box>
     </Box>
   );
 };
