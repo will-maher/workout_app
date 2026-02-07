@@ -12,13 +12,11 @@ import {
   Slider,
   CircularProgress,
   Snackbar,
-  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
@@ -316,7 +314,6 @@ const WorkoutEntry = () => {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [sets, setSets] = useState([]);
-  const [date, setDate] = useState(new Date());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
@@ -330,7 +327,6 @@ const WorkoutEntry = () => {
 
   const inputSurface = 'background.paper';
 
-  const mainTextSize = 13;
   const smallTextSize = 11;
 
   const sectionSx = {
@@ -489,7 +485,9 @@ const WorkoutEntry = () => {
   };
 
   const plannedWorkoutStats = useMemo(() => {
-    const plannedExercises = getSelectedWorkoutExercises();
+    const plannedExercises = userPlan && selectedPlannedWorkout
+      ? (userPlan[selectedPlannedWorkout] || [])
+      : [];
     if (!plannedExercises.length) {
       return { total: 0, completed: 0 };
     }
