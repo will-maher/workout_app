@@ -12,7 +12,9 @@ import {
   Slider,
   CircularProgress,
   Snackbar,
+  useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -38,12 +40,14 @@ const ScrollablePicker = ({
   searchEnabled = false,
   searchPlaceholder = 'Search...',
   buttonHeight = 40,
-  inputBackground = 'background.paper'
+  inputBackground = 'background.paper',
+  autoFocusSearch = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [buttonRef, setButtonRef] = useState(null);
   const [menuRef, setMenuRef] = useState(null); // Add ref for menu
   const [searchTerm, setSearchTerm] = useState('');
+  const [menuStyle, setMenuStyle] = useState(null);
   const containerHeight = itemHeight * visibleItems;
 
   // Click-away logic
@@ -72,6 +76,33 @@ const ScrollablePicker = ({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, buttonRef, menuRef]);
+
+  const updateMenuPosition = useCallback(() => {
+    if (!buttonRef) return;
+    const rect = buttonRef.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const spaceBelow = viewportHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const shouldPlaceAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(140, Math.min(containerHeight, shouldPlaceAbove ? spaceAbove : spaceBelow));
+    const top = shouldPlaceAbove
+      ? rect.top - maxHeight - 4
+      : rect.bottom + 4;
+    setMenuStyle({
+      top: Math.max(8, top),
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, [buttonRef, containerHeight]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const handleResize = () => updateMenuPosition();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen, updateMenuPosition]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -215,7 +246,7 @@ const ScrollablePicker = ({
           borderColor: 'divider',
           backgroundColor: inputBackground,
           color: 'text.primary',
-                      borderRadius: 2,
+          borderRadius: 2,
           fontWeight: 500,
           fontSize: 13,
           '&:hover': { 
@@ -244,22 +275,22 @@ const ScrollablePicker = ({
         </Typography>
       </Button>
       
-      {isOpen && buttonRef && ReactDOM.createPortal(
+      {isOpen && buttonRef && menuStyle && ReactDOM.createPortal(
         <Paper
           ref={setMenuRef}
           elevation={2}
           sx={{
             position: 'fixed',
             zIndex: 9999,
-            width: buttonRef.offsetWidth,
-            maxHeight: containerHeight,
+            width: menuStyle.width,
+            maxHeight: menuStyle.maxHeight,
             overflow: 'hidden',
             border: '1px solid',
             borderColor: 'divider',
             borderRadius: 2,
             backgroundColor: 'background.paper',
-            top: buttonRef.getBoundingClientRect().bottom + 4,
-            left: buttonRef.getBoundingClientRect().left,
+            top: menuStyle.top,
+            left: menuStyle.left,
             transform: 'translateZ(0)',
             willChange: 'transform',
           }}
@@ -273,7 +304,7 @@ const ScrollablePicker = ({
                   placeholder={searchPlaceholder}
                   size="small"
                   fullWidth
-                  autoFocus
+                  autoFocus={autoFocusSearch}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       height: 36,
@@ -324,20 +355,24 @@ const WorkoutEntry = () => {
   const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
   const [recentExerciseIds, setRecentExerciseIds] = useState([]);
+  const [showPlannedExercises, setShowPlannedExercises] = useState(true);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const inputSurface = 'background.paper';
 
   const smallTextSize = 11;
+  const sectionGap = 2;
+  const smallGap = 1;
 
   const sectionSx = {
-    mb: 2,
-    pb: 2,
+    pb: sectionGap,
     borderBottom: '1px solid',
     borderColor: 'divider',
   };
 
   const sectionTitleSx = {
-    mb: 1.5,
+    mb: smallGap,
     fontWeight: 700,
     fontSize: smallTextSize,
     letterSpacing: '0.06em',
@@ -911,172 +946,183 @@ const WorkoutEntry = () => {
               </Alert>
             </Snackbar>
             
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: sectionGap }}>
+              {/* Planned Workout Selector */}
+              {userPlan && Object.keys(userPlan).length > 0 && (
+                <Box sx={{ ...sectionSx, px: 0 }}>
+                  <Typography sx={sectionTitleSx}>
+                    Planned Workout
+                  </Typography>
+                    
+                  <ScrollablePicker
+                    items={getPlannedWorkoutOptions()}
+                    value={selectedPlannedWorkout}
+                    onChange={setSelectedPlannedWorkout}
+                    label="Select Planned Workout"
+                    getItemLabel={(item) => item.name}
+                    getItemValue={(item) => item.id}
+                    inputBackground={inputSurface}
+                  />
 
-            
-            {/* Planned Workout Selector */}
-            {userPlan && Object.keys(userPlan).length > 0 && (
-              <Box sx={{ ...sectionSx, px: 0 }}>
-                <Typography sx={sectionTitleSx}>
-                  Planned Workout
-                </Typography>
-                  
-                <ScrollablePicker
-                  items={getPlannedWorkoutOptions()}
-                  value={selectedPlannedWorkout}
-                  onChange={setSelectedPlannedWorkout}
-                  label="Select Planned Workout"
-                  getItemLabel={(item) => item.name}
-                  getItemValue={(item) => item.id}
-                      inputBackground={inputSurface}
-                />
-
-                {selectedPlannedWorkout && plannedWorkoutStats.total > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                        Workout progress
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
-                        {plannedWorkoutStats.completed}/{plannedWorkoutStats.total} sets
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(${plannedWorkoutStats.total}, minmax(0, 1fr))`,
-                        gap: 0.5,
-                      }}
-                    >
-                      {Array.from({ length: plannedWorkoutStats.total }).map((_, index) => {
-                        const isComplete = index < plannedWorkoutStats.completed;
-                        return (
-                          <Box
-                            key={index}
-                            sx={{
-                              height: 10,
-                              borderRadius: 999,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              backgroundColor: isComplete ? 'primary.main' : 'transparent',
-                              transition: 'background-color 0.2s ease',
-                            }}
-                          />
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                )}
-                
-                  {/* Show exercises for selected workout */}
-                  {selectedPlannedWorkout && (
-                    <Box sx={{ mt: 2 }}>
-                      <Box sx={{ 
-                        display: 'table', 
-                        width: '100%',
-                        borderCollapse: 'collapse'
-                      }}>
-                        {getSelectedWorkoutExercises().map((exercise, index) => {
-                          const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
+                  {selectedPlannedWorkout && plannedWorkoutStats.total > 0 && (
+                    <Box sx={{ mt: sectionGap }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: smallGap }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
+                          Workout progress
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
+                          {plannedWorkoutStats.completed}/{plannedWorkoutStats.total} sets
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: `repeat(${plannedWorkoutStats.total}, minmax(0, 1fr))`,
+                          gap: 0.5,
+                        }}
+                      >
+                        {Array.from({ length: plannedWorkoutStats.total }).map((_, index) => {
+                          const isComplete = index < plannedWorkoutStats.completed;
                           return (
-                            <Box 
-                              key={index} 
-                              onClick={() => {
-                                if (exerciseData) {
-                                  setSelectedExercise(exerciseData.id);
-                                  if (exercise.targetReps) {
-                                    setReps(exercise.targetReps.toString());
-                                  }
-                                }
-                              }}
-                              sx={{ 
-                                display: 'table-row',
-                                cursor: exerciseData ? 'pointer' : 'default',
-                                '&:hover': { 
-                                  bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.dark' : 'background.paper'
-                                },
-                                bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'transparent',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <Box sx={{ 
-                                display: 'table-cell', 
-                                py: 1, 
-                                px: 2,
-                                borderBottom: '1px solid',
+                            <Box
+                              key={index}
+                              sx={{
+                                height: 10,
+                                borderRadius: 2,
+                                border: '1px solid',
                                 borderColor: 'divider',
-                                verticalAlign: 'middle'
-                              }}>
-                                <Typography 
-                                  variant="body2" 
-                                  color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.primary'}
-                                  sx={{ 
-                                    fontSize: 13,
-                                    fontWeight: 500
-                                  }}
-                                >
-                                  {exercise.exercise}
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                display: 'table-cell', 
-                                py: 1, 
-                                px: 2,
-                                borderBottom: '1px solid',
-                                borderColor: 'divider',
-                                verticalAlign: 'middle',
-                                textAlign: 'right',
-                                width: '120px'
-                              }}>
-                                <Typography 
-                                  variant="body2" 
-                                  color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                                  sx={{ 
-                                    fontWeight: 600,
-                                    fontSize: 13
-                                  }}
-                                >
-                                  {exercise.sets} × {exercise.targetReps || '?'}
-                                </Typography>
-                              </Box>
-                            </Box>
+                                backgroundColor: isComplete ? 'primary.main' : 'transparent',
+                                transition: 'background-color 0.2s ease',
+                              }}
+                            />
                           );
                         })}
                       </Box>
-                      {/* Show notes if any exercise has them */}
-                      {getSelectedWorkoutExercises().some(ex => ex.notes) && (
-                        <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                    </Box>
+                  )}
+                  
+                  {/* Show exercises for selected workout */}
+                  {selectedPlannedWorkout && (
+                    <Box sx={{ mt: sectionGap }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setShowPlannedExercises((prev) => !prev)}
+                        sx={{ mb: smallGap, fontSize: 11, py: 0.5, px: 1.5 }}
+                      >
+                        {showPlannedExercises ? 'Hide exercises' : 'Show exercises'}
+                      </Button>
+                      {showPlannedExercises && (
+                        <>
+                          <Box sx={{ 
+                            display: 'table', 
+                            width: '100%',
+                            borderCollapse: 'collapse'
+                          }}>
                           {getSelectedWorkoutExercises().map((exercise, index) => {
-                            if (!exercise.notes) return null;
+                            const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
                             return (
-                              <Typography 
-                                key={index}
-                                variant="caption" 
-                                color="text.secondary"
+                              <Box 
+                                key={index} 
+                                onClick={() => {
+                                  if (exerciseData) {
+                                    setSelectedExercise(exerciseData.id);
+                                    if (exercise.targetReps) {
+                                      setReps(exercise.targetReps.toString());
+                                    }
+                                  }
+                                }}
                                 sx={{ 
-                                  display: 'block',
-                                  fontSize: 11,
-                                  fontStyle: 'italic',
-                                  opacity: 0.8,
-                                  mb: 0.5
+                                  display: 'table-row',
+                                  cursor: exerciseData ? 'pointer' : 'default',
+                                  '&:hover': { 
+                                    bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.dark' : 'background.paper'
+                                  },
+                                  bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'transparent',
+                                  transition: 'all 0.2s ease'
                                 }}
                               >
-                                <strong>{exercise.exercise}:</strong> {exercise.notes}
-                              </Typography>
+                                <Box sx={{ 
+                                  display: 'table-cell', 
+                                  py: 1, 
+                                  px: 2,
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider',
+                                  verticalAlign: 'middle'
+                                }}>
+                                  <Typography 
+                                    variant="body2" 
+                                    color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.primary'}
+                                    sx={{ 
+                                      fontSize: 13,
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    {exercise.exercise}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                  display: 'table-cell', 
+                                  py: 1, 
+                                  px: 2,
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider',
+                                  verticalAlign: 'middle',
+                                  textAlign: 'right',
+                                  width: '120px'
+                                }}>
+                                  <Typography 
+                                    variant="body2" 
+                                    color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
+                                    sx={{ 
+                                      fontWeight: 600,
+                                      fontSize: 13
+                                    }}
+                                  >
+                                    {exercise.sets} × {exercise.targetReps || '?'}
+                                  </Typography>
+                                </Box>
+                              </Box>
                             );
                           })}
-                        </Box>
+                          </Box>
+                          {/* Show notes if any exercise has them */}
+                          {getSelectedWorkoutExercises().some(ex => ex.notes) && (
+                            <Box sx={{ mt: sectionGap, p: sectionGap, bgcolor: 'background.default', borderRadius: 2 }}>
+                              {getSelectedWorkoutExercises().map((exercise, index) => {
+                                if (!exercise.notes) return null;
+                                return (
+                                  <Typography 
+                                    key={index}
+                                    variant="caption" 
+                                    color="text.secondary"
+                                    sx={{ 
+                                      display: 'block',
+                                      fontSize: 11,
+                                      fontStyle: 'italic',
+                                      opacity: 0.8,
+                                      mb: 0.5
+                                    }}
+                                  >
+                                    <strong>{exercise.exercise}:</strong> {exercise.notes}
+                                  </Typography>
+                                );
+                              })}
+                            </Box>
+                          )}
+                        </>
                       )}
                     </Box>
                   )}
-              </Box>
-            )}
+                </Box>
+              )}
             
             {/* Main Form */}
             <Box sx={{ ...sectionSx, px: 0 }}>
                 {/* Header spacer removed for compact layout */}
                 
                 {/* Exercise Selection */}
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: sectionGap }}>
                   <ScrollablePicker
                     items={
                       groupedExercises.length > 0
@@ -1098,12 +1144,13 @@ const WorkoutEntry = () => {
                     searchEnabled={true}
                     searchPlaceholder="Search exercises..."
                     inputBackground={inputSurface}
+                  autoFocusSearch={!isMobile}
                   />
                   {/* Exercise Notes Display */}
                   {selectedExercise && (() => {
                     const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
                     return selectedExerciseData && selectedExerciseData.notes ? (
-                      <Box sx={{ mt: 2, p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Box sx={{ mt: sectionGap, p: sectionGap, borderTop: '1px solid', borderColor: 'divider' }}>
                         <Typography 
                           variant="body2" 
                           color="text.secondary" 
@@ -1121,50 +1168,29 @@ const WorkoutEntry = () => {
                 
                 {/* Weight Calculator Slider */}
                 {selectedExercise && getEstimatedOneRepMax() > 0 && (
-                  <Box sx={{ mb: 2, pt: 2, position: 'relative', borderTop: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ mb: sectionGap }}>
                     <Typography 
                       variant="body2" 
                       color="text.secondary" 
                       sx={{ 
-                        position: 'absolute',
-                        top: '-8px',
-                        left: '12px',
-                        px: 1,
                         fontSize: 11,
                         fontWeight: 500,
-                        zIndex: 1
+                        mb: 1
                       }}
                     >
                       Weight Calculator
                     </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                      <Box>
-                        <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
-                          {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
-                          Est. 1RM: {roundToNearest2_5(getEstimatedOneRepMax())} kg
-                        </Typography>
-                      </Box>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => {
-                          setReps(sliderReps.toString());
-                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
-                        }}
-                        sx={{ 
-                          py: 0.75, 
-                          px: 2, 
-                          fontWeight: 600,
-                          fontSize: 13
-                        }}
-                      >
-                        Use Weight
-                      </Button>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
+                      <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
+                        {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
+                        Est. 1RM: {roundToNearest2_5(getEstimatedOneRepMax())} kg
+                      </Typography>
                     </Box>
                     
-                    <Box sx={{ px: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: sectionGap }}>
+                      <Box sx={{ flex: 3 }}>
                       <Slider
                         value={sliderReps}
                         onChange={(event, newValue) => setSliderReps(newValue)}
@@ -1196,6 +1222,27 @@ const WorkoutEntry = () => {
                           }
                         }}
                       />
+                      </Box>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => {
+                          setReps(sliderReps.toString());
+                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
+                        }}
+                        sx={{ 
+                          py: 1, 
+                          px: 2, 
+                          fontWeight: 600,
+                          fontSize: 11,
+                          whiteSpace: 'nowrap',
+                          height: 40,
+                          mt: -0.5,
+                          flex: 1
+                        }}
+                      >
+                        Use
+                      </Button>
                     </Box>
                     
 
@@ -1203,8 +1250,8 @@ const WorkoutEntry = () => {
                 )}
                 
                 {/* Reps and Weight on one line */}
-                <Grid container sx={{ mb: 2 }}>
-                  <Grid item xs={6} sx={{ pr: 1.5 }}>
+                <Grid container sx={{ mb: sectionGap, alignItems: 'center' }}>
+                  <Grid item xs={4} sx={{ pr: 1.5 }}>
                     <ScrollablePicker
                       items={repsOptions}
                       value={reps ? parseInt(reps) : ''}
@@ -1216,7 +1263,7 @@ const WorkoutEntry = () => {
                       inputBackground={inputSurface}
                     />
                   </Grid>
-                  <Grid item xs={6} sx={{ pl: 1.5 }}>
+                  <Grid item xs={4} sx={{ px: 1.5 }}>
                     <TextField
                       label="Weight (kg)"
                       type="number"
@@ -1269,24 +1316,25 @@ const WorkoutEntry = () => {
                       }}
                     />
                   </Grid>
+                  <Grid item xs={4} sx={{ pl: 1.5 }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleAddSet}
+                      fullWidth
+                      size="medium"
+                      sx={{ 
+                        py: 1, 
+                        fontWeight: 600, 
+                        fontSize: 13,
+                        height: 40,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Add Set
+                    </Button>
+                  </Grid>
                 </Grid>
-                
-                {/* Add Set Button */}
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleAddSet}
-                  fullWidth
-                  size="medium"
-                  sx={{ 
-                    py: 1, 
-                    fontWeight: 600, 
-                    mt: 2,
-                    fontSize: 13
-                  }}
-                >
-                  Add Set
-                </Button>
             </Box>
             
             {/* Sets Display */}
@@ -1323,7 +1371,7 @@ const WorkoutEntry = () => {
                   }, {});
                   
                   return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => (
-                    <Box key={exerciseName} sx={{ mb: 1.5 }}>
+                    <Box key={exerciseName} sx={{ mb: smallGap }}>
                       <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: 13 }}>
                         {exerciseName}
                       </Typography>
@@ -1469,7 +1517,7 @@ const WorkoutEntry = () => {
                 )}
               </Box>
             )}
-            
+            </Box>
           </>
         )}
       </Box>

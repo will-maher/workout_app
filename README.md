@@ -12,6 +12,42 @@ A comprehensive workout tracking application built with React frontend and Node.
 - **Responsive Design**: Mobile-friendly interface
 - **Data Visualization**: Interactive charts using Highcharts
 
+## Quick Orientation (for new contributors/AI)
+
+### What this app does
+This is a workout tracking app with:
+- **Add** tab: log sets for exercises (reps/weight), guided by an optional workout plan
+- **Plan** tab: edit your weekly plan (exercises + sets + target reps)
+- **Performance** tab: charts and tables for 1RM and volume trends
+- **History** tab: review and manage past workouts
+- **Library**: maintain the exercise list (names, muscle groups, notes)
+
+### How data flows
+- Frontend calls the backend REST API (see `API_BASE_URL` in `frontend/src/App.js`)
+- Backend persists to PostgreSQL via `backend/database.pg.js`
+- Auth uses JWT (stored in localStorage)
+
+### Core UI logic
+- **Add tab** (`frontend/src/components/WorkoutEntry.js`): main logging UX, progress bar tied to planned sets, recent/best set table
+- **Plan tab** (`frontend/src/components/WorkoutPlanner.js`): plan editing and volume summaries
+- **Performance** (`frontend/src/components/Performance.js`): charts + time range filters
+- **History** (`frontend/src/components/WorkoutHistory.js`): workout list + details
+- **Library** (`frontend/src/components/ExerciseLibrary.js`): exercise CRUD
+- **Theme** (`frontend/src/theme.js`): app-wide styling and component overrides
+
+### Data model (high level)
+- **users**: auth + user identity
+- **exercises**: name, muscle_group, notes
+- **workouts**: date, user_id
+- **workout_sets**: workout_id, exercise_id, reps, weight
+- **workout_plan**: per-day plan entries (exercise, sets, target reps)
+
+### Key env vars
+- `DATABASE_URL` (Postgres)
+- `JWT_SECRET` (auth signing)
+- `PORT` (backend)
+- `NODE_ENV`
+
 ## Tech Stack
 
 ### Frontend
