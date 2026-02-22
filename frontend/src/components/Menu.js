@@ -58,7 +58,7 @@ const Menu = ({ user, onNavigate, onLogout }) => {
         variant="h4" 
         fontWeight={700} 
         textAlign="center" 
-        sx={{ mb: 4 }}
+        sx={{ mb: 4, fontSize: 13 }}
       >
         Menu
       </Typography>
@@ -90,6 +90,7 @@ const Menu = ({ user, onNavigate, onLogout }) => {
                     primary={item.text}
                     primaryTypographyProps={{
                       fontWeight: 500,
+                      fontSize: 13,
                       color: item.isLogout ? 'error.main' : 'text.primary',
                     }}
                   />

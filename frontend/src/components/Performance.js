@@ -4,10 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Button,
   ButtonGroup,
   CircularProgress,
@@ -19,8 +15,8 @@ import {
   TableHead,
   TableRow,
   Paper,
-  ListSubheader,
 } from '@mui/material';
+import ScrollablePicker from './ScrollablePicker';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
@@ -376,30 +372,30 @@ const Performance = () => {
     return groups;
   }, {});
 
+  const exerciseGroups = Object.entries(groupedExercises).map(([group, items]) => ({
+    label: group,
+    items,
+  }));
+
   return (
-    <Box maxWidth={600} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom align="center">
+    <Box maxWidth={600} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }} sx={{ '& .MuiTypography-root': { fontSize: 13 } }}>
+      <Typography variant="h4" fontWeight={700} gutterBottom align="center" sx={{ fontSize: 13 }}>
         Performance
       </Typography>
       <Card sx={{ ...sectionSx, mb: 2 }}>
         <CardContent>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Exercise</InputLabel>
-            <Select
+          <Box sx={{ mb: 2 }}>
+            <ScrollablePicker
+              items={exerciseGroups}
               value={selectedExercise}
-              onChange={e => setSelectedExercise(e.target.value)}
-              label="Exercise"
-            >
-              {Object.entries(groupedExercises).map(([group, items]) => [
-                <ListSubheader key={group} sx={{ bgcolor: 'background.default', fontWeight: 700, fontSize: 14 }}>
-                  {group}
-                </ListSubheader>,
-                ...items.map(ex => (
-                  <MenuItem key={ex.id} value={ex.id}>{ex.name}</MenuItem>
-                ))
-              ])}
-            </Select>
-          </FormControl>
+              onChange={setSelectedExercise}
+              label="Select Exercise"
+              grouped
+              getGroupLabel={(g) => g.label}
+              searchEnabled
+              searchPlaceholder="Search exercises..."
+            />
+          </Box>
           
           <Box sx={{ mb: 2 }}>
             <ButtonGroup size="small" variant="outlined" fullWidth sx={{ width: '100%' }}>
@@ -441,7 +437,7 @@ const Performance = () => {
           ) : error ? (
             <Alert severity="error">{error}</Alert>
           ) : filteredDailyMaxPoints.length === 0 ? (
-            <Typography color="text.secondary" align="center" py={4}>
+            <Typography color="text.secondary" align="center" py={4} sx={{ fontSize: 13 }}>
               No data for this exercise
             </Typography>
           ) : (
@@ -450,18 +446,18 @@ const Performance = () => {
               
               {weeklySetsChartOptions && (
                 <Box mt={4}>
-                  <Typography variant="h6" fontWeight={600} gutterBottom>
-                    Weekly Sets for {muscleGroup}
-                  </Typography>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ fontSize: 13 }}>
+                  Weekly Sets for {muscleGroup}
+                </Typography>
                   <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
                 </Box>
               )}
               
               <Box mt={4}>
-                <Typography variant="h6" fontWeight={600} gutterBottom>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ fontSize: 13 }}>
                   All Logged Sets
                 </Typography>
-                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
+                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent', '& .MuiTableCell-root': { fontSize: 13 } }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>

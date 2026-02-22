@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
-  Grid,
   CircularProgress,
   Alert,
-  List,
   IconButton,
   Chip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  TextField,
   Button,
   Dialog,
   DialogTitle,
@@ -72,8 +67,10 @@ const WorkoutHistory = () => {
       setWorkouts(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Error fetching workouts:', err);
-      setError('Failed to load workout history');
-      setWorkouts([]); // Set empty array on error
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        setError('Failed to load workout history');
+      }
+      setWorkouts([]);
     } finally {
       setLoading(false);
     }
@@ -146,144 +143,97 @@ const WorkoutHistory = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ mt: 2, px: { xs: 1.5, sm: 0 } }}>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ maxWidth: 520, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
+        <Typography variant="h4" fontWeight={700} sx={{ mb: 1, fontSize: 13 }}>
           Workout History
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 1 }} action={<Button color="inherit" size="small" onClick={() => fetchWorkouts(searchDate)}>Retry</Button>}>
             {error}
           </Alert>
         )}
 
         {/* Search Section */}
-        <Card sx={{ ...sectionSx, mb: 2 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Search Workouts
-            </Typography>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <DatePicker
-                  label="Search by Date"
-                  value={searchDate}
-                  onChange={setSearchDate}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
-              <Grid item xs={12} md={8}>
-                <Box display="flex" gap={2}>
-                  <Button
-                    variant="contained"
-                    startIcon={<SearchIcon />}
-                    onClick={handleSearch}
-                    disabled={!searchDate}
-                  >
-                    Search
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={handleClearSearch}
-                  >
-                    Clear
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
+        <Box sx={{ ...sectionSx, py: 1, mb: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, alignItems: { sm: 'center' } }}>
+            <DatePicker
+              label="Search by Date"
+              value={searchDate}
+              onChange={setSearchDate}
+              slotProps={{ textField: { size: 'small', sx: { '& .MuiInputBase-root': { fontSize: 13 } } } }}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="contained" size="small" startIcon={<SearchIcon />} onClick={handleSearch} disabled={!searchDate} sx={{ fontSize: 13 }}>
+                Search
+              </Button>
+              <Button variant="outlined" size="small" onClick={handleClearSearch} sx={{ fontSize: 13 }}>
+                Clear
+              </Button>
+            </Box>
+          </Box>
+        </Box>
 
         {/* Workouts List */}
         {workouts.length === 0 ? (
-          <Card sx={sectionSx}>
-            <CardContent>
-              <Typography color="text.secondary" align="center" py={4}>
-                {searchDate ? 'No workouts found for the selected date' : 'No workouts recorded yet'}
-              </Typography>
-            </CardContent>
-          </Card>
+          <Box sx={{ ...sectionSx, py: 3 }}>
+            <Typography color="text.secondary" align="center" sx={{ fontSize: 13 }}>
+              {searchDate ? 'No workouts found for the selected date' : 'No workouts recorded yet'}
+            </Typography>
+          </Box>
         ) : (
-          <List>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {Array.isArray(workouts) && workouts.map((workout) => (
-              <Card key={workout.id} sx={{ ...sectionSx, mb: 2 }}>
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
+              <Box key={workout.id} sx={{ ...sectionSx, pb: 1 }}>
+                <Accordion sx={{ '&:before': { display: 'none' }, boxShadow: 'none', bgcolor: 'transparent' }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 20 }} />} sx={{ minHeight: 44, py: 0 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" pr={1}>
                       <Box>
-                        <Typography variant="h6">
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: 13, color: 'primary.main' }}>
                           {format(parseISO(workout.date), 'MMM dd, yyyy')}
                         </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {workout.sets.length} sets • {getMuscleGroups(workout.sets)}
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
+                          {workout.sets?.length || 0} sets • {getMuscleGroups(workout.sets || [])}
                         </Typography>
                       </Box>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body2" color="textSecondary">
-                          {formatWeight(calculateWorkoutVolume(workout.sets))} total volume
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
+                          {formatWeight(calculateWorkoutVolume(workout.sets || []))}
                         </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewWorkout(workout.id);
-                          }}
-                        >
-                          <ViewIcon />
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleViewWorkout(workout.id); }} sx={{ p: 0.5 }}>
+                          <ViewIcon sx={{ fontSize: 18 }} />
                         </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setWorkoutToDelete(workout.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <DeleteIcon />
+                        <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setWorkoutToDelete(workout.id); setDeleteDialogOpen(true); }} sx={{ p: 0.5 }}>
+                          <DeleteIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Box>
                     </Box>
                   </AccordionSummary>
-                  <AccordionDetails>
-                    <Grid container spacing={2}>
+                  <AccordionDetails sx={{ pt: 0, px: 2, pb: 1 }}>
+                    <Box sx={{ display: 'table', width: '100%', borderCollapse: 'collapse' }}>
                       {Array.isArray(workout.sets) && workout.sets.map((set, index) => (
-                        <Grid item xs={12} sm={6} md={4} key={set.id}>
-                          <Card variant="outlined" sx={{ ...sectionSx, borderBottom: 'none' }}>
-                            <CardContent sx={{ py: 1 }}>
-                              <Box display="flex" justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">
-                                  Set {index + 1}: {set.exercise_name}
-                                </Typography>
-                                <Chip
-                                  label={set.muscle_group}
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: getMuscleGroupColor(set.muscle_group),
-                                    color: 'white',
-                                  }}
-                                />
-                              </Box>
-                              <Typography variant="h6" color="primary.main">
-                                {set.weight} lbs × {set.reps} reps
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
+                        <Box key={set.id} sx={{ display: 'table-row' }}>
+                          <Box sx={{ display: 'table-cell', py: 0.75, px: 0, borderBottom: '1px solid', borderColor: 'divider', verticalAlign: 'middle' }}>
+                            <Typography variant="body2" sx={{ fontSize: 13 }}>
+                              {set.exercise_name}: {set.weight} kg × {set.reps} reps
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'table-cell', py: 0.75, px: 0, borderBottom: '1px solid', borderColor: 'divider', verticalAlign: 'middle', width: 80, textAlign: 'right' }}>
+                            <Chip label={set.muscle_group} size="small" sx={{ fontSize: 10, height: 20, backgroundColor: getMuscleGroupColor(set.muscle_group), color: 'white' }} />
+                          </Box>
+                        </Box>
                       ))}
-                    </Grid>
+                    </Box>
                     {workout.notes && (
-                      <Box mt={2}>
-                        <Typography variant="body2" color="textSecondary">
-                          <strong>Notes:</strong> {workout.notes}
-                        </Typography>
-                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11, mt: 1 }}>
+                        <strong>Notes:</strong> {workout.notes}
+                      </Typography>
                     )}
                   </AccordionDetails>
                 </Accordion>
-              </Card>
+              </Box>
             ))}
-          </List>
+          </Box>
         )}
 
         {/* View Workout Dialog */}
@@ -293,13 +243,13 @@ const WorkoutHistory = () => {
           maxWidth="md"
           fullWidth
         >
-          <DialogTitle>
+          <DialogTitle sx={{ fontSize: 13 }}>
             Workout Details - {selectedWorkout && format(parseISO(selectedWorkout.date), 'MMM dd, yyyy')}
           </DialogTitle>
           <DialogContent>
             {selectedWorkout && (
               <Box>
-                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
+                <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent', '& .MuiTableCell-root': { fontSize: 13 } }}>
                   <Table>
                     <TableHead>
                       <TableRow>
@@ -326,7 +276,7 @@ const WorkoutHistory = () => {
                               }}
                             />
                           </TableCell>
-                          <TableCell align="right">{formatWeight(set.weight)}</TableCell>
+                          <TableCell align="right">{set.weight} kg</TableCell>
                           <TableCell align="right">{set.reps}</TableCell>
                           <TableCell align="right">{formatWeight(set.weight * set.reps)}</TableCell>
                         </TableRow>
@@ -336,8 +286,8 @@ const WorkoutHistory = () => {
                 </TableContainer>
                 {selectedWorkout.notes && (
                   <Box mt={2}>
-                    <Typography variant="h6">Notes:</Typography>
-                    <Typography variant="body1">{selectedWorkout.notes}</Typography>
+                    <Typography variant="h6" sx={{ fontSize: 13 }}>Notes:</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 13 }}>{selectedWorkout.notes}</Typography>
                   </Box>
                 )}
               </Box>
@@ -353,9 +303,9 @@ const WorkoutHistory = () => {
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
         >
-          <DialogTitle>Delete Workout</DialogTitle>
+          <DialogTitle sx={{ fontSize: 13 }}>Delete Workout</DialogTitle>
           <DialogContent>
-            <Typography>
+            <Typography sx={{ fontSize: 13 }}>
               Are you sure you want to delete this workout? This action cannot be undone.
             </Typography>
           </DialogContent>
@@ -371,6 +321,6 @@ const WorkoutHistory = () => {
   );
 };
 
-const formatWeight = (weight) => `${weight.toFixed(1)} lbs`;
+const formatWeight = (weight) => `${weight.toFixed(0)} kg`;
 
 export default WorkoutHistory; 
