@@ -8,7 +8,6 @@ import {
   Grid,
   IconButton,
   Alert,
-  Paper,
   Slider,
   CircularProgress,
   Snackbar,
