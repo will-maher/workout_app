@@ -3,15 +3,23 @@ const { pool } = require('../database.pg');
 const authenticateToken = require('./authMiddleware');
 const router = express.Router();
 
-// GET all workouts for a user
+// GET all workouts for a user (optional ?date=YYYY-MM-DD filter)
 router.get('/', authenticateToken, async (req, res) => {
   const userId = req.user.userId;
+  const { date } = req.query;
   try {
-    // Fetch all workouts
-    const workoutsResult = await pool.query(
-      'SELECT * FROM workouts WHERE user_id = $1 ORDER BY date DESC',
-      [userId]
-    );
+    let workoutsResult;
+    if (date) {
+      workoutsResult = await pool.query(
+        'SELECT * FROM workouts WHERE user_id = $1 AND date = $2 ORDER BY date DESC',
+        [userId, date]
+      );
+    } else {
+      workoutsResult = await pool.query(
+        'SELECT * FROM workouts WHERE user_id = $1 ORDER BY date DESC',
+        [userId]
+      );
+    }
     const workouts = workoutsResult.rows;
     if (workouts.length === 0) return res.json([]);
     // Fetch all sets for these workouts
@@ -34,23 +42,28 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// GET a single workout by ID
+// GET a single workout by ID (with sets)
 router.get('/:id', authenticateToken, async (req, res) => {
   const userId = req.user.userId;
   const { id } = req.params;
   try {
-    const result = await pool.query(
+    const workoutResult = await pool.query(
       'SELECT * FROM workouts WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    if (result.rows.length === 0) {
+    if (workoutResult.rows.length === 0) {
       return res.status(404).json({ error: 'Workout not found' });
     }
-    res.json(result.rows[0]);
+    const workout = workoutResult.rows[0];
+    const setsResult = await pool.query(
+      'SELECT ws.*, e.name as exercise_name, e.muscle_group FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id WHERE ws.workout_id = $1',
+      [id]
+    );
+    res.json({ ...workout, sets: setsResult.rows || [] });
   } catch (err) {
     console.error('Error fetching workout:', err);
     res.status(500).json({ error: 'Failed to fetch workout' });
-      }
+  }
 });
 
 // POST create a new workout (and sets)

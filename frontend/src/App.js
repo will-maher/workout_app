@@ -160,7 +160,7 @@ function App() {
         }}
       >
         <Toolbar sx={{ minHeight: 64, px: 3 }}>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: 13 }}>
             Workout Tracker
           </Typography>
         </Toolbar>

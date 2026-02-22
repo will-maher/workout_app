@@ -12,6 +12,10 @@ import {
   Slider,
   CircularProgress,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -21,323 +25,10 @@ import {
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
-
-// Custom Scrollable Picker Component (Apple-style)
-const ScrollablePicker = ({ 
-  items, 
-  value, 
-  onChange, 
-  label, 
-  itemHeight = 40, 
-  visibleItems = 5,
-  getItemLabel = (item) => item.name || item.toString(),
-  getItemValue = (item) => item.id || item,
-  grouped = false,
-  getGroupLabel = (group) => group.label || group.name,
-  searchEnabled = false,
-  searchPlaceholder = 'Search...',
-  buttonHeight = 40,
-  inputBackground = 'background.paper',
-  autoFocusSearch = true
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [buttonRef, setButtonRef] = useState(null);
-  const [menuRef, setMenuRef] = useState(null); // Add ref for menu
-  const [searchTerm, setSearchTerm] = useState('');
-  const [menuStyle, setMenuStyle] = useState(null);
-  const containerHeight = itemHeight * visibleItems;
-
-  // Click-away logic
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    // Prevent body scroll when dropdown is open
-    document.body.style.overflow = 'hidden';
-    
-    function handleClickAway(event) {
-      if (
-        buttonRef &&
-        !buttonRef.contains(event.target) &&
-        menuRef &&
-        !menuRef.contains(event.target)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickAway);
-    document.addEventListener('touchstart', handleClickAway);
-    return () => {
-      document.removeEventListener('mousedown', handleClickAway);
-      document.removeEventListener('touchstart', handleClickAway);
-      // Restore body scroll when dropdown closes
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, buttonRef, menuRef]);
-
-  const updateMenuPosition = useCallback(() => {
-    if (!buttonRef) return;
-    const rect = buttonRef.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const spaceBelow = viewportHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-    const shouldPlaceAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(140, Math.min(containerHeight, shouldPlaceAbove ? spaceAbove : spaceBelow));
-    const top = shouldPlaceAbove
-      ? rect.top - maxHeight - 4
-      : rect.bottom + 4;
-    setMenuStyle({
-      top: Math.max(8, top),
-      left: rect.left,
-      width: rect.width,
-      maxHeight,
-    });
-  }, [buttonRef, containerHeight]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    updateMenuPosition();
-    const handleResize = () => updateMenuPosition();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isOpen, updateMenuPosition]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm('');
-    }
-  }, [isOpen]);
-
-  const handleItemClick = (item) => {
-    onChange(getItemValue(item));
-    setIsOpen(false);
-  };
-
-  const getSelectedItemLabel = () => {
-    if (!value) return label;
-    
-    if (grouped) {
-      // Find the item in grouped structure
-      for (const group of items) {
-        const found = group.items.find(item => getItemValue(item) === value);
-        if (found) return getItemLabel(found);
-      }
-      return 'Select...';
-    } else {
-      const found = items.find(item => getItemValue(item) === value);
-      return found ? getItemLabel(found) : 'Select...';
-    }
-  };
-
-  const renderItems = () => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const matchesSearch = (item) => {
-      if (!normalizedSearch) return true;
-      const label = getItemLabel(item);
-      return String(label).toLowerCase().includes(normalizedSearch);
-    };
-
-    if (grouped) {
-      const filteredGroups = items
-        .map((group) => ({
-          ...group,
-          items: group.items.filter(matchesSearch),
-        }))
-        .filter((group) => group.items.length > 0);
-
-      if (filteredGroups.length === 0) {
-        return (
-          <Box sx={{ py: 2, px: 2, color: 'text.secondary' }}>
-            <Typography variant="body2" sx={{ fontSize: 11 }}>No matches</Typography>
-          </Box>
-        );
-      }
-
-      return filteredGroups.map((group) => (
-        <React.Fragment key={group.label || group.name}>
-          <Box
-            sx={{
-              py: 1,
-              px: 2,
-              backgroundColor: 'background.default',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              fontWeight: 600,
-              fontSize: 11,
-              color: 'text.secondary',
-            }}
-          >
-            {getGroupLabel(group)}
-          </Box>
-          {group.items.map((item, index) => (
-            <Box
-              key={getItemValue(item)}
-              onClick={() => handleItemClick(item)}
-              sx={{
-                py: 1,
-                px: 3,
-                cursor: 'pointer',
-                backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
-                color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
-                '&:hover': {
-                  backgroundColor: getItemValue(item) === value ? 'primary.light' : 'background.default',
-                },
-                borderBottom: index < group.items.length - 1 ? '1px solid' : 'none',
-                borderColor: 'divider',
-              }}
-            >
-              <Typography variant="body2" sx={{ fontSize: 12 }}>
-                {getItemLabel(item)}
-              </Typography>
-            </Box>
-          ))}
-        </React.Fragment>
-      ));
-    } else {
-      const filteredItems = items.filter(matchesSearch);
-
-      if (filteredItems.length === 0) {
-        return (
-          <Box sx={{ py: 2, px: 2, color: 'text.secondary' }}>
-            <Typography variant="body2" sx={{ fontSize: 11 }}>No matches</Typography>
-          </Box>
-        );
-      }
-
-      return filteredItems.map((item, index) => (
-        <Box
-          key={getItemValue(item)}
-          onClick={() => handleItemClick(item)}
-          sx={{
-            py: 1,
-            px: 2,
-            cursor: 'pointer',
-            backgroundColor: getItemValue(item) === value ? 'primary.light' : 'transparent',
-            color: getItemValue(item) === value ? 'primary.contrastText' : 'text.primary',
-            '&:hover': {
-              backgroundColor: getItemValue(item) === value ? 'primary.light' : 'background.default',
-            },
-            borderBottom: index < filteredItems.length - 1 ? '1px solid' : 'none',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="body2" sx={{ fontSize: 12 }}>
-            {getItemLabel(item)}
-          </Typography>
-        </Box>
-      ));
-    }
-  };
-
-  return (
-    <Box sx={{ position: 'relative', width: '100%' }}>
-      <Button
-        ref={setButtonRef}
-        variant="outlined"
-        onClick={() => setIsOpen(!isOpen)}
-        fullWidth
-        sx={{ 
-          justifyContent: 'space-between',
-          textAlign: 'left',
-          py: 1.2,
-          px: 1.5,
-          borderColor: 'divider',
-          backgroundColor: inputBackground,
-          color: 'text.primary',
-          borderRadius: 2,
-          fontWeight: 500,
-          fontSize: 13,
-          '&:hover': { 
-            borderColor: 'primary.main', 
-            backgroundColor: inputBackground 
-          },
-          minWidth: 0,
-          overflow: 'hidden',
-          height: buttonHeight,
-        }}
-      >
-        <Typography
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: 13,
-          }}
-        >
-          {getSelectedItemLabel()}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, ml: 1, fontSize: 13 }}>
-          ▼
-        </Typography>
-      </Button>
-      
-      {isOpen && buttonRef && menuStyle && ReactDOM.createPortal(
-        <Paper
-          ref={setMenuRef}
-          elevation={2}
-          sx={{
-            position: 'fixed',
-            zIndex: 9999,
-            width: menuStyle.width,
-            maxHeight: menuStyle.maxHeight,
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 2,
-            backgroundColor: 'background.paper',
-            top: menuStyle.top,
-            left: menuStyle.left,
-            transform: 'translateZ(0)',
-            willChange: 'transform',
-          }}
-        >
-          <>
-            {searchEnabled && (
-              <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <TextField
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder={searchPlaceholder}
-                  size="small"
-                  fullWidth
-                  autoFocus={autoFocusSearch}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      height: 36,
-                      backgroundColor: inputBackground,
-                      '& fieldset': { borderColor: 'divider' },
-                      '&:hover fieldset': { borderColor: 'primary.main' },
-                      '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                    },
-                    '& .MuiInputBase-input': {
-                      fontSize: 13,
-                    },
-                  }}
-                />
-              </Box>
-            )}
-            <Box
-              sx={{
-                maxHeight: containerHeight,
-                overflow: 'auto',
-                '&::-webkit-scrollbar': { display: 'none' },
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none',
-              }}
-            >
-              {renderItems()}
-            </Box>
-          </>
-        </Paper>,
-        document.body
-      )}
-    </Box>
-  );
-};
+import ScrollablePicker from './ScrollablePicker';
 
 const WorkoutEntry = () => {
   const [exercises, setExercises] = useState([]);
@@ -356,6 +47,8 @@ const WorkoutEntry = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [recentExerciseIds, setRecentExerciseIds] = useState([]);
   const [showPlannedExercises, setShowPlannedExercises] = useState(true);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [oneRmRanges, setOneRmRanges] = useState({});
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -793,6 +486,7 @@ const WorkoutEntry = () => {
   }, [selectedPlannedWorkout]);
 
   const handleSaveSets = async () => {
+    setSaveConfirmOpen(false);
     if (sets.length === 0) {
       setMessage('Please add at least one set');
       return;
@@ -910,6 +604,38 @@ const WorkoutEntry = () => {
     };
   }, [recentSets]);
 
+  // Fetch 6-month 1RM range per exercise when sets change
+  useEffect(() => {
+    if (sets.length === 0) {
+      setOneRmRanges({});
+      return;
+    }
+    const uniqueExerciseIds = [...new Set(sets.map((s) => s.exercise_id))];
+    const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
+    const fetchRanges = async () => {
+      const ranges = {};
+      await Promise.all(
+        uniqueExerciseIds.map(async (exerciseId) => {
+          try {
+            const res = await axios.get(`${API_BASE_URL}/api/stats/performance/sets?exercise_id=${exerciseId}`);
+            const allSets = Array.isArray(res.data) ? res.data : [];
+            const filtered = allSets.filter((row) => row.date && row.date >= sixMonthsAgo);
+            const oneRMs = filtered.map((row) => calc1RM(row.weight, row.reps)).filter((v) => v > 0);
+            if (oneRMs.length > 0) {
+              ranges[exerciseId] = {
+                min: Math.min(...oneRMs),
+                max: Math.max(...oneRMs),
+              };
+            }
+          } catch (err) {
+            console.error('Error fetching 1RM range for exercise', exerciseId, err);
+          }
+        })
+      );
+      setOneRmRanges(ranges);
+    };
+    fetchRanges();
+  }, [sets]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -920,31 +646,41 @@ const WorkoutEntry = () => {
           </Box>
         ) : (
           <>
-            <Snackbar
-              open={!!message}
-              autoHideDuration={4000}
-              onClose={() => setMessage('')}
-              anchorOrigin={{ vertical: 'center', horizontal: 'center' }}
-              sx={{
-                '& .MuiSnackbar-root': {
+            {ReactDOM.createPortal(
+              <Snackbar
+                open={!!message}
+                autoHideDuration={4000}
+                onClose={() => setMessage('')}
+                anchorOrigin={{ vertical: 'center', horizontal: 'center' }}
+                sx={{
+                  position: 'fixed',
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                }
-              }}
-            >
-              <Alert 
-                severity={message.includes('Error') ? 'error' : 'success'} 
-                sx={{ 
-                  borderRadius: 2,
-                  minWidth: 300,
-                  boxShadow: 3
+                  zIndex: 9999,
                 }}
-                onClose={() => setMessage('')}
               >
-                {message}
-              </Alert>
-            </Snackbar>
+                <Alert 
+                  severity={message.includes('Error') ? 'error' : 'success'} 
+                  sx={{ 
+                    borderRadius: 2,
+                    minWidth: 300,
+                    boxShadow: 3,
+                    backgroundColor: message.includes('Error') 
+                      ? 'rgba(26, 26, 26, 0.98)' 
+                      : 'rgba(26, 26, 26, 0.98)',
+                    color: 'text.primary',
+                    border: '1px solid',
+                    borderColor: message.includes('Error') ? 'error.main' : 'success.main',
+                    '& .MuiAlert-message': { color: 'text.primary' },
+                  }}
+                  onClose={() => setMessage('')}
+                >
+                  {message}
+                </Alert>
+              </Snackbar>,
+              document.body
+            )}
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: sectionGap }}>
               {/* Planned Workout Selector */}
@@ -1234,7 +970,7 @@ const WorkoutEntry = () => {
                           py: 1, 
                           px: 2, 
                           fontWeight: 600,
-                          fontSize: 11,
+                          fontSize: 13,
                           whiteSpace: 'nowrap',
                           height: 40,
                           mt: -0.5,
@@ -1339,26 +1075,45 @@ const WorkoutEntry = () => {
             
             {/* Sets Display */}
             {sets.length > 0 && (
-              <Box sx={{ ...sectionSx, px: 0, position: 'relative' }}>
-                  <Typography sx={sectionTitleSx}>
-                    Sets Added ({sets.length})
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveSets}
-                    disabled={saving}
-                    sx={{ 
-                      position: 'absolute',
-                      top: 12,
-                      right: 12,
-                      py: 0.75,
-                      px: 2,
-                      fontWeight: 600,
-                      fontSize: 13
-                    }}
-                  >
-                    {saving ? 'Saving...' : 'Save All'}
-                  </Button>
+              <Box sx={{ ...sectionSx, px: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography sx={sectionTitleSx}>
+                      Sets Added ({sets.length})
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setSaveConfirmOpen(true)}
+                      disabled={saving || sets.length === 0}
+                      sx={{ 
+                        py: 0.5,
+                        px: 1.5,
+                        fontWeight: 600,
+                        fontSize: 13,
+                        color: '#000000',
+                        backgroundColor: '#7eb8da',
+                        borderColor: '#7eb8da',
+                        '&:hover': {
+                          backgroundColor: '#8fc5e3',
+                          borderColor: '#8fc5e3',
+                        },
+                      }}
+                    >
+                      {saving ? 'Saving...' : 'Save All'}
+                    </Button>
+                  </Box>
+                  <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', mb: 1 }} />
+                  <Dialog open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)}>
+                    <DialogTitle sx={{ fontSize: 13 }}>Save workout?</DialogTitle>
+                    <DialogContent>
+                      <Typography sx={{ fontSize: 13 }}>
+                        Are you sure you want to save your workout? This will log {sets.length} set{sets.length !== 1 ? 's' : ''} to your history.
+                      </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setSaveConfirmOpen(false)} sx={{ fontSize: 13 }}>Cancel</Button>
+                      <Button onClick={handleSaveSets} variant="contained" disabled={saving} sx={{ fontSize: 13 }}>Yes, save</Button>
+                    </DialogActions>
+                  </Dialog>
                 
                 {/* Group sets by exercise */}
                 {(() => {
@@ -1370,11 +1125,67 @@ const WorkoutEntry = () => {
                     return acc;
                   }, {});
                   
-                  return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => (
+                  return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => {
+                    const exerciseId = exerciseSets[0]?.exercise_id;
+                    const range = exerciseId ? oneRmRanges[exerciseId] : null;
+                    const current1RMs = exerciseSets.map((s) => calc1RM(s.weight, s.reps)).filter((v) => v > 0);
+                    const hasBar = range && range.max > range.min && current1RMs.length > 0;
+                    const barMin = range?.min ?? 0;
+                    const barMax = range?.max ?? 1;
+                    const barSpan = barMax - barMin || 1;
+                    const barMaxExtended = barMax + 0.1 * barSpan;
+                    const extendedSpan = barMaxExtended - barMin || 1;
+                    return (
                     <Box key={exerciseName} sx={{ mb: smallGap }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main', fontSize: 13 }}>
-                        {exerciseName}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ color: 'primary.main', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, mr: 1 }}>
+                          {exerciseName}
+                        </Typography>
+                        {hasBar && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: 180, flexShrink: 0, mr: 1.5 }}>
+                            <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary', width: 20, flexShrink: 0 }}>
+                              {barMin.toFixed(0)}
+                            </Typography>
+                            <Box sx={{ flex: 1, minWidth: 80, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                              <Box sx={{ display: 'flex', width: '100%', position: 'relative' }}>
+                                <Box sx={{ width: `${(barSpan / extendedSpan) * 100}%`, height: 14, borderRadius: 0, backgroundColor: 'divider', flexShrink: 0 }} />
+                                <Box sx={{ width: `${(0.1 * barSpan / extendedSpan) * 100}%`, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.5, flexShrink: 0 }}>
+                                  <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Box sx={{ width: 6, height: 2, backgroundColor: 'divider' }} />
+                                    <Box sx={{ width: 6, height: 2, backgroundColor: 'divider' }} />
+                                  </Box>
+                                  <Box sx={{ width: 2, height: 14, backgroundColor: 'divider', flexShrink: 0 }} />
+                                </Box>
+                              </Box>
+                              <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary', position: 'absolute', left: `${(barSpan / extendedSpan) * 100}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
+                                {barMax.toFixed(0)}
+                              </Typography>
+                              <Box sx={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none' }}>
+                                {current1RMs.map((oneRm, idx) => {
+                                  const pct = Math.max(0, Math.min(100, ((oneRm - barMin) / extendedSpan) * 100));
+                                  return (
+                                    <Box
+                                      key={idx}
+                                      sx={{
+                                        position: 'absolute',
+                                        left: `${pct}%`,
+                                        top: '50%',
+                                        transform: 'translate(-50%, -50%) rotate(45deg)',
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: 0,
+                                        backgroundColor: 'primary.main',
+                                        border: '1px solid',
+                                        borderColor: 'background.paper',
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </Box>
+                            </Box>
+                          </Box>
+                        )}
+                      </Box>
                       <Box sx={{ 
                         display: 'table', 
                         width: '100%',
@@ -1395,8 +1206,6 @@ const WorkoutEntry = () => {
                               display: 'table-cell', 
                               py: 1, 
                               px: 2,
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
                               verticalAlign: 'middle'
                             }}>
                               <Typography 
@@ -1414,8 +1223,6 @@ const WorkoutEntry = () => {
                               display: 'table-cell', 
                               py: 1, 
                               px: 2,
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
                               verticalAlign: 'middle',
                               textAlign: 'right',
                               width: '60px'
@@ -1433,7 +1240,8 @@ const WorkoutEntry = () => {
                         ))}
                       </Box>
                     </Box>
-                  ));
+                  );
+                  });
                 })()}
               </Box>
             )}

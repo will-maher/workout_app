@@ -164,8 +164,8 @@ const Stats = () => {
   }
 
   return (
-    <Box sx={{ mt: 2, px: { xs: 1.5, sm: 0 } }}>
-      <Typography variant="h4" gutterBottom>
+    <Box sx={{ mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: 13 }}>
         Workout Statistics
       </Typography>
 
@@ -179,12 +179,12 @@ const Stats = () => {
           <Grid item xs={12}>
             <Card sx={sectionSx}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontSize: 13 }}>
                   Weekly Sets by Muscle Group
                 </Typography>
                 {muscleGroups.length > 0 && (
                   <FormControl component="fieldset" sx={{ mb: 2 }}>
-                    <FormLabel component="legend">Select Muscle Group</FormLabel>
+                    <FormLabel component="legend" sx={{ fontSize: 13 }}>Select Muscle Group</FormLabel>
                     <RadioGroup
                       row
                       value={selectedMuscleGroup}
@@ -204,7 +204,7 @@ const Stats = () => {
                 {filteredWeekly.length > 0 ? (
                   <HighchartsReact highcharts={Highcharts} options={weeklySetsOptions} />
                 ) : (
-                  <Typography color="text.secondary" align="center" py={4}>
+                  <Typography color="text.secondary" align="center" py={4} sx={{ fontSize: 13 }}>
                     No weekly sets data available
                   </Typography>
                 )}

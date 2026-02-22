@@ -43,7 +43,7 @@ function Register({ onRegister, switchToLogin }) {
         borderColor: 'divider'
       }}
     >
-      <Typography variant="h5" fontWeight={700} mb={2} align="center" color="text.primary">
+      <Typography variant="h5" fontWeight={700} mb={2} align="center" color="text.primary" sx={{ fontSize: 13 }}>
         Register
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -119,7 +119,7 @@ function Register({ onRegister, switchToLogin }) {
           {loading ? 'Registering...' : 'Register'}
         </Button>
       </form>
-      <Typography align="center" mt={2} color="text.secondary">
+      <Typography align="center" mt={2} color="text.secondary" sx={{ fontSize: 13 }}>
         Already have an account?{' '}
         <Link 
           component="button" 

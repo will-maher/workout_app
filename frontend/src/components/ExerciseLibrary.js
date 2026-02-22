@@ -158,9 +158,9 @@ const ExerciseLibrary = () => {
   ];
 
   return (
-    <Box maxWidth={480} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
+    <Box maxWidth={480} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }} sx={{ '& .MuiTypography-root': { fontSize: 13 } }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" fontWeight={700}>
+        <Typography variant="h4" fontWeight={700} sx={{ fontSize: 13 }}>
           Exercise Library
         </Typography>
         <Button
@@ -183,7 +183,7 @@ const ExerciseLibrary = () => {
           <CardContent sx={{ p: 1 }}>
             {Array.isArray(sortedGroups) && sortedGroups.map((mg, idx) => (
               <Box key={mg} mb={1}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: idx !== 0 ? 2 : 0, mb: 0.5, color: 'primary.main', fontSize: 15 }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: idx !== 0 ? 2 : 0, mb: 0.5, color: 'primary.main', fontSize: 13 }}>
                   {mg}
                 </Typography>
                 <List dense disablePadding>
@@ -203,7 +203,7 @@ const ExerciseLibrary = () => {
                           <ListItemText
                             primary={
                               <Box>
-                                <Typography fontWeight={600} sx={{ fontSize: 14 }}>
+                                <Typography fontWeight={600} sx={{ fontSize: 13 }}>
                                   {ex.name}
                                 </Typography>
                                 {ex.notes && (
@@ -231,7 +231,7 @@ const ExerciseLibrary = () => {
               </Box>
             ))}
             {exercises.length === 0 && (
-              <Typography color="text.secondary" align="center" py={2}>
+              <Typography color="text.secondary" align="center" py={2} sx={{ fontSize: 13 }}>
                 No exercises found
               </Typography>
             )}
@@ -239,7 +239,7 @@ const ExerciseLibrary = () => {
         </Card>
       )}
       <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Add New Exercise</DialogTitle>
+        <DialogTitle sx={{ fontSize: 13 }}>Add New Exercise</DialogTitle>
         <DialogContent>
           <TextField
             label="Exercise Name"
@@ -273,7 +273,7 @@ const ExerciseLibrary = () => {
       
       {/* Edit Exercise Dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Exercise</DialogTitle>
+        <DialogTitle sx={{ fontSize: 13 }}>Edit Exercise</DialogTitle>
         <DialogContent>
           <TextField
             label="Exercise Name"

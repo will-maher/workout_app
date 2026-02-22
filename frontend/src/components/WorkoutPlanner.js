@@ -412,9 +412,9 @@ const WorkoutPlanner = ({ user }) => {
   const { muscleGroups, fortnightData } = program ? getFortnightFrequencyData(program, exerciseMap) : { muscleGroups: [], fortnightData: {} };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 } }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" fontWeight={700}>
+        <Typography variant="h4" fontWeight={700} sx={{ fontSize: 13 }}>
           Workout Planner
         </Typography>
         <Button variant="contained" onClick={handleSave}>
@@ -431,7 +431,7 @@ const WorkoutPlanner = ({ user }) => {
               <Card key={day} sx={{ ...sectionSx, mb: 1 }}>
                 <CardContent sx={{ p: 2 }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                    <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: '0.875rem' }}>{day}</Typography>
+                    <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: 13 }}>{day}</Typography>
                     <Button 
                       startIcon={<AddIcon />} 
                       onClick={() => handleAddExercise(day)} 
@@ -440,7 +440,7 @@ const WorkoutPlanner = ({ user }) => {
                       sx={{ 
                         py: 0.5, 
                         px: 1.5, 
-                        fontSize: '0.75rem',
+                        fontSize: 13,
                         minHeight: '32px'
                       }}
                     >
@@ -452,7 +452,7 @@ const WorkoutPlanner = ({ user }) => {
                       <TableHead>
                         <TableRow>
                           <TableCell sx={{ 
-                            fontSize: isMobile ? 11 : 14, 
+                            fontSize: isMobile ? 11 : 13, 
                             fontWeight: 600, 
                             py: 1,
                             bgcolor: 'background.default',
@@ -464,7 +464,7 @@ const WorkoutPlanner = ({ user }) => {
                             Exercise
                           </TableCell>
                           <TableCell align="center" sx={{ 
-                            fontSize: isMobile ? 11 : 14, 
+                            fontSize: isMobile ? 11 : 13, 
                             fontWeight: 600, 
                             py: 1,
                             bgcolor: 'background.default',
@@ -481,7 +481,7 @@ const WorkoutPlanner = ({ user }) => {
                         {(program && Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
                           <TableRow key={idx} sx={{ '& .MuiTableCell-root': { py: 1 } }}>
                             <TableCell sx={{ 
-                              fontSize: isMobile ? 11 : 14,
+                              fontSize: isMobile ? 11 : 13,
                               borderBottom: '1px solid',
                               borderColor: 'divider',
                               pl: isMobile ? 1 : 2,
@@ -523,7 +523,7 @@ const WorkoutPlanner = ({ user }) => {
                                     variant="caption" 
                                     color="text.secondary" 
                                     sx={{ 
-                                      fontSize: '0.7rem',
+                                      fontSize: 11,
                                       fontWeight: 500,
                                       display: 'block'
                                     }}
@@ -534,7 +534,7 @@ const WorkoutPlanner = ({ user }) => {
                               </Box>
                             </TableCell>
                             <TableCell align="center" sx={{ 
-                              fontSize: isMobile ? 11 : 14,
+                              fontSize: isMobile ? 11 : 13,
                               borderBottom: '1px solid',
                               borderColor: 'divider',
                               width: isMobile ? 40 : 50,
@@ -561,7 +561,7 @@ const WorkoutPlanner = ({ user }) => {
       )}
       <Card sx={{ ...sectionSx, mt: 3 }}>
         <CardContent sx={{ p: 2 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
+          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2, fontSize: 13 }}>
             Weekly Volume Analysis
           </Typography>
           <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
@@ -569,7 +569,7 @@ const WorkoutPlanner = ({ user }) => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ 
-                    fontSize: isMobile ? 11 : 14, 
+                    fontSize: isMobile ? 11 : 13, 
                     fontWeight: 600, 
                     py: 1,
                     bgcolor: 'background.default',
@@ -579,7 +579,7 @@ const WorkoutPlanner = ({ user }) => {
                     Muscle Group
                   </TableCell>
                   <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 14, 
+                    fontSize: isMobile ? 11 : 13, 
                     fontWeight: 600, 
                     py: 1,
                     bgcolor: 'background.default',
@@ -589,7 +589,7 @@ const WorkoutPlanner = ({ user }) => {
                     Sets/Week
                   </TableCell>
                   <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 14, 
+                    fontSize: isMobile ? 11 : 13, 
                     fontWeight: 600, 
                     py: 1,
                     bgcolor: 'background.default',
@@ -599,7 +599,7 @@ const WorkoutPlanner = ({ user }) => {
                     Frequency
                   </TableCell>
                   <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 14, 
+                    fontSize: isMobile ? 11 : 13, 
                     fontWeight: 600, 
                     py: 1,
                     bgcolor: 'success.light', 
@@ -610,7 +610,7 @@ const WorkoutPlanner = ({ user }) => {
                     Optimal Sets
                   </TableCell>
                   <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 14, 
+                    fontSize: isMobile ? 11 : 13, 
                     fontWeight: 600, 
                     py: 1,
                     bgcolor: 'success.light', 
@@ -625,7 +625,7 @@ const WorkoutPlanner = ({ user }) => {
               <TableBody>
                 {Object.keys(weeklyVolume).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 15, py: 2 }}>
+                    <TableCell colSpan={5} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 13, py: 2 }}>
                       No data
                     </TableCell>
                   </TableRow>
@@ -633,7 +633,7 @@ const WorkoutPlanner = ({ user }) => {
                   Object.entries(weeklyVolume).map(([mg, sets]) => (
                     <TableRow key={mg} sx={{ '& .MuiTableCell-root': { py: 1 } }}>
                       <TableCell sx={{ 
-                        fontSize: isMobile ? 11 : 14, 
+                        fontSize: isMobile ? 11 : 13, 
                         fontWeight: 500,
                         borderBottom: '1px solid',
                         borderColor: 'divider'
@@ -641,21 +641,21 @@ const WorkoutPlanner = ({ user }) => {
                         {mg}
                       </TableCell>
                       <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 14,
+                        fontSize: isMobile ? 11 : 13,
                         borderBottom: '1px solid',
                         borderColor: 'divider'
                       }}>
                         {sets}
                       </TableCell>
                       <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 14,
+                        fontSize: isMobile ? 11 : 13,
                         borderBottom: '1px solid',
                         borderColor: 'divider'
                       }}>
                         {weeklyFreq[mg]}
                       </TableCell>
                       <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 14,
+                        fontSize: isMobile ? 11 : 13,
                         bgcolor: 'success.50',
                         borderBottom: '1px solid',
                         borderColor: 'divider'
@@ -663,7 +663,7 @@ const WorkoutPlanner = ({ user }) => {
                         {OPTIMAL_RANGES[mg]?.sets || '-'}
                       </TableCell>
                       <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 14,
+                        fontSize: isMobile ? 11 : 13,
                         bgcolor: 'success.50',
                         borderBottom: '1px solid',
                         borderColor: 'divider'
@@ -690,14 +690,14 @@ const WorkoutPlanner = ({ user }) => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontSize: isMobile ? 11 : 14, fontWeight: 600, minWidth: 80 }}>Muscle Group</TableCell>
+                    <TableCell sx={{ fontSize: isMobile ? 11 : 13, fontWeight: 600, minWidth: 80 }}>Muscle Group</TableCell>
                                          {/* Week 1 Headers */}
                      {defaultDays.map((day, index) => (
                        <TableCell 
                          key={`week1_${index}`} 
                          align="center" 
                          sx={{ 
-                           fontSize: isMobile ? 9 : 11, 
+                           fontSize: isMobile ? 11 : 13, 
                            fontWeight: 600, 
                            bgcolor: 'background.default',
                            minWidth: isMobile ? 25 : 30,
@@ -717,7 +717,7 @@ const WorkoutPlanner = ({ user }) => {
                          key={`week2_${index}`} 
                          align="center" 
                          sx={{ 
-                           fontSize: isMobile ? 9 : 11, 
+                           fontSize: isMobile ? 11 : 13, 
                            fontWeight: 600, 
                            bgcolor: 'background.default',
                            minWidth: isMobile ? 25 : 30,
@@ -736,7 +736,7 @@ const WorkoutPlanner = ({ user }) => {
                 <TableBody>
                   {muscleGroups.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={15} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 15 }}>
+                      <TableCell colSpan={15} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 13 }}>
                         No muscle groups found in program
                       </TableCell>
                     </TableRow>
@@ -745,7 +745,7 @@ const WorkoutPlanner = ({ user }) => {
                       <TableRow key={muscleGroup}>
                         <TableCell 
                           sx={{ 
-                            fontSize: isMobile ? 11 : 14, 
+                            fontSize: isMobile ? 11 : 13, 
                             fontWeight: 600,
                             borderRight: '2px solid',
                             borderColor: 'divider',
@@ -764,7 +764,7 @@ const WorkoutPlanner = ({ user }) => {
                               key={`week1_${muscleGroup}_${index}`}
                               align="center"
                               sx={{
-                                fontSize: isMobile ? 9 : 11,
+                                fontSize: isMobile ? 11 : 13,
                                 bgcolor: isActive ? 'primary.main' : 'background.default',
                                 color: isActive ? 'primary.contrastText' : 'text.secondary',
                                 fontWeight: isActive ? 600 : 400,
@@ -795,7 +795,7 @@ const WorkoutPlanner = ({ user }) => {
                               key={`week2_${muscleGroup}_${index}`}
                               align="center"
                               sx={{
-                                fontSize: isMobile ? 9 : 11,
+                                fontSize: isMobile ? 11 : 13,
                                 bgcolor: isActive ? 'primary.main' : 'background.default',
                                 color: isActive ? 'primary.contrastText' : 'text.secondary',
                                 fontWeight: isActive ? 600 : 400,
@@ -847,7 +847,7 @@ const WorkoutPlanner = ({ user }) => {
       >
         <DialogTitle sx={{ 
           pb: 1,
-          fontSize: '1.25rem',
+          fontSize: 13,
           fontWeight: 600
         }}>
           Edit Exercise
@@ -863,7 +863,7 @@ const WorkoutPlanner = ({ user }) => {
             >
               <MenuItem value=""><em>Select an exercise</em></MenuItem>
               {groupedExercises.map(group => [
-                <ListSubheader key={group.label} sx={{ bgcolor: 'background.default', fontWeight: 600 }}>
+                <ListSubheader key={group.label} sx={{ bgcolor: 'background.default', fontWeight: 600, fontSize: 13 }}>
                   {group.label}
                 </ListSubheader>,
                 ...group.items.map(exOpt => (
