@@ -9,6 +9,7 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -50,9 +51,16 @@ function App() {
   const [value, setValue] = useState(0);
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const t = setTimeout(() => setStatusMessage(''), 4000);
+    return () => clearTimeout(t);
+  }, [statusMessage]);
 
   // Check for token on mount
   useEffect(() => {
@@ -163,25 +171,53 @@ function App() {
           borderRadius: 0
         }}
       >
-        <Toolbar sx={{ minHeight: 64, px: 3 }}>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: 13 }}>
+        <Toolbar variant="dense" sx={{ minHeight: 48, px: 2, gap: 1, py: 0 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: 13, lineHeight: 1.2 }}>
             Workout Tracker
           </Typography>
+          {statusMessage ? (
+            <Alert
+              severity={statusMessage.includes('Error') ? 'error' : 'success'}
+              onClose={() => setStatusMessage('')}
+              sx={{
+                py: 0,
+                maxWidth: { xs: '55vw', sm: 360 },
+                fontSize: 12,
+                backgroundColor: 'transparent',
+                border: 'none',
+                boxShadow: 'none',
+                color: statusMessage.includes('Error') ? 'error.main' : 'primary.main',
+                '& .MuiAlert-message': {
+                  color: 'inherit',
+                  padding: '2px 0',
+                },
+                '& .MuiAlert-icon': {
+                  color: 'inherit',
+                },
+                '& .MuiAlert-action': {
+                  color: 'inherit',
+                  alignItems: 'center',
+                },
+              }}
+            >
+              {statusMessage}
+            </Alert>
+          ) : null}
         </Toolbar>
       </AppBar>
       
 
 
       <Box sx={{ 
-        pt: 8, // Account for fixed AppBar
+        pt: 6, // fixed AppBar (~48px)
         pb: 9, // Account for BottomNavigation
         minHeight: '100vh',
         backgroundColor: 'background.default'
       }}>
         <Container maxWidth="md" sx={{ px: 2 }}>
           <Routes>
-            <Route path="/" element={<WorkoutEntry />} />
-            <Route path="/add" element={<WorkoutEntry />} />
+            <Route path="/" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
+            <Route path="/add" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
             <Route path="/history" element={<WorkoutHistory />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/library" element={<ExerciseLibrary />} />

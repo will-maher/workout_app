@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import ReactDOM from 'react-dom';
 import {
   Box,
   Typography,
@@ -7,10 +6,8 @@ import {
   Button,
   Grid,
   IconButton,
-  Alert,
   Slider,
   CircularProgress,
-  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,14 +26,14 @@ import axios from 'axios';
 import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 
-const WorkoutEntry = () => {
+const WorkoutEntry = ({ onStatusMessage }) => {
+  const setMessage = onStatusMessage ?? (() => {});
   const [exercises, setExercises] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState('');
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [sets, setSets] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
   const [notes, setNotes] = useState('');
   const [recentSets, setRecentSets] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -645,42 +642,6 @@ const WorkoutEntry = () => {
           </Box>
         ) : (
           <>
-            {ReactDOM.createPortal(
-              <Snackbar
-                open={!!message}
-                autoHideDuration={4000}
-                onClose={() => setMessage('')}
-                anchorOrigin={{ vertical: 'center', horizontal: 'center' }}
-                sx={{
-                  position: 'fixed',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 9999,
-                }}
-              >
-                <Alert 
-                  severity={message.includes('Error') ? 'error' : 'success'} 
-                  sx={{ 
-                    borderRadius: 2,
-                    minWidth: 300,
-                    boxShadow: 3,
-                    backgroundColor: message.includes('Error') 
-                      ? 'rgba(26, 26, 26, 0.98)' 
-                      : 'rgba(26, 26, 26, 0.98)',
-                    color: 'text.primary',
-                    border: '1px solid',
-                    borderColor: message.includes('Error') ? 'error.main' : 'success.main',
-                    '& .MuiAlert-message': { color: 'text.primary' },
-                  }}
-                  onClose={() => setMessage('')}
-                >
-                  {message}
-                </Alert>
-              </Snackbar>,
-              document.body
-            )}
-            
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: sectionGap }}>
               {/* Planned Workout Selector */}
               {userPlan && Object.keys(userPlan).length > 0 && (
