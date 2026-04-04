@@ -117,11 +117,15 @@ function App() {
   const handleLogin = (data) => {
     setUser({ username: data.username });
     setShowRegister(false);
+    setValue(0);
+    navigate('/add');
   };
 
   const handleRegister = (data) => {
     setUser({ username: data.username });
     setShowRegister(false);
+    setValue(0);
+    navigate('/add');
   };
 
   const handleLogout = () => {
