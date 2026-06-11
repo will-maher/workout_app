@@ -26,6 +26,7 @@ import Stats from './components/Stats';
 import ExerciseLibrary from './components/ExerciseLibrary';
 import Performance from './components/Performance';
 import WorkoutPlanner from './components/WorkoutPlanner';
+import Goals from './components/Goals';
 import MenuPage from './components/Menu';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -233,6 +234,7 @@ function App() {
             <Route path="/library" element={<ExerciseLibrary />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/plan" element={<WorkoutPlanner user={user} />} />
+            <Route path="/goals" element={<Goals />} />
             <Route path="/menu" element={<MenuPage user={user} onNavigate={navigate} onLogout={handleLogout} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />} />
             <Route path="/register" element={<Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />} />
@@ -253,8 +255,10 @@ function App() {
         <BottomNavigation
           value={value}
           onChange={handleNavigationChange}
-          sx={{ 
-            height: 72
+          sx={{
+            height: 72,
+            pb: 'env(safe-area-inset-bottom)',
+            boxSizing: 'content-box',
           }}
         >
           <BottomNavigationAction

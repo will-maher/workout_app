@@ -44,6 +44,19 @@ CREATE TABLE IF NOT EXISTS plans (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create goals table (target 1RM by date, per exercise)
+CREATE TABLE IF NOT EXISTS goals (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  exercise_id INTEGER REFERENCES exercises(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,
+  target_date DATE NOT NULL,
+  start_one_rm REAL NOT NULL,
+  target_one_rm REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for common query patterns (safe to run on an existing database)
 CREATE INDEX IF NOT EXISTS idx_workouts_user_date ON workouts(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_workout_sets_workout ON workout_sets(workout_id);

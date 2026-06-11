@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database.pg');
 const authenticateToken = require('./authMiddleware');
+const { estimateCurrentOneRm } = require('../lib/oneRm');
 const router = express.Router();
 
 // One rep max uses the Brzycki formula: weight / (1.0278 - 0.0278 * reps),
@@ -352,55 +353,7 @@ router.get('/suggested-weights', authenticateToken, async (req, res) => {
         }
       });
     }
-    // Calculate 1RM for each set
-    const points = result.rows.map(set => ({
-      date: (typeof set.date === 'string') ? set.date : set.date.toISOString().slice(0, 10),
-      one_rm: set.weight / (1.0278 - 0.0278 * set.reps)
-    }));
-    // Get daily max 1RM (one per date)
-    const byDate = {};
-    points.forEach(pt => {
-      const dateOnly = pt.date.slice(0, 10);
-      if (!byDate[dateOnly] || pt.one_rm > byDate[dateOnly].one_rm) {
-        byDate[dateOnly] = { ...pt, date: dateOnly };
-      }
-    });
-    const dailyMax = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
-    // LOESS smoothing (same as performance tab)
-    function loess(xs, ys, bandwidth = 0.08) {
-      const n = xs.length;
-      const bw = Math.max(2, Math.floor(bandwidth * n));
-      const result = [];
-      for (let i = 0; i < n; i++) {
-        const distances = xs.map(x => Math.abs(x - xs[i]));
-        const idxs = distances
-          .map((d, idx) => [d, idx])
-          .sort((a, b) => a[0] - b[0])
-          .slice(0, bw)
-          .map(pair => pair[1]);
-        const xw = idxs.map(j => xs[j]);
-        const yw = idxs.map(j => ys[j]);
-        const xbar = xw.reduce((a, b) => a + b, 0) / bw;
-        const ybar = yw.reduce((a, b) => a + b, 0) / bw;
-        const num = xw.reduce((sum, xj, k) => sum + (xj - xbar) * (yw[k] - ybar), 0);
-        const den = xw.reduce((sum, xj) => sum + (xj - xbar) ** 2, 0);
-        const beta = den === 0 ? 0 : num / den;
-        const alpha = ybar - beta * xbar;
-        result.push([xs[i], alpha + beta * xs[i]]);
-      }
-      return result;
-    }
-    let estimatedOneRepMax = 0;
-    if (dailyMax.length >= 3) {
-      // Use LOESS smoothed value for the latest date
-      const xs = dailyMax.map(pt => new Date(pt.date).getTime());
-      const ys = dailyMax.map(pt => pt.one_rm);
-      const loessLine = loess(xs, ys, 0.08);
-      estimatedOneRepMax = loessLine[loessLine.length - 1][1];
-    } else {
-      // Fallback: use latest daily max 1RM
-      estimatedOneRepMax = dailyMax[dailyMax.length - 1].one_rm;
-    }
+    const estimatedOneRepMax = estimateCurrentOneRm(result.rows);
     const newOneRepMax = estimatedOneRepMax + 1;
     const suggestedWeights = {
       reps_3: Math.round((newOneRepMax * (1.02 - (0.02 * 3))) * 10) / 10,

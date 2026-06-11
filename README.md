@@ -41,6 +41,7 @@ This is a workout tracking app with:
 - **workouts**: date, user_id
 - **workout_sets**: workout_id, exercise_id, reps, weight
 - **workout_plan**: per-day plan entries (exercise, sets, target reps)
+- **goals**: target 1RM by date per exercise (start 1RM snapshotted at creation)
 
 ### Key env vars
 - `DATABASE_URL` (Postgres)
@@ -160,6 +161,11 @@ npm run build
 ### Plans
 - `GET /api/plan` - Get user's workout plan
 - `POST /api/plan` - Save workout plan
+
+### Goals
+- `GET /api/goals` - Active goals with live progress (current vs expected 1RM)
+- `POST /api/goals` - Create a goal (start 1RM snapshotted automatically)
+- `DELETE /api/goals/:id` - Delete a goal
 
 ## Deployment
 

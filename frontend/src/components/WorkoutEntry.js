@@ -45,6 +45,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const [showPlannedExercises, setShowPlannedExercises] = useState(true);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [oneRmRanges, setOneRmRanges] = useState({});
+  const [goals, setGoals] = useState([]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -314,6 +315,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       try {
         await fetchExercises();
         await fetchUserPlan();
+        await fetchGoals();
       } catch (error) {
         console.error('Error initializing WorkoutEntry component:', error);
       } finally {
@@ -357,6 +359,20 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       setUserPlan(null);
     }
   };
+
+  const fetchGoals = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/goals`);
+      setGoals(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      setGoals([]);
+    }
+  };
+
+  const activeGoal = useMemo(() => {
+    if (!selectedExercise || !goals.length) return null;
+    return goals.find((g) => g.exercise_id === parseInt(selectedExercise, 10)) || null;
+  }, [goals, selectedExercise]);
 
   const fetchRecentData = useCallback(async () => {
     if (!selectedExercise) {
@@ -862,7 +878,21 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     ) : null;
                   })()}
                 </Box>
-                
+
+                {/* Active goal: this week's target */}
+                {activeGoal && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: sectionGap, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: activeGoal.on_track ? 'primary.main' : '#FAC775', flexShrink: 0 }} />
+                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                      Goal {activeGoal.target_one_rm} kg: this week{' '}
+                      <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                        {roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5))} kg × 5
+                      </Box>{' '}
+                      (1RM {activeGoal.expected_one_rm}) · {activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind plan'}
+                    </Typography>
+                  </Box>
+                )}
+
                 {/* Weight Calculator Slider */}
                 {selectedExercise && estimatedOneRepMax > 0 && (
                   <Box sx={{ mb: sectionGap }}>

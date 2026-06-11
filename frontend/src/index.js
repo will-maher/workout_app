@@ -116,33 +116,6 @@ const globalStyles = `
     outline-offset: 2px;
   }
   
-  /* Enhanced transitions */
-  .MuiButton-root,
-  .MuiCard-root,
-  .MuiPaper-root {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  /* Glow effects for primary elements */
-  .MuiButton-contained {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .MuiButton-contained::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-  }
-  
-  .MuiButton-contained:hover::before {
-    left: 100%;
-  }
 `;
 
 // Inject global styles

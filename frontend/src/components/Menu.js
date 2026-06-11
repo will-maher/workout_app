@@ -14,6 +14,7 @@ import {
   LibraryBooks as LibraryIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
+  Flag as GoalIcon,
 } from '@mui/icons-material';
 
 const Menu = ({ user, onNavigate, onLogout }) => {
@@ -28,6 +29,11 @@ const Menu = ({ user, onNavigate, onLogout }) => {
       text: user?.username || 'User',
       disabled: true,
       onClick: null,
+    },
+    {
+      icon: <GoalIcon />,
+      text: 'Goals',
+      onClick: () => onNavigate('/goals'),
     },
     {
       icon: <HistoryIcon />,
