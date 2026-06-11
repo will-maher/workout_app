@@ -1,25 +1,20 @@
-const { initDatabase, insertDefaultExercises } = require('./database');
+// Initialize the Postgres schema from ../schema.sql (idempotent:
+// tables and indexes all use IF NOT EXISTS).
+const fs = require('fs');
+const path = require('path');
+const { pool } = require('./database.pg');
 
 async function initializeDatabase() {
   try {
-    console.log('🔄 Initializing database...');
-    
-    // Initialize database tables
-    await initDatabase();
-    
-    // Insert default exercises
-    await insertDefaultExercises();
-    
-    console.log('✅ Database initialization completed successfully!');
-    console.log('📊 Default exercises have been added to the library.');
-    console.log('🚀 You can now start the server with: npm run dev');
-    
+    console.log('Initializing database...');
+    const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
+    await pool.query(schema);
+    console.log('Database initialization completed successfully.');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error('Database initialization failed:', error);
     process.exit(1);
   }
 }
 
-// Run initialization
-initializeDatabase(); 
+initializeDatabase();

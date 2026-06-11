@@ -31,19 +31,29 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 // API base URL configuration
-// Check if we're running on Railway (production) by looking at the hostname
-const isProduction = window.location.hostname.includes('railway.app') || 
-                     window.location.hostname.includes('extraordinary-spirit-production');
+// - CRA dev server (port 3000) talks to the local backend on 5001
+// - When served by the backend itself, use same-origin relative URLs
+//   (no CORS preflight requests)
+// - Any other host (e.g. legacy separate frontend service) targets the
+//   production API directly
+// REACT_APP_API_URL overrides all of the above when set at build time.
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const isCraDevServer = isLocalhost && window.location.port === '3000';
+const BACKEND_HOST = 'workoutapp-production-3c56.up.railway.app';
+const isSameOriginAsBackend = isLocalhost || window.location.hostname === BACKEND_HOST;
 
-export const API_BASE_URL = isProduction
-  ? 'https://workoutapp-production-3c56.up.railway.app'
-  : 'http://localhost:5001';
+export const API_BASE_URL =
+  process.env.REACT_APP_API_URL ??
+  (isCraDevServer
+    ? 'http://localhost:5001'
+    : isSameOriginAsBackend
+      ? ''
+      : `https://${BACKEND_HOST}`);
 
 // For debugging - log the current environment and API URL (only in development)
 if (process.env.NODE_ENV === 'development') {
   console.log('Environment:', process.env.NODE_ENV);
   console.log('Hostname:', window.location.hostname);
-  console.log('Is Production:', isProduction);
   console.log('API Base URL:', API_BASE_URL);
 }
 

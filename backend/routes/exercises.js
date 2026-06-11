@@ -1,5 +1,6 @@
 const express = require('express');
 const { pool } = require('../database.pg');
+const authenticateToken = require('./authMiddleware');
 const router = express.Router();
 
 // GET all exercises
@@ -49,7 +50,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST new exercise
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { name, muscle_group, category = 'strength', notes } = req.body;
 
   if (!name || !muscle_group) {
@@ -79,7 +80,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT update exercise
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name, muscle_group, category, notes } = req.body;
 
@@ -103,10 +104,21 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE exercise
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Deleting an exercise cascades to workout_sets, wiping logged history
+    // for every user — refuse if any sets reference it.
+    const setsResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM workout_sets WHERE exercise_id = $1',
+      [id]
+    );
+    if (setsResult.rows[0].count > 0) {
+      return res.status(409).json({
+        error: `Cannot delete: ${setsResult.rows[0].count} logged sets reference this exercise`
+      });
+    }
     const result = await pool.query('DELETE FROM exercises WHERE id = $1', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Exercise not found' });

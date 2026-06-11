@@ -9,10 +9,10 @@ restartPolicyMaxRetries = 10
 
 # Resource limits to control memory usage
 [deploy.resources]
-memory = "512Mi"  # Start with 512MB, adjust based on actual usage
-cpu = "0.5"       # Half a CPU core
+memory = "512Mi"
+cpu = "0.5"
 
 # Environment variables for optimization
 [deploy.variables]
 NODE_ENV = "production"
-NODE_OPTIONS = "--max-old-space-size=400"  # Limit Node.js heap to 400MB
+NODE_OPTIONS = "--max-old-space-size=400"

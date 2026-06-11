@@ -1,0 +1,14 @@
+{
+  "name": "workout-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workout tracking app - single service: Express backend serving the React build",
+  "scripts": {
+    "build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci --omit=dev",
+    "start": "node backend/server.js",
+    "init-db": "node backend/init-db.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
