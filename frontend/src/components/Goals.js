@@ -119,9 +119,9 @@ const Goals = () => {
         target_one_rm: parseFloat(formTarget),
         target_date: format(formDate, 'yyyy-MM-dd'),
       });
+      await fetchGoals();
       setCreateOpen(false);
       resetForm();
-      fetchGoals();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create goal');
     } finally {
