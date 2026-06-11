@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogActions,
   useMediaQuery,
+  Chip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -21,7 +22,7 @@ import {
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, differenceInCalendarDays, parseISO } from 'date-fns';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
@@ -374,6 +375,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     return goals.find((g) => g.exercise_id === parseInt(selectedExercise, 10)) || null;
   }, [goals, selectedExercise]);
 
+  const daysToGoal = useMemo(() => {
+    if (!activeGoal) return null;
+    return Math.max(0, differenceInCalendarDays(parseISO(activeGoal.target_date), new Date()));
+  }, [activeGoal]);
+
   const fetchRecentData = useCallback(async () => {
     if (!selectedExercise) {
       setRecentSets([]);
@@ -399,6 +405,12 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       fetchRecentData();
     }
   }, [selectedExercise, fetchRecentData]);
+
+  useEffect(() => {
+    if (!selectedExercise) return;
+    const goal = goals.find((g) => g.exercise_id === parseInt(selectedExercise, 10));
+    if (goal) setSliderReps(5);
+  }, [selectedExercise, goals]);
 
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
@@ -863,7 +875,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   {selectedExercise && (() => {
                     const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
                     return selectedExerciseData && selectedExerciseData.notes ? (
-                      <Box sx={{ mt: sectionGap, p: sectionGap, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Box sx={{ mt: 1, p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
                         <Typography 
                           variant="body2" 
                           color="text.secondary" 
@@ -879,40 +891,47 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   })()}
                 </Box>
 
-                {/* Active goal: this week's target */}
+                {/* Active goal card */}
                 {activeGoal && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: sectionGap, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: activeGoal.on_track ? 'primary.main' : '#FAC775', flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                      Goal {activeGoal.target_one_rm} kg: this week{' '}
-                      <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
-                        {roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5))} kg × 5
-                      </Box>{' '}
-                      (1RM {activeGoal.expected_one_rm}) · {activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind plan'}
-                    </Typography>
+                  <Box sx={{ mb: 1.5, p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                      <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'text.secondary' }}>
+                        Goal{daysToGoal !== null ? ` · ${daysToGoal}d left` : ''}
+                      </Typography>
+                      <Chip
+                        label={activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind'}
+                        size="small"
+                        sx={{ fontSize: 10, height: 18, fontWeight: 600, color: '#04342C', backgroundColor: activeGoal.achieved ? '#9FE1CB' : activeGoal.on_track ? '#5DCAA5' : '#FAC775' }}
+                      />
+                    </Box>
+                    <Box sx={{ height: 4, borderRadius: 2, backgroundColor: 'divider', mb: 1 }}>
+                      <Box sx={{ height: '100%', borderRadius: 2, width: `${activeGoal.progress * 100}%`, backgroundColor: 'primary.main', transition: 'width 0.4s ease' }} />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                        <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>{activeGoal.current_one_rm} kg</Box>
+                        {' → '}
+                        <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{activeGoal.target_one_rm} kg</Box>
+                      </Typography>
+                      <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                        aim for{' '}
+                        <Box component="span" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                          {roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5))} kg × 5
+                        </Box>
+                      </Typography>
+                    </Box>
                   </Box>
                 )}
 
                 {/* Weight Calculator Slider */}
                 {selectedExercise && estimatedOneRepMax > 0 && (
                   <Box sx={{ mb: sectionGap }}>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ 
-                        fontSize: 11,
-                        fontWeight: 500,
-                        mb: 1
-                      }}
-                    >
-                      Weight Calculator
-                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
                       <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
-                        {roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax))} kg • {sliderReps} reps
+                        {roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax))} kg · {sliderReps} reps
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                        Est. 1RM: {roundToNearest2_5(estimatedOneRepMax)} kg
+                        est. 1RM {roundToNearest2_5(estimatedOneRepMax)} kg
                       </Typography>
                     </Box>
                     
@@ -1241,7 +1260,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
             {selectedExercise && (
               <Box sx={{ ...sectionSx, px: 0 }}>
                 <Typography sx={sectionTitleSx}>
-                  Best Set From Last 10 Workouts
+                  Last 10 workouts
                 </Typography>
 
                 {loadingData ? (
@@ -1252,18 +1271,6 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   <Box>
                     {recentBestSets.length > 0 ? (
                       <Box sx={{ display: 'table', width: '100%', borderCollapse: 'collapse' }}>
-                        <Box sx={{ display: 'table-row', borderBottom: '1px solid', borderColor: 'divider' }}>
-                          <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
-                              Workout
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
-                              Best Set
-                            </Typography>
-                          </Box>
-                        </Box>
                         {recentBestSets.map((set, index) => (
                           <Box
                             key={`${set.date}-${index}`}
