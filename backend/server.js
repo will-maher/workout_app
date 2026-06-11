@@ -18,6 +18,10 @@ const statsRoutes = require('./routes/stats');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Behind Railway's proxy: trust the first hop so client IPs come from
+// X-Forwarded-For (required by express-rate-limit).
+app.set('trust proxy', 1);
+
 // Middleware
 // CSP is disabled because CRA inlines its runtime chunk in index.html,
 // which the default helmet policy would block.
