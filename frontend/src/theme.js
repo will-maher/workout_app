@@ -144,33 +144,29 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 12,
-        padding: '12px 24px',
+        padding: '10px 20px',
         fontWeight: 600,
         boxShadow: 'none',
         textTransform: 'none',
         letterSpacing: '0.01em',
-        transition: 'all 0.2s ease-in-out',
+        transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
         '&:hover': {
-          transform: 'translateY(-1px)',
-          boxShadow: '0 8px 25px rgba(0, 212, 170, 0.3)'
+          boxShadow: 'none'
         }
       },
       contained: {
-        background: `linear-gradient(135deg, ${colors.primary.main} 0%, ${colors.primary.light} 100%)`,
+        backgroundColor: colors.primary.main,
         '&:hover': {
-          background: `linear-gradient(135deg, ${colors.primary.dark} 0%, ${colors.primary.main} 100%)`,
-          transform: 'translateY(-1px)',
-          boxShadow: '0 8px 25px rgba(0, 212, 170, 0.4)'
+          backgroundColor: colors.primary.dark,
+          boxShadow: 'none'
         }
       },
       outlined: {
-        borderColor: colors.primary.main,
+        borderColor: 'rgba(0, 212, 170, 0.5)',
         color: colors.primary.main,
         '&:hover': {
-          backgroundColor: colors.primary.main,
-          color: colors.primary.contrastText,
-          transform: 'translateY(-1px)',
-          boxShadow: '0 8px 25px rgba(0, 212, 170, 0.3)'
+          borderColor: colors.primary.main,
+          backgroundColor: 'rgba(0, 212, 170, 0.08)'
         }
       }
     }
@@ -183,14 +179,14 @@ const components = {
           backgroundColor: colors.background.paper,
           '& fieldset': {
             borderColor: colors.divider,
-            borderWidth: '2px'
+            borderWidth: '1px'
           },
           '&:hover fieldset': {
             borderColor: colors.primary.light
           },
           '&.Mui-focused fieldset': {
             borderColor: colors.primary.main,
-            borderWidth: '2px'
+            borderWidth: '1px'
           }
         },
         '& .MuiInputLabel-root': {

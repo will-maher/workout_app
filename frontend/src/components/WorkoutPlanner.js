@@ -413,112 +413,77 @@ const WorkoutPlanner = ({ user }) => {
                       Add Exercise
                     </Button>
                   </Box>
-                  <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ 
-                            fontSize: isMobile ? 11 : 13, 
-                            fontWeight: 600, 
-                            py: 1,
-                            bgcolor: 'background.default',
-                            borderBottom: '2px solid',
-                            borderColor: 'divider',
-                            pl: isMobile ? 1 : 2,
-                            pr: isMobile ? 1 : 2
-                          }}>
-                            Exercise
-                          </TableCell>
-                          <TableCell align="center" sx={{ 
-                            fontSize: isMobile ? 11 : 13, 
-                            fontWeight: 600, 
-                            py: 1,
-                            bgcolor: 'background.default',
-                            borderBottom: '2px solid',
-                            borderColor: 'divider',
-                            width: isMobile ? 40 : 50,
-                            minWidth: isMobile ? 40 : 50,
-                            maxWidth: isMobile ? 40 : 50
-                          }}>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(program && Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
-                          <TableRow key={idx} sx={{ '& .MuiTableCell-root': { py: 1 } }}>
-                            <TableCell sx={{ 
-                              fontSize: isMobile ? 11 : 13,
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
-                              pl: isMobile ? 1 : 2,
-                              pr: isMobile ? 1 : 2,
-                              cursor: 'pointer',
-                              '&:hover': {
-                                bgcolor: 'background.default'
-                              }
+                  <Box>
+                    {(program && Array.isArray(program[day]) ? program[day] : []).length === 0 && (
+                      <Typography sx={{ fontSize: 12, color: 'text.secondary', fontStyle: 'italic', py: 1 }}>
+                        Rest day — no exercises planned
+                      </Typography>
+                    )}
+                    {(program && Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
+                      <Box
+                        key={idx}
+                        onClick={() => handleEditExercise(day, idx, ex)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                          py: 1,
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          cursor: 'pointer',
+                          '&:last-of-type': { borderBottom: 'none' },
+                          '&:active': { backgroundColor: 'rgba(255,255,255,0.03)' },
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            sx={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: ex.exercise ? 'text.primary' : 'text.secondary',
+                              fontStyle: ex.exercise ? 'normal' : 'italic',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}
-                            onClick={() => handleEditExercise(day, idx, ex)}
+                          >
+                            {ex.exercise || 'Tap to choose exercise'}
+                          </Typography>
+                          {exerciseMap[ex.exercise]?.muscle_group && (
+                            <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                              {exerciseMap[ex.exercise].muscle_group}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                          {ex.exercise && (
+                            <Box
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: 'primary.main',
+                                border: '1px solid',
+                                borderColor: 'rgba(0, 212, 170, 0.35)',
+                                borderRadius: 10,
+                                px: 1,
+                                py: 0.25,
+                                whiteSpace: 'nowrap',
+                              }}
                             >
-                              <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                  <Typography 
-                                    variant="body2" 
-                                    sx={{ 
-                                      fontWeight: 500,
-                                      color: ex.exercise ? 'text.primary' : 'text.secondary',
-                                      fontStyle: ex.exercise ? 'normal' : 'italic'
-                                    }}
-                                  >
-                                    {ex.exercise || 'Click to add exercise'}
-                                  </Typography>
-                                  {ex.exercise && (
-                                    <Typography 
-                                      variant="body2" 
-                                      color="text.secondary"
-                                      sx={{ 
-                                        fontWeight: 500,
-                                        whiteSpace: 'nowrap'
-                                      }}
-                                    >
-                                      • {ex.sets || 3} sets × {ex.targetReps || 8} reps
-                                    </Typography>
-                                  )}
-                                </Box>
-                                {exerciseMap[ex.exercise]?.muscle_group && (
-                                  <Typography 
-                                    variant="caption" 
-                                    color="text.secondary" 
-                                    sx={{ 
-                                      fontSize: 11,
-                                      fontWeight: 500,
-                                      display: 'block'
-                                    }}
-                                  >
-                                    {exerciseMap[ex.exercise].muscle_group}
-                                  </Typography>
-                                )}
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center" sx={{ 
-                              fontSize: isMobile ? 11 : 13,
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
-                              width: isMobile ? 40 : 50,
-                              minWidth: isMobile ? 40 : 50,
-                              maxWidth: isMobile ? 40 : 50
-                            }}>
-                              <IconButton onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveExercise(day, idx);
-                              }} size="small" color="error" sx={{ p: 0.5 }}>
-                                <DeleteIcon sx={{ fontSize: '1rem' }} />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                              {ex.sets || 3} × {ex.targetReps || 8}
+                            </Box>
+                          )}
+                          <IconButton onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveExercise(day, idx);
+                          }} size="small" color="error" sx={{ p: 0.5, opacity: 0.7 }}>
+                            <DeleteIcon sx={{ fontSize: '1rem' }} />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
                 </CardContent>
               </Card>
             );
@@ -530,118 +495,66 @@ const WorkoutPlanner = ({ user }) => {
           <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2, fontSize: 13 }}>
             Weekly Volume Analysis
           </Typography>
-          <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ 
-                    fontSize: isMobile ? 11 : 13, 
-                    fontWeight: 600, 
-                    py: 1,
-                    bgcolor: 'background.default',
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
-                  }}>
-                    Muscle Group
-                  </TableCell>
-                  <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 13, 
-                    fontWeight: 600, 
-                    py: 1,
-                    bgcolor: 'background.default',
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
-                  }}>
-                    Sets/Week
-                  </TableCell>
-                  <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 13, 
-                    fontWeight: 600, 
-                    py: 1,
-                    bgcolor: 'background.default',
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
-                  }}>
-                    Frequency
-                  </TableCell>
-                  <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 13, 
-                    fontWeight: 600, 
-                    py: 1,
-                    bgcolor: 'success.light', 
-                    color: 'success.contrastText',
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
-                  }}>
-                    Optimal Sets
-                  </TableCell>
-                  <TableCell align="right" sx={{ 
-                    fontSize: isMobile ? 11 : 13, 
-                    fontWeight: 600, 
-                    py: 1,
-                    bgcolor: 'success.light', 
-                    color: 'success.contrastText',
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
-                  }}>
-                    Optimal Freq.
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {Object.keys(weeklyVolume).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 13, py: 2 }}>
-                      No data
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  Object.entries(weeklyVolume).map(([mg, sets]) => (
-                    <TableRow key={mg} sx={{ '& .MuiTableCell-root': { py: 1 } }}>
-                      <TableCell sx={{ 
-                        fontSize: isMobile ? 11 : 13, 
-                        fontWeight: 500,
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                      }}>
-                        {mg}
-                      </TableCell>
-                      <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 13,
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                      }}>
-                        {sets}
-                      </TableCell>
-                      <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 13,
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                      }}>
-                        {weeklyFreq[mg]}
-                      </TableCell>
-                      <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 13,
-                        bgcolor: 'success.50',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                      }}>
-                        {OPTIMAL_RANGES[mg]?.sets || '-'}
-                      </TableCell>
-                      <TableCell align="right" sx={{ 
-                        fontSize: isMobile ? 11 : 13,
-                        bgcolor: 'success.50',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                      }}>
-                        {OPTIMAL_RANGES[mg]?.freq || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {Object.keys(weeklyVolume).length === 0 ? (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', textAlign: 'center', py: 2 }}>
+              No data
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              {Object.entries(weeklyVolume)
+                .sort((a, b) => b[1] - a[1])
+                .map(([mg, sets]) => {
+                  const optimal = OPTIMAL_RANGES[mg];
+                  let minOpt = 0, maxOpt = 0;
+                  const match = optimal?.sets?.match(/(\d+)[^\d]+(\d+)/);
+                  if (match) {
+                    minOpt = parseInt(match[1], 10);
+                    maxOpt = parseInt(match[2], 10);
+                  }
+                  const scaleMax = Math.max(sets, maxOpt) * 1.15 || 1;
+                  const inRange = !maxOpt || (sets >= minOpt && sets <= maxOpt);
+                  const barColor = inRange ? 'primary.main' : sets > maxOpt ? '#F09595' : '#FAC775';
+                  return (
+                    <Box key={mg}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{mg}</Typography>
+                        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                          {sets} sets{maxOpt ? ` / ${minOpt}–${maxOpt}` : ''} · {weeklyFreq[mg]}×wk{optimal?.freq ? ` / ${optimal.freq}` : ''}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ position: 'relative', height: 14, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                        {maxOpt > 0 && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              left: `${(minOpt / scaleMax) * 100}%`,
+                              width: `${((maxOpt - minOpt) / scaleMax) * 100}%`,
+                              top: 0,
+                              bottom: 0,
+                              backgroundColor: 'rgba(0, 212, 170, 0.14)',
+                            }}
+                          />
+                        )}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 4,
+                            height: 6,
+                            width: `${(sets / scaleMax) * 100}%`,
+                            borderRadius: 3,
+                            backgroundColor: barColor,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  );
+                })}
+              <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: 0.5 }}>
+                Shaded band = optimal weekly sets · amber = below range, red = above range
+              </Typography>
+            </Box>
+          )}
         </CardContent>
       </Card>
 

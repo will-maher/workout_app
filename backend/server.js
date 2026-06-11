@@ -14,6 +14,7 @@ const exercisesRoutes = require('./routes/exercises');
 const workoutsRoutes = require('./routes/workouts');
 const planRoutes = require('./routes/plan');
 const statsRoutes = require('./routes/stats');
+const goalsRoutes = require('./routes/goals');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -45,6 +46,7 @@ app.use('/api/exercises', exercisesRoutes);
 app.use('/api/workouts', workoutsRoutes);
 app.use('/api/plan', planRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/goals', goalsRoutes);
 
 // Database connection test
 app.get('/api/health', async (req, res) => {
