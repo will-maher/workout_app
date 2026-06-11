@@ -48,3 +48,11 @@ coverage/
 tmp/
 temp/
 
+
+# Personal data exports (contain user data / password hashes)
+users.csv
+workouts.csv
+workout_sets.csv
+workout_sets_clean.csv
+plans.csv
+will_last_4_weeks.csv

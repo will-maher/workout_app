@@ -155,80 +155,56 @@ const WorkoutPlanner = ({ user }) => {
     bgcolor: 'transparent',
   };
 
+  // Migrate legacy 'Wed AM' key to 'Wednesday AM' and ensure every day exists
+  const normalizePlan = (plan) => {
+    const normalized = { ...plan };
+    if (normalized['Wed AM']) {
+      normalized['Wednesday AM'] = normalized['Wed AM'];
+      delete normalized['Wed AM'];
+    }
+    defaultDays.forEach(day => {
+      if (!Array.isArray(normalized[day])) {
+        normalized[day] = [];
+      }
+    });
+    return normalized;
+  };
+
   // Load from backend when user is available
   useEffect(() => {
-    if (!user) {
-      console.log('👤 No user available, waiting...');
-      return;
-    }
+    if (!user) return;
 
     const fetchPlan = async () => {
       try {
-        console.log('🔄 Loading plan from database for user:', user.username);
         const res = await axios.get(`${API_BASE_URL}/api/plan`);
-        console.log('📊 Plan data received:', res.data);
-        
+
         if (res.data && Object.keys(res.data).length > 0) {
-          // We have data from the database, use it
-          console.log('✅ Using plan from database');
-          setProgram(res.data);
+          setProgram(normalizePlan(res.data));
         } else {
-          // No data in database, use initial program
-          console.log('ℹ️ No plan in database, using initial program');
           setProgram(initialProgram);
         }
       } catch (error) {
-        console.error('❌ Error loading plan:', error);
-        if (error.response && error.response.status === 404) {
-          // No plan exists, use initial program
-          console.log('ℹ️ No plan found (404), using initial program');
-          setProgram(initialProgram);
-        } else if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          // Authentication error - try to refresh token or use cached plan
-          console.log('🔐 Authentication error, checking for cached plan...');
+        console.error('Error loading plan:', error);
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          // Authentication error - fall back to locally cached plan if present
           const cachedPlan = localStorage.getItem('cachedPlan');
           if (cachedPlan) {
             try {
-              const parsedPlan = JSON.parse(cachedPlan);
-              console.log('📋 Using cached plan');
-              setProgram(parsedPlan);
+              setProgram(normalizePlan(JSON.parse(cachedPlan)));
             } catch {
-              console.log('🔄 Using initial program due to cache parse error');
               setProgram(initialProgram);
             }
           } else {
-            console.log('🔄 Using initial program due to auth error');
             setProgram(initialProgram);
           }
         } else {
-          // Other error, use initial program
-          console.log('🔄 Using initial program due to error');
+          // No plan yet (404) or other error - start from the initial program
           setProgram(initialProgram);
         }
       }
     };
     fetchPlan();
   }, [user]);
-
-  // Migrate any loaded plans with 'Wed AM' to 'Wednesday AM' and normalize days
-  useEffect(() => {
-    if (program) {
-      setProgram(prev => {
-        let migrated = { ...prev };
-        if (migrated['Wed AM']) {
-          migrated['Wednesday AM'] = migrated['Wed AM'];
-          delete migrated['Wed AM'];
-        }
-        // Ensure every day in defaultDays exists as an array
-        defaultDays.forEach(day => {
-          if (!Array.isArray(migrated[day])) {
-            migrated[day] = [];
-          }
-        });
-        return migrated;
-      });
-    }
-  }, [program]);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -282,12 +258,9 @@ const WorkoutPlanner = ({ user }) => {
   };
 
   const handleRemoveExercise = (day, idx) => {
-    console.log('🗑️ Removing exercise:', { day, idx });
     setProgram(prev => {
-      console.log('📋 Previous program state:', prev);
       const updated = { ...prev };
       updated[day] = updated[day].filter((_, i) => i !== idx);
-      console.log('📋 Updated program state:', updated);
       return updated;
     });
   };
@@ -328,28 +301,21 @@ const WorkoutPlanner = ({ user }) => {
 
   const handleSave = async () => {
     try {
-      console.log('💾 Saving plan to database:', program);
-      console.log('📋 Monday AM exercises being saved:', program['Monday AM']);
       await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
-      console.log('✅ Plan saved successfully');
-      
+
       // Cache the plan locally for offline/error recovery
       localStorage.setItem('cachedPlan', JSON.stringify(program));
-      console.log('💾 Plan cached locally');
-      
-      // Force a refresh of the plan to ensure we have the latest data
+
+      // Refresh from the database to confirm what was persisted
       const refreshRes = await axios.get(`${API_BASE_URL}/api/plan`);
       if (refreshRes.data && Object.keys(refreshRes.data).length > 0) {
-        console.log('🔄 Refreshing plan from database');
-        console.log('📋 Monday AM exercises after refresh:', refreshRes.data['Monday AM']);
-        setProgram(refreshRes.data);
-        // Update cache with fresh data
+        setProgram(normalizePlan(refreshRes.data));
         localStorage.setItem('cachedPlan', JSON.stringify(refreshRes.data));
       }
-      
+
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('❌ Error saving plan:', error);
+      console.error('Error saving plan:', error);
     }
   };
 

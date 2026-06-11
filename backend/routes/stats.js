@@ -3,10 +3,8 @@ const { pool } = require('../database.pg');
 const authenticateToken = require('./authMiddleware');
 const router = express.Router();
 
-// Calculate one rep max using Epley formula
-const calculateOneRepMax = (weight, reps) => {
-  return weight * (1 + reps / 30);
-};
+// One rep max uses the Brzycki formula: weight / (1.0278 - 0.0278 * reps),
+// matching the frontend calculations.
 
 // GET one rep max stats for exercises (user-specific)
 router.get('/one-rep-max', authenticateToken, (req, res) => {
@@ -20,7 +18,7 @@ router.get('/one-rep-max', authenticateToken, (req, res) => {
       e.muscle_group,
       ws.weight,
       ws.reps,
-      (ws.weight * (1 + ws.reps / 30)) as one_rep_max,
+      (ws.weight / (1.0278 - (0.0278 * ws.reps))) as one_rep_max,
       w.date
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
@@ -110,7 +108,7 @@ router.get('/personal-records', authenticateToken, (req, res) => {
       MAX(ws.weight) as max_weight,
       MAX(ws.reps) as max_reps,
       MAX(ws.weight * ws.reps) as max_volume,
-      MAX(ws.weight * (1 + ws.reps / 30)) as max_one_rep_max
+      MAX(ws.weight / (1.0278 - (0.0278 * ws.reps))) as max_one_rep_max
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     WHERE ws.user_id = $1
@@ -139,16 +137,16 @@ router.get('/workout-frequency', authenticateToken, (req, res) => {
   const { days = 30 } = req.query;
   
   const query = `
-    SELECT 
+    SELECT
       date,
       COUNT(*) as workout_count
     FROM workouts
-    WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '${days} days'
+    WHERE user_id = $1 AND date >= CURRENT_DATE - make_interval(days => $2)
     GROUP BY date
     ORDER BY date DESC
   `;
 
-  pool.query(query, [userId], (err, result) => {
+  pool.query(query, [userId, parseInt(days, 10) || 30], (err, result) => {
     if (err) {
       console.error('Error fetching workout frequency:', err);
       return res.status(500).json({ error: 'Failed to fetch workout frequency' });
@@ -172,16 +170,16 @@ router.get('/exercise-progress', authenticateToken, (req, res) => {
       AVG(ws.weight) as avg_weight,
       AVG(ws.reps) as avg_reps,
       MAX(ws.weight) as max_weight,
-      MAX(ws.weight * (1 + ws.reps / 30)) as max_one_rep_max
+      MAX(ws.weight / (1.0278 - (0.0278 * ws.reps))) as max_one_rep_max
     FROM workout_sets ws
     JOIN workouts w ON ws.workout_id = w.id
-    WHERE ws.user_id = $1 AND ws.exercise_id = $2 
-      AND w.date >= CURRENT_DATE - INTERVAL '${days} days'
+    WHERE ws.user_id = $1 AND ws.exercise_id = $2
+      AND w.date >= CURRENT_DATE - make_interval(days => $3)
     GROUP BY w.date
     ORDER BY w.date DESC
   `;
 
-  pool.query(query, [userId, exercise_id], (err, result) => {
+  pool.query(query, [userId, exercise_id, parseInt(days, 10) || 90], (err, result) => {
     if (err) {
       console.error('Error fetching exercise progress:', err);
       return res.status(500).json({ error: 'Failed to fetch exercise progress' });
@@ -204,12 +202,12 @@ router.get('/muscle-group-distribution', authenticateToken, (req, res) => {
     FROM workout_sets ws
     JOIN exercises e ON ws.exercise_id = e.id
     JOIN workouts w ON ws.workout_id = w.id
-    WHERE ws.user_id = $1 AND w.date >= CURRENT_DATE - INTERVAL '${days} days'
+    WHERE ws.user_id = $1 AND w.date >= CURRENT_DATE - make_interval(days => $2)
     GROUP BY e.muscle_group
     ORDER BY total_volume DESC
   `;
 
-  pool.query(query, [userId], (err, result) => {
+  pool.query(query, [userId, parseInt(days, 10) || 30], (err, result) => {
     if (err) {
       console.error('Error fetching muscle group distribution:', err);
       return res.status(500).json({ error: 'Failed to fetch muscle group distribution' });

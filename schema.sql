@@ -42,4 +42,10 @@ CREATE TABLE IF NOT EXISTS plans (
   user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   plan_json JSONB NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-); 
+);
+
+-- Indexes for common query patterns (safe to run on an existing database)
+CREATE INDEX IF NOT EXISTS idx_workouts_user_date ON workouts(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_workout_sets_workout ON workout_sets(workout_id);
+CREATE INDEX IF NOT EXISTS idx_workout_sets_user_exercise ON workout_sets(user_id, exercise_id);
+CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise ON workout_sets(exercise_id); 

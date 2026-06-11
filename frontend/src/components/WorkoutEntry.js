@@ -112,8 +112,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     return result;
   };
 
-  // Get estimated 1RM using LOESS from performance data (heaviest set per workout)
-  const getEstimatedOneRepMax = () => {
+  // Estimated 1RM using LOESS from performance data (heaviest set per workout)
+  const estimatedOneRepMax = useMemo(() => {
     if (!selectedExercise || recentSets.length === 0) return 0;
     
     try {
@@ -172,7 +172,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       // Fallback to latest set's 1RM
       return recentSets.length > 0 ? calc1RM(recentSets[0].weight, recentSets[0].reps) : 0;
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedExercise, recentSets]);
 
   // Round weight to nearest 2.5kg increment
   const roundToNearest2_5 = (weight) => {
@@ -863,7 +864,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                 </Box>
                 
                 {/* Weight Calculator Slider */}
-                {selectedExercise && getEstimatedOneRepMax() > 0 && (
+                {selectedExercise && estimatedOneRepMax > 0 && (
                   <Box sx={{ mb: sectionGap }}>
                     <Typography 
                       variant="body2" 
@@ -878,10 +879,10 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
                       <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
-                        {roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax()))} kg • {sliderReps} reps
+                        {roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax))} kg • {sliderReps} reps
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                        Est. 1RM: {roundToNearest2_5(getEstimatedOneRepMax())} kg
+                        Est. 1RM: {roundToNearest2_5(estimatedOneRepMax)} kg
                       </Typography>
                     </Box>
                     
@@ -924,7 +925,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         size="small"
                         onClick={() => {
                           setReps(sliderReps.toString());
-                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, getEstimatedOneRepMax())).toString());
+                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax)).toString());
                         }}
                         sx={{ 
                           py: 1, 
