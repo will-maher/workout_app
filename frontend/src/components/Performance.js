@@ -152,7 +152,10 @@ const Performance = () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-      setExercises(Array.isArray(res.data) ? res.data : []);
+      const list = Array.isArray(res.data) ? res.data : [];
+      setExercises(list);
+      const bench = list.find(e => e.name.toLowerCase().includes('barbell bench press'));
+      if (bench) setSelectedExercise(bench.id);
     } catch (err) {
       console.error('Error loading exercises:', err);
       setError('Failed to load exercises');
