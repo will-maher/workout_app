@@ -225,7 +225,15 @@ function App() {
         minHeight: '100vh',
         backgroundColor: 'background.default'
       }}>
-        <Container maxWidth="md" sx={{ px: 2 }}>
+        <Container
+          key={location.pathname}
+          maxWidth="md"
+          sx={{
+            px: 2,
+            animation: 'pageFadeIn 0.15s ease',
+            '@keyframes pageFadeIn': { from: { opacity: 0 }, to: { opacity: 1 } },
+          }}
+        >
           <Routes>
             <Route path="/" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
             <Route path="/add" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
