@@ -8,7 +8,7 @@ const pool = new Pool({
   max: 5, // Reduce max connections from default 10
   min: 1, // Keep minimum connections low
   idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 2000, // Fail fast on connection attempts
+  connectionTimeoutMillis: 10000, // Allow time for Railway cold-start DB wake-up
   allowExitOnIdle: true // Allow process to exit when all connections are idle
 });
 

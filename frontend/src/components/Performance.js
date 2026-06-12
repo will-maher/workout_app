@@ -241,6 +241,19 @@ const Performance = () => {
     return new Set(filteredSets.map(s => s.date.slice(0, 10))).size;
   }, [filteredSets]);
 
+  // Volume per session (sum of weight × reps per date) for filtered range
+  const volumeData = useMemo(() => {
+    if (!filteredSets.length) return [];
+    const byDate = {};
+    filteredSets.forEach(s => {
+      const key = s.date.slice(0, 10);
+      byDate[key] = (byDate[key] || 0) + s.weight * s.reps;
+    });
+    return Object.entries(byDate)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, vol]) => [new Date(date).getTime(), Math.round(vol)]);
+  }, [filteredSets]);
+
   const weeklySetsFiltered = useMemo(() => {
     if (!weeklySetsData.length || !rangeStart) return weeklySetsData;
     return weeklySetsData.filter((row) => {
@@ -304,6 +317,9 @@ const Performance = () => {
     yAxis: {
       title: { text: null },
       gridLineColor: gridColor,
+      softMin: scatterData.length
+        ? Math.floor(Math.min(...scatterData.map(d => d[1])) * 0.92)
+        : undefined,
       labels: {
         format: '{value} kg',
         style: { fontSize: '11px', color: chartText },
@@ -581,6 +597,55 @@ const Performance = () => {
                 Weekly sets — {muscleGroup}
               </Typography>
               <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
+            </Box>
+          )}
+
+          {volumeData.length > 1 && (
+            <Box mt={3}>
+              <Typography sx={sectionTitleSx}>Session volume</Typography>
+              <HighchartsReact highcharts={Highcharts} options={{
+                chart: {
+                  type: 'column',
+                  backgroundColor: 'transparent',
+                  style: { fontFamily: 'inherit' },
+                  height: 220,
+                  spacing: [8, 4, 8, 4],
+                },
+                title: { text: '' },
+                xAxis: {
+                  type: 'datetime',
+                  title: { text: null },
+                  lineColor: axisColor,
+                  tickColor: 'transparent',
+                  gridLineWidth: 0,
+                  labels: { style: { fontSize: '11px', color: chartText } },
+                },
+                yAxis: {
+                  min: 0,
+                  title: { text: null },
+                  gridLineColor: gridColor,
+                  labels: {
+                    formatter: function () { return this.value >= 1000 ? `${(this.value / 1000).toFixed(1)}k` : this.value; },
+                    style: { fontSize: '11px', color: chartText },
+                  },
+                },
+                tooltip: {
+                  ...tooltipStyle,
+                  formatter: function () {
+                    return `<b>${format(new Date(this.x), 'MMM d, yyyy')}</b><br/>Volume: <b>${this.y.toLocaleString()} kg</b>`;
+                  },
+                },
+                plotOptions: {
+                  column: { borderWidth: 0, borderRadius: 3, pointPadding: 0.05, groupPadding: 0 },
+                },
+                series: [{
+                  name: 'Volume',
+                  data: volumeData,
+                  color: 'rgba(99, 102, 241, 0.75)',
+                }],
+                credits: { enabled: false },
+                legend: { enabled: false },
+              }} />
             </Box>
           )}
 
