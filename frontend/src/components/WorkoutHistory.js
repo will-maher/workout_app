@@ -214,10 +214,18 @@ const WorkoutCard = ({ workout, onDelete }) => {
   );
 };
 
+const CACHE_KEY = 'history_cache';
+
 const WorkoutHistory = () => {
-  const [workouts, setWorkouts] = useState([]);
+  const [workouts, setWorkouts] = useState(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retrying, setRetrying] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [workoutToDelete, setWorkoutToDelete] = useState(null);
   const [searchDate, setSearchDate] = useState(null);
@@ -226,21 +234,30 @@ const WorkoutHistory = () => {
     fetchWorkouts();
   }, []);
 
-  const fetchWorkouts = async (date = null) => {
+  const fetchWorkouts = async (date = null, attempt = 0) => {
     try {
-      setLoading(true);
-      setError('');
+      if (attempt === 0) { setLoading(true); setError(''); setRetrying(false); }
+      else setRetrying(true);
       const params = date ? { date: format(date, 'yyyy-MM-dd') } : {};
       const response = await axios.get(`${API_BASE_URL}/api/workouts`, { params });
-      setWorkouts(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setWorkouts(data);
+      if (!date) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
+      }
+      setError('');
     } catch (err) {
       console.error('Error fetching workouts:', err);
-      if (err.response?.status !== 401 && err.response?.status !== 403) {
-        setError('Failed to load workout history');
+      if (err.response?.status === 401 || err.response?.status === 403) return;
+      // Retry up to 3 times with exponential backoff for cold-start failures
+      if (attempt < 3) {
+        const delay = 2000 * Math.pow(2, attempt);
+        setTimeout(() => fetchWorkouts(date, attempt + 1), delay);
+        return;
       }
-      setWorkouts([]);
+      setError('Failed to load workout history');
     } finally {
-      setLoading(false);
+      if (attempt === 0 || attempt >= 3) { setLoading(false); setRetrying(false); }
     }
   };
 
@@ -284,13 +301,19 @@ const WorkoutHistory = () => {
           History
         </Typography>
 
+        {retrying && !error && (
+          <Alert severity="info" sx={{ mb: 1.5, fontSize: 12 }}>
+            Server is waking up, retrying…
+          </Alert>
+        )}
+
         {error && (
           <Alert severity="error" sx={{ mb: 1.5 }} action={<Button color="inherit" size="small" onClick={() => fetchWorkouts(searchDate)}>Retry</Button>}>
             {error}
           </Alert>
         )}
 
-        {loading ? (
+        {loading && workouts.length === 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             <Skeleton variant="rounded" height={92} />
             <Skeleton variant="rounded" height={56} />
