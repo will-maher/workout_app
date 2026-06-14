@@ -27,6 +27,114 @@ import axios from 'axios';
 import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 
+const StrengthCurveChart = React.memo(({ historicalSets, currentSets }) => {
+  const data = useMemo(() => {
+    const monthMap = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                       Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+    const parseDateKey = (df) => {
+      if (!df) return null;
+      const m = df.match(/(\d{2})\s+(\w{3})\s+(\d{2})/);
+      return m ? `20${m[3]}-${monthMap[m[2]]}-${m[1]}` : null;
+    };
+    const sixAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
+
+    const byReps = {};
+    historicalSets.forEach(s => {
+      const d = parseDateKey(s.date_formatted);
+      if (!d || d < sixAgo) return;
+      const r = parseInt(s.reps, 10);
+      const w = parseFloat(s.weight);
+      if (r >= 1 && r <= 30 && w > 0) {
+        if (!byReps[r]) byReps[r] = [];
+        byReps[r].push(w);
+      }
+    });
+
+    const rKeys = Object.keys(byReps).map(Number).sort((a, b) => a - b);
+    const ribbonPts = rKeys.map(r => {
+      const sorted = [...byReps[r]].sort((a, b) => a - b);
+      const n = sorted.length;
+      const median = n % 2 === 0 ? (sorted[n/2-1] + sorted[n/2]) / 2 : sorted[Math.floor(n/2)];
+      return { r, min: sorted[0], max: sorted[n-1], median };
+    });
+
+    const curPts = (currentSets || []).map(s => ({
+      r: parseInt(s.reps, 10),
+      w: parseFloat(s.weight),
+    })).filter(p => p.r >= 1 && p.r <= 30 && p.w > 0);
+
+    if (ribbonPts.length === 0 && curPts.length === 0) return null;
+
+    const allW = [...ribbonPts.flatMap(p => [p.min, p.max]), ...curPts.map(p => p.w)];
+    const allR = [...rKeys, ...curPts.map(p => p.r)];
+
+    return {
+      ribbonPts,
+      curPts,
+      xMin: Math.max(1, Math.min(...allR) - 1),
+      xMax: Math.min(30, Math.max(...allR) + 2),
+      yMin: Math.floor(Math.min(...allW) * 0.90),
+      yMax: Math.ceil(Math.max(...allW) * 1.06),
+    };
+  }, [historicalSets, currentSets]);
+
+  if (!data) return null;
+
+  const { ribbonPts, curPts, xMin, xMax, yMin, yMax } = data;
+  const W = 300, H = 130, PL = 34, PR = 8, PT = 6, PB = 22;
+  const iW = W - PL - PR, iH = H - PT - PB;
+  const xS = r => PL + ((r - xMin) / (xMax - xMin)) * iW;
+  const yS = w => PT + (1 - (w - yMin) / (yMax - yMin)) * iH;
+
+  const topEdge = ribbonPts.map(p => `${xS(p.r).toFixed(1)},${yS(p.max).toFixed(1)}`).join(' ');
+  const botEdge = [...ribbonPts].reverse().map(p => `${xS(p.r).toFixed(1)},${yS(p.min).toFixed(1)}`).join(' ');
+  const ribbonPoly = ribbonPts.length >= 2 ? `${topEdge} ${botEdge}` : null;
+  const medianD = ribbonPts.map((p, i) => `${i===0?'M':'L'}${xS(p.r).toFixed(1)},${yS(p.median).toFixed(1)}`).join(' ');
+
+  const spread = yMax - yMin;
+  const tStep = spread <= 20 ? 5 : spread <= 60 ? 10 : spread <= 120 ? 20 : 50;
+  const yTicks = [];
+  for (let w = Math.ceil(yMin/tStep)*tStep; w <= yMax; w += tStep) yTicks.push(w);
+
+  const xSpan = xMax - xMin;
+  const xStep = xSpan <= 6 ? 1 : xSpan <= 14 ? 2 : 5;
+  const xTicks = [];
+  for (let r = Math.ceil(xMin/xStep)*xStep; r <= xMax; r += xStep) xTicks.push(r);
+
+  const teal = '#00d4aa';
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      {yTicks.map(w => (
+        <line key={w} x1={PL} x2={W-PR} y1={yS(w)} y2={yS(w)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+      ))}
+      {ribbonPoly && <polygon points={ribbonPoly} fill={`${teal}28`} />}
+      {ribbonPts.length >= 2 && <>
+        <polyline points={ribbonPts.map(p=>`${xS(p.r).toFixed(1)},${yS(p.max).toFixed(1)}`).join(' ')} fill="none" stroke={`${teal}55`} strokeWidth="1" strokeDasharray="3 2" />
+        <polyline points={ribbonPts.map(p=>`${xS(p.r).toFixed(1)},${yS(p.min).toFixed(1)}`).join(' ')} fill="none" stroke={`${teal}55`} strokeWidth="1" strokeDasharray="3 2" />
+        <path d={medianD} fill="none" stroke={teal} strokeWidth="2" strokeLinejoin="round" />
+      </>}
+      {ribbonPts.map(p => <circle key={p.r} cx={xS(p.r)} cy={yS(p.median)} r="2.5" fill={teal} />)}
+      {curPts.map((p, i) => (
+        <g key={i}>
+          <circle cx={xS(p.r)} cy={yS(p.w)} r="6" fill={teal} opacity="0.18" />
+          <circle cx={xS(p.r)} cy={yS(p.w)} r="3.5" fill={teal} stroke="#0a0a0a" strokeWidth="1.5" />
+        </g>
+      ))}
+      <line x1={PL} x2={PL} y1={PT} y2={PT+iH} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+      <line x1={PL} x2={W-PR} y1={PT+iH} y2={PT+iH} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+      {yTicks.map(w => (
+        <text key={w} x={PL-4} y={yS(w)+3} textAnchor="end" fontSize="8.5" fill="rgba(255,255,255,0.35)">{w}</text>
+      ))}
+      {xTicks.map(r => (
+        <text key={r} x={xS(r)} y={H-5} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.35)">{r}</text>
+      ))}
+      <text x={PL+iW/2} y={H} textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.22)">reps</text>
+      <text x={5} y={PT+iH/2} textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.22)" transform={`rotate(-90,5,${PT+iH/2})`}>kg</text>
+    </svg>
+  );
+});
+
 const WorkoutEntry = ({ onStatusMessage }) => {
   const setMessage = onStatusMessage ?? (() => {});
   const [exercises, setExercises] = useState([]);
@@ -407,10 +515,14 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     if (selectedExercise !== '') {
       setWeight('');
       setReps('');
-      setNotes('');
       fetchRecentData();
     }
   }, [selectedExercise, fetchRecentData]);
+
+  const currentExerciseSets = useMemo(
+    () => sets.filter(s => s.exercise_id === parseInt(selectedExercise, 10)),
+    [sets, selectedExercise]
+  );
 
   useEffect(() => {
     if (!selectedExercise) return;
@@ -1254,6 +1366,26 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   );
                   });
                 })()}
+              </Box>
+            )}
+
+            {/* Strength Curve Chart */}
+            {selectedExercise && (recentSets.length > 0 || currentExerciseSets.length > 0) && (
+              <Box sx={{ ...sectionSx, px: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                  <Typography sx={sectionTitleSx}>Strength Curve</Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 16, height: 2, backgroundColor: '#00d4aa', borderRadius: 1 }} />
+                      <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>median</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00d4aa' }} />
+                      <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>today</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+                <StrengthCurveChart historicalSets={recentSets} currentSets={currentExerciseSets} />
               </Box>
             )}
 
