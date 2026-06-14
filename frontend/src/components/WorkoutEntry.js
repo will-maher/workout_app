@@ -19,6 +19,7 @@ import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -35,7 +36,6 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const [reps, setReps] = useState('');
   const [sets, setSets] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [notes, setNotes] = useState('');
   const [recentSets, setRecentSets] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
   const [sliderReps, setSliderReps] = useState(8); // Default to 8 reps for slider
@@ -64,7 +64,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const smallGap = 1;
 
   const sectionSx = {
-    pb: sectionGap,
+    pb: 1.5,
     borderBottom: '1px solid',
     borderColor: 'divider',
   };
@@ -440,13 +440,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       weight: parseFloat(weight),
       reps: parseInt(reps),
       date: format(new Date(), 'yyyy-MM-dd'),
-      notes: notes.trim(),
     };
     setSets([...sets, newSet]);
     haptic();
     setMessage('');
-    setNotes('');
-    setReps(''); // Reset reps dropdown to blank
+    setReps('');
   };
 
   const handleRemoveSet = (setId) => {
@@ -680,13 +678,18 @@ const WorkoutEntry = ({ onStatusMessage }) => {
           </Box>
         ) : (
           <>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: sectionGap }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {/* Planned Workout Selector */}
               {userPlan && Object.keys(userPlan).length > 0 && (
                 <Box sx={{ ...sectionSx, px: 0 }}>
-                  <Typography sx={sectionTitleSx}>
-                    Planned Workout
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
+                    <Typography sx={{ ...sectionTitleSx, mb: 0 }}>Planned Workout</Typography>
+                    {selectedPlannedWorkout && (
+                      <IconButton size="small" onClick={() => setShowPlannedExercises(p => !p)} sx={{ p: 0.25 }}>
+                        <ExpandMoreIcon sx={{ fontSize: 16, color: 'text.secondary', transform: showPlannedExercises ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                      </IconButton>
+                    )}
+                  </Box>
                     
                   <ScrollablePicker
                     items={getPlannedWorkoutOptions()}
@@ -737,15 +740,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   
                   {/* Show exercises for selected workout */}
                   {selectedPlannedWorkout && (
-                    <Box sx={{ mt: sectionGap }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => setShowPlannedExercises((prev) => !prev)}
-                        sx={{ mb: smallGap, fontSize: 11, py: 0.5, px: 1.5 }}
-                      >
-                        {showPlannedExercises ? 'Hide exercises' : 'Show exercises'}
-                      </Button>
+                    <Box sx={{ mt: 1 }}>
                       {showPlannedExercises && (
                         <>
                           <Box sx={{ 
@@ -778,8 +773,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                               >
                                 <Box sx={{ 
                                   display: 'table-cell', 
-                                  py: 1, 
-                                  px: 2,
+                                  py: 0.75,
+                                  px: 1,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
                                   verticalAlign: 'middle'
@@ -797,8 +792,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                 </Box>
                                 <Box sx={{ 
                                   display: 'table-cell', 
-                                  py: 1, 
-                                  px: 2,
+                                  py: 0.75,
+                                  px: 1,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
                                   verticalAlign: 'middle',
@@ -963,18 +958,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         max={20}
                         step={1}
                         marks={[
-                          { value: 1, label: '1' },
-                          { value: 5, label: '5' },
-                          { value: 10, label: '10' },
-                          { value: 15, label: '15' },
-                          { value: 20, label: '20' }
+                          { value: 1 }, { value: 5 }, { value: 10 }, { value: 15 }, { value: 20 },
                         ]}
                         valueLabelDisplay="auto"
-                        valueLabelFormat={(value) => `${value} reps`}
+                        valueLabelFormat={(value) => `${value}`}
                         sx={{
-                        '& .MuiSlider-markLabel': {
-                          fontSize: 11,
-                        },
                         '& .MuiSlider-valueLabel': {
                           fontSize: 11,
                         },
@@ -995,15 +983,14 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           setReps(sliderReps.toString());
                           setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax)).toString());
                         }}
-                        sx={{ 
-                          py: 1, 
-                          px: 2, 
+                        sx={{
+                          py: 1,
+                          px: 2,
                           fontWeight: 600,
                           fontSize: 13,
                           whiteSpace: 'nowrap',
                           height: 40,
-                          mt: -0.5,
-                          flex: 1
+                          flex: 1,
                         }}
                       >
                         Use
@@ -1015,8 +1002,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                 )}
                 
                 {/* Reps and Weight on one line */}
-                <Grid container sx={{ mb: sectionGap, alignItems: 'center' }}>
-                  <Grid item xs={4} sx={{ pr: 1.5 }}>
+                <Grid container sx={{ mb: sectionGap, alignItems: 'flex-start' }}>
+                  <Grid item xs={4} sx={{ pr: 1 }}>
                     <ScrollablePicker
                       items={repsOptions}
                       value={reps ? parseInt(reps) : ''}
@@ -1028,7 +1015,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                       inputBackground={inputSurface}
                     />
                   </Grid>
-                  <Grid item xs={4} sx={{ px: 1.5 }}>
+                  <Grid item xs={4} sx={{ px: 1 }}>
                     <TextField
                       label="Weight (kg)"
                       type="number"
@@ -1085,22 +1072,21 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                       <Button size="small" variant="outlined" onClick={() => adjustWeight(2.5)} sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0 }}>+2.5</Button>
                     </Box>
                   </Grid>
-                  <Grid item xs={4} sx={{ pl: 1.5 }}>
+                  <Grid item xs={4} sx={{ pl: 1 }}>
                     <Button
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={handleAddSet}
                       fullWidth
                       size="medium"
-                      sx={{ 
-                        py: 1, 
-                        fontWeight: 600, 
+                      sx={{
+                        py: 1,
+                        fontWeight: 600,
                         fontSize: 13,
                         height: 40,
-                        whiteSpace: 'nowrap'
                       }}
                     >
-                      Add Set
+                      Add
                     </Button>
                   </Grid>
                 </Grid>
