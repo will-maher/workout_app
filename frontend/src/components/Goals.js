@@ -22,15 +22,9 @@ import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 
 const Goals = () => {
-  const [goals, setGoals] = useState(() => {
-    try {
-      const cached = localStorage.getItem('goals_cache');
-      return cached ? JSON.parse(cached) : [];
-    } catch { return []; }
-  });
+  const [goals, setGoals] = useState([]);
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
@@ -44,13 +38,10 @@ const Goals = () => {
   const fetchGoals = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/goals`);
-      const data = Array.isArray(res.data) ? res.data : [];
-      setGoals(data);
-      setFetchError(false);
-      try { localStorage.setItem('goals_cache', JSON.stringify(data)); } catch {}
+      setGoals(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching goals:', err);
-      setFetchError(true);
+      setGoals([]);
     } finally {
       setLoading(false);
     }
@@ -174,19 +165,10 @@ const Goals = () => {
           </Button>
         </Box>
 
-        {loading && goals.length === 0 ? (
+        {loading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             <Skeleton variant="rounded" height={96} />
             <Skeleton variant="rounded" height={96} />
-          </Box>
-        ) : goals.length === 0 && fetchError ? (
-          <Box sx={{ py: 5, textAlign: 'center' }}>
-            <Typography color="text.secondary" sx={{ fontSize: 13, mb: 1.5 }}>
-              Couldn't load goals
-            </Typography>
-            <Button size="small" variant="outlined" onClick={fetchGoals} sx={{ fontSize: 13 }}>
-              Retry
-            </Button>
           </Box>
         ) : goals.length === 0 ? (
           <Box sx={{ py: 5, textAlign: 'center' }}>

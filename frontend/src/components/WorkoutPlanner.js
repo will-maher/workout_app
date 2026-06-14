@@ -22,12 +22,12 @@ import {
   useTheme,
   Snackbar,
   Alert as MuiAlert,
-  ListSubheader,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
 } from '@mui/material';
+import ScrollablePicker from './ScrollablePicker';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
@@ -732,27 +732,20 @@ const WorkoutPlanner = ({ user }) => {
           Edit Exercise
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <TextField
-              select
-              label="Exercise"
+          <Box sx={{ mb: 3 }}>
+            <ScrollablePicker
+              items={groupedExercises}
               value={editForm.exercise}
-              onChange={(e) => setEditForm(prev => ({ ...prev, exercise: e.target.value }))}
-              size="small"
-            >
-              <MenuItem value=""><em>Select an exercise</em></MenuItem>
-              {groupedExercises.map(group => [
-                <ListSubheader key={group.label} sx={{ bgcolor: 'background.default', fontWeight: 600, fontSize: 13 }}>
-                  {group.label}
-                </ListSubheader>,
-                ...group.items.map(exOpt => (
-                  <MenuItem key={exOpt.id} value={exOpt.name} sx={{ pl: 3 }}>
-                    {exOpt.name}
-                  </MenuItem>
-                ))
-              ])}
-            </TextField>
-          </FormControl>
+              onChange={(val) => setEditForm(prev => ({ ...prev, exercise: val }))}
+              label="Select exercise..."
+              grouped={true}
+              getItemLabel={(item) => item.name}
+              getItemValue={(item) => item.name}
+              searchEnabled={true}
+              searchPlaceholder="Search exercises..."
+              buttonHeight={44}
+            />
+          </Box>
           
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <FormControl fullWidth size="small" sx={{ flex: 1 }}>

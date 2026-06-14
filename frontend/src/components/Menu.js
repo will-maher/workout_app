@@ -10,11 +10,11 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  History as HistoryIcon,
   LibraryBooks as LibraryIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
   Flag as GoalIcon,
+  EventNote as PlanIcon,
 } from '@mui/icons-material';
 
 const Menu = ({ user, onNavigate, onLogout }) => {
@@ -36,9 +36,9 @@ const Menu = ({ user, onNavigate, onLogout }) => {
       onClick: () => onNavigate('/goals'),
     },
     {
-      icon: <HistoryIcon />,
-      text: 'Workout History',
-      onClick: () => onNavigate('/history'),
+      icon: <PlanIcon />,
+      text: 'Workout Plan',
+      onClick: () => onNavigate('/plan'),
     },
     {
       icon: <LibraryIcon />,
@@ -60,11 +60,9 @@ const Menu = ({ user, onNavigate, onLogout }) => {
       mt: 2,
       px: 2
     }}>
-      <Typography 
-        variant="h4" 
-        fontWeight={700} 
-        textAlign="center" 
-        sx={{ mb: 4, fontSize: 13 }}
+      <Typography
+        fontWeight={700}
+        sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary', mb: 1.5 }}
       >
         Menu
       </Typography>
