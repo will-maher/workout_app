@@ -22,6 +22,8 @@ import {
   CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import IconButton from '@mui/material/IconButton';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
 
@@ -48,8 +50,11 @@ const ExerciseLibrary = () => {
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newMuscle, setNewMuscle] = useState('');
+  const [newNotes, setNewNotes] = useState('');
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [exerciseToDelete, setExerciseToDelete] = useState(null);
   
   // Edit exercise state
   const [editOpen, setEditOpen] = useState(false);
@@ -98,15 +103,30 @@ const ExerciseLibrary = () => {
       await axios.post(`${API_BASE_URL}/api/exercises`, {
         name: newName.trim(),
         muscle_group: newMuscle,
+        notes: newNotes.trim(),
       });
       setOpen(false);
       setNewName('');
       setNewMuscle('');
+      setNewNotes('');
       fetchExercises();
     } catch (err) {
       setAddError(err.response?.data?.error || 'Failed to add exercise');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleDeleteExercise = async () => {
+    if (!exerciseToDelete) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/exercises/${exerciseToDelete.id}`);
+      fetchExercises();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete exercise');
+    } finally {
+      setDeleteDialogOpen(false);
+      setExerciseToDelete(null);
     }
   };
 
@@ -192,13 +212,24 @@ const ExerciseLibrary = () => {
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((ex, i) => (
                       <React.Fragment key={ex.id}>
-                        <ListItem 
-                          sx={{ 
+                        <ListItem
+                          sx={{
                             py: 0.5,
                             cursor: 'pointer',
                             '&:hover': { bgcolor: 'background.default' }
                           }}
                           onClick={() => handleEdit(ex)}
+                          secondaryAction={
+                            <IconButton
+                              edge="end"
+                              size="small"
+                              color="error"
+                              onClick={(e) => { e.stopPropagation(); setExerciseToDelete(ex); setDeleteDialogOpen(true); }}
+                              sx={{ p: 0.5, opacity: 0.6 }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          }
                         >
                           <ListItemText
                             primary={
@@ -207,10 +238,10 @@ const ExerciseLibrary = () => {
                                   {ex.name}
                                 </Typography>
                                 {ex.notes && (
-                                  <Typography 
-                                    variant="caption" 
-                                    color="text.secondary" 
-                                    sx={{ 
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
                                       fontSize: 11,
                                       fontStyle: 'italic',
                                       display: 'block',
@@ -238,7 +269,7 @@ const ExerciseLibrary = () => {
           </CardContent>
         </Card>
       )}
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setAddError(''); }}>
         <DialogTitle sx={{ fontSize: 13 }}>Add New Exercise</DialogTitle>
         <DialogContent>
           <TextField
@@ -246,7 +277,7 @@ const ExerciseLibrary = () => {
             value={newName}
             onChange={e => setNewName(e.target.value)}
             fullWidth
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, mt: 0.5 }}
             autoFocus
           />
           <FormControl fullWidth sx={{ mb: 2 }}>
@@ -261,12 +292,37 @@ const ExerciseLibrary = () => {
               ))}
             </Select>
           </FormControl>
+          <TextField
+            label="Notes (optional)"
+            value={newNotes}
+            onChange={e => setNewNotes(e.target.value)}
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Form cues, variations, etc."
+            sx={{ mb: 2 }}
+          />
           {addError && <Alert severity="error" sx={{ mb: 1 }}>{addError}</Alert>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)} disabled={adding}>Cancel</Button>
+          <Button onClick={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setAddError(''); }} disabled={adding}>Cancel</Button>
           <Button onClick={handleAdd} variant="contained" disabled={adding}>
             {adding ? 'Adding...' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onClose={() => { setDeleteDialogOpen(false); setExerciseToDelete(null); }}>
+        <DialogTitle sx={{ fontSize: 13 }}>Delete exercise</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: 13 }}>
+            Delete <strong>{exerciseToDelete?.name}</strong>? This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDeleteDialogOpen(false); setExerciseToDelete(null); }} sx={{ fontSize: 13 }}>Cancel</Button>
+          <Button onClick={handleDeleteExercise} color="error" variant="contained" sx={{ fontSize: 13 }}>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

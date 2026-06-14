@@ -43,7 +43,7 @@ function Login({ onLogin, switchToRegister }) {
         borderColor: 'divider'
       }}
     >
-      <Typography variant="h5" fontWeight={700} mb={2} align="center" color="text.primary" sx={{ fontSize: 13 }}>
+      <Typography variant="h5" fontWeight={700} mb={2} align="center" color="text.primary" sx={{ fontSize: 20 }}>
         Login
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -106,14 +106,7 @@ function Login({ onLogin, switchToRegister }) {
           type="submit"
           variant="contained"
           fullWidth
-          sx={{ 
-            mt: 2, 
-            mb: 1,
-            background: 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #0097a7 0%, #00695c 100%)'
-            }
-          }}
+          sx={{ mt: 2, mb: 1 }}
           disabled={loading}
         >
           {loading ? 'Logging in...' : 'Login'}

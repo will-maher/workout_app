@@ -4,7 +4,6 @@ import {
   Typography,
   TextField,
   Button,
-  Grid,
   IconButton,
   Slider,
   CircularProgress,
@@ -1002,8 +1001,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                 )}
                 
                 {/* Reps and Weight on one line */}
-                <Grid container sx={{ mb: sectionGap, alignItems: 'flex-start' }}>
-                  <Grid item xs={4} sx={{ pr: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: sectionGap, alignItems: 'flex-start' }}>
+                  <Box sx={{ flex: 1 }}>
                     <ScrollablePicker
                       items={repsOptions}
                       value={reps ? parseInt(reps) : ''}
@@ -1014,8 +1013,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                       buttonHeight={40}
                       inputBackground={inputSurface}
                     />
-                  </Grid>
-                  <Grid item xs={4} sx={{ px: 1 }}>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
                     <TextField
                       label="Weight (kg)"
                       type="number"
@@ -1071,8 +1070,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                       <Button size="small" variant="outlined" onClick={() => adjustWeight(-2.5)} sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0 }}>−2.5</Button>
                       <Button size="small" variant="outlined" onClick={() => adjustWeight(2.5)} sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0 }}>+2.5</Button>
                     </Box>
-                  </Grid>
-                  <Grid item xs={4} sx={{ pl: 1 }}>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
                     <Button
                       variant="contained"
                       startIcon={<AddIcon />}
@@ -1088,8 +1087,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     >
                       Add
                     </Button>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
             </Box>
             
             {/* Sets Display */}

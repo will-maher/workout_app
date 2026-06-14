@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
-  EventNote as PlanIcon,
+  History as HistoryIcon,
   BarChart,
   Menu as MenuIcon,
 } from '@mui/icons-material';
@@ -22,7 +22,6 @@ import axios from 'axios';
 // Import components
 import WorkoutEntry from './components/WorkoutEntry';
 import WorkoutHistory from './components/WorkoutHistory';
-import Stats from './components/Stats';
 import ExerciseLibrary from './components/ExerciseLibrary';
 import Performance from './components/Performance';
 import WorkoutPlanner from './components/WorkoutPlanner';
@@ -129,8 +128,9 @@ function App() {
   useEffect(() => {
     const path = location.pathname;
     if (path === '/' || path === '/add') setValue(0);
-    else if (path === '/plan') setValue(1);
+    else if (path === '/history') setValue(1);
     else if (path === '/performance') setValue(2);
+    else if (path === '/menu' || path === '/goals' || path === '/library' || path === '/plan') setValue(3);
   }, [location]);
 
   const handleLogin = (data) => {
@@ -156,7 +156,7 @@ function App() {
   const handleNavigationChange = (event, newValue) => {
     setValue(newValue);
     if (newValue === 0) navigate('/add');
-    else if (newValue === 1) navigate('/plan');
+    else if (newValue === 1) navigate('/history');
     else if (newValue === 2) navigate('/performance');
     else if (newValue === 3) navigate('/menu');
   };
@@ -238,7 +238,6 @@ function App() {
             <Route path="/" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
             <Route path="/add" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
             <Route path="/history" element={<WorkoutHistory />} />
-            <Route path="/stats" element={<Stats />} />
             <Route path="/library" element={<ExerciseLibrary />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/plan" element={<WorkoutPlanner user={user} />} />
@@ -275,9 +274,9 @@ function App() {
             icon={<AddIcon />}
           />
           <BottomNavigationAction
-            label="Plan"
+            label="History"
             value={1}
-            icon={<PlanIcon />}
+            icon={<HistoryIcon />}
           />
           <BottomNavigationAction
             label="Performance"
