@@ -154,6 +154,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [oneRmRanges, setOneRmRanges] = useState({});
   const [goals, setGoals] = useState([]);
+  const [temporaryExercises, setTemporaryExercises] = useState([]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -530,6 +531,25 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     if (goal) setSliderReps(5);
   }, [selectedExercise, goals]);
 
+  // When the selected day changes, discard temporary exercises
+  useEffect(() => {
+    setTemporaryExercises([]);
+  }, [selectedPlannedWorkout]);
+
+  // Auto-add the selected exercise to the plan view if it isn't already there
+  useEffect(() => {
+    if (!selectedExercise || !selectedPlannedWorkout || !userPlan) return;
+    const exercise = exercises.find(ex => ex.id === parseInt(selectedExercise, 10));
+    if (!exercise) return;
+    const planExercises = userPlan[selectedPlannedWorkout] || [];
+    const isInPlan = planExercises.some(pe => pe.exercise === exercise.name);
+    if (!isInPlan) {
+      setTemporaryExercises(prev =>
+        prev.some(te => te.id === exercise.id) ? prev : [...prev, exercise]
+      );
+    }
+  }, [selectedExercise]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
 
@@ -862,8 +882,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           {getSelectedWorkoutExercises().map((exercise, index) => {
                             const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
                             return (
-                              <Box 
-                                key={index} 
+                              <Box
+                                key={index}
                                 onClick={() => {
                                   if (exerciseData) {
                                     setSelectedExercise(exerciseData.id);
@@ -872,28 +892,28 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                     }
                                   }
                                 }}
-                                sx={{ 
+                                sx={{
                                   display: 'table-row',
                                   cursor: exerciseData ? 'pointer' : 'default',
-                                  '&:hover': { 
+                                  '&:hover': {
                                     bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.dark' : 'background.paper'
                                   },
                                   bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'transparent',
                                   transition: 'all 0.2s ease'
                                 }}
                               >
-                                <Box sx={{ 
-                                  display: 'table-cell', 
+                                <Box sx={{
+                                  display: 'table-cell',
                                   py: 0.75,
                                   px: 1,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
                                   verticalAlign: 'middle'
                                 }}>
-                                  <Typography 
-                                    variant="body2" 
+                                  <Typography
+                                    variant="body2"
                                     color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.primary'}
-                                    sx={{ 
+                                    sx={{
                                       fontSize: 13,
                                       fontWeight: 500
                                     }}
@@ -901,8 +921,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                     {exercise.exercise}
                                   </Typography>
                                 </Box>
-                                <Box sx={{ 
-                                  display: 'table-cell', 
+                                <Box sx={{
+                                  display: 'table-cell',
                                   py: 0.75,
                                   px: 1,
                                   borderBottom: '1px solid',
@@ -911,15 +931,42 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                   textAlign: 'right',
                                   width: '120px'
                                 }}>
-                                  <Typography 
-                                    variant="body2" 
+                                  <Typography
+                                    variant="body2"
                                     color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                                    sx={{ 
+                                    sx={{
                                       fontWeight: 600,
                                       fontSize: 13
                                     }}
                                   >
                                     {exercise.sets} × {exercise.targetReps || '?'}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                          {temporaryExercises.map((exercise) => {
+                            const isSelected = selectedExercise === exercise.id;
+                            return (
+                              <Box
+                                key={`tmp-${exercise.id}`}
+                                onClick={() => setSelectedExercise(exercise.id)}
+                                sx={{
+                                  display: 'table-row',
+                                  cursor: 'pointer',
+                                  '&:hover': { bgcolor: isSelected ? 'primary.dark' : 'background.paper' },
+                                  bgcolor: isSelected ? 'primary.main' : 'transparent',
+                                  transition: 'all 0.2s ease',
+                                }}
+                              >
+                                <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle' }}>
+                                  <Typography variant="body2" color={isSelected ? 'primary.contrastText' : 'text.secondary'} sx={{ fontSize: 13, fontWeight: 500, fontStyle: 'italic' }}>
+                                    {exercise.name}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle', textAlign: 'right', width: '120px' }}>
+                                  <Typography variant="body2" color={isSelected ? 'primary.contrastText' : 'rgba(255,255,255,0.3)'} sx={{ fontSize: 11 }}>
+                                    extra
                                   </Typography>
                                 </Box>
                               </Box>
