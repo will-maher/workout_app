@@ -954,18 +954,18 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                 sx={{
                                   display: 'table-row',
                                   cursor: 'pointer',
-                                  '&:hover': { bgcolor: isSelected ? 'primary.dark' : 'background.paper' },
-                                  bgcolor: isSelected ? 'primary.main' : 'transparent',
-                                  transition: 'all 0.2s ease',
+                                  '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' },
+                                  bgcolor: isSelected ? 'rgba(255,255,255,0.05)' : 'transparent',
+                                  transition: 'background-color 0.2s ease',
                                 }}
                               >
                                 <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle' }}>
-                                  <Typography variant="body2" color={isSelected ? 'primary.contrastText' : 'text.secondary'} sx={{ fontSize: 13, fontWeight: 500, fontStyle: 'italic' }}>
+                                  <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 400, fontStyle: 'italic', color: 'text.secondary' }}>
                                     {exercise.name}
                                   </Typography>
                                 </Box>
                                 <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle', textAlign: 'right', width: '120px' }}>
-                                  <Typography variant="body2" color={isSelected ? 'primary.contrastText' : 'rgba(255,255,255,0.3)'} sx={{ fontSize: 11 }}>
+                                  <Typography variant="body2" sx={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
                                     extra
                                   </Typography>
                                 </Box>
