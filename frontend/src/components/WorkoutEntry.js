@@ -129,8 +129,8 @@ const StrengthCurveChart = React.memo(({ historicalSets, currentSets }) => {
       {xTicks.map(r => (
         <text key={r} x={xS(r)} y={H-5} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.35)">{r}</text>
       ))}
-      <text x={PL+iW/2} y={H} textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.22)">reps</text>
-      <text x={5} y={PT+iH/2} textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.22)" transform={`rotate(-90,5,${PT+iH/2})`}>kg</text>
+      <text x={W-PR+3} y={H-5} textAnchor="start" fontSize="7.5" fill="rgba(255,255,255,0.22)">reps</text>
+      <text x={PL-4} y={PT-1} textAnchor="end" fontSize="7.5" fill="rgba(255,255,255,0.22)">kg</text>
     </svg>
   );
 });
