@@ -232,7 +232,7 @@ const WorkoutHistory = () => {
 
   useEffect(() => {
     fetchWorkouts();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchWorkouts = async (date = null, attempt = 0) => {
     try {
