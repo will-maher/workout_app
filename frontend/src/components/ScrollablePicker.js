@@ -55,7 +55,11 @@ const ScrollablePicker = ({
     const spaceBelow = viewportHeight - rect.bottom - 8;
     const spaceAbove = rect.top - 8;
     const shouldPlaceAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(140, Math.min(containerHeight, shouldPlaceAbove ? spaceAbove : spaceBelow));
+    // The search bar sits above the scrollable list inside the menu, so the
+    // menu needs room for both: list (containerHeight) + search bar (~53px).
+    const searchOffset = searchEnabled ? 53 : 0;
+    const desiredHeight = containerHeight + searchOffset;
+    const maxHeight = Math.max(140, Math.min(desiredHeight, shouldPlaceAbove ? spaceAbove : spaceBelow));
     const top = shouldPlaceAbove ? rect.top - maxHeight - 4 : rect.bottom + 4;
     setMenuStyle({
       top: Math.max(8, top),
@@ -63,7 +67,7 @@ const ScrollablePicker = ({
       width: rect.width,
       maxHeight,
     });
-  }, [buttonRef, containerHeight]);
+  }, [buttonRef, containerHeight, searchEnabled]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -247,6 +251,8 @@ const ScrollablePicker = ({
               width: menuStyle.width,
               maxHeight: menuStyle.maxHeight,
               overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2,
@@ -259,7 +265,7 @@ const ScrollablePicker = ({
           >
             <>
               {searchEnabled && (
-                <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
                   <TextField
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -282,6 +288,8 @@ const ScrollablePicker = ({
               )}
               <Box
                 sx={{
+                  flex: '1 1 auto',
+                  minHeight: 0,
                   maxHeight: containerHeight,
                   overflow: 'auto',
                   '&::-webkit-scrollbar': { display: 'none' },
