@@ -221,7 +221,7 @@ function App() {
 
       <Box sx={{ 
         pt: 6, // fixed AppBar (~48px)
-        pb: 9, // Account for BottomNavigation
+        pb: 7, // Account for BottomNavigation (~56px)
         minHeight: '100vh',
         backgroundColor: 'background.default'
       }}>
@@ -263,7 +263,7 @@ function App() {
           value={value}
           onChange={handleNavigationChange}
           sx={{
-            height: 72,
+            height: 56,
             pb: 'env(safe-area-inset-bottom)',
             boxSizing: 'content-box',
           }}
