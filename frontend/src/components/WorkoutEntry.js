@@ -1307,7 +1307,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     const extendedSpan = barMaxExtended - barMin || 1;
                     return (
                     <Box key={exerciseName} sx={{ mb: smallGap }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
                         <Typography variant="subtitle1" fontWeight={600} sx={{ color: 'primary.main', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, mr: 1 }}>
                           {exerciseName}
                         </Typography>
@@ -1372,16 +1372,16 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <Box sx={{ 
-                              display: 'table-cell', 
-                              py: 1, 
-                              px: 2,
+                            <Box sx={{
+                              display: 'table-cell',
+                              py: 0.25,
+                              px: 1,
                               verticalAlign: 'middle'
                             }}>
-                              <Typography 
-                                variant="body2" 
+                              <Typography
+                                variant="body2"
                                 color="text.primary"
-                                sx={{ 
+                                sx={{
                                   fontSize: 13,
                                   fontWeight: 500
                                 }}
@@ -1389,21 +1389,21 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                 {set.reps} reps @ {set.weight} kg
                               </Typography>
                             </Box>
-                            <Box sx={{ 
-                              display: 'table-cell', 
-                              py: 1, 
-                              px: 2,
+                            <Box sx={{
+                              display: 'table-cell',
+                              py: 0.25,
+                              px: 1,
                               verticalAlign: 'middle',
                               textAlign: 'right',
-                              width: '60px'
+                              width: '40px'
                             }}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleRemoveSet(set.id)}
                                 color="error"
-                                sx={{ p: 1.5 }}
+                                sx={{ p: 0.5 }}
                               >
-                                <DeleteIcon sx={{ fontSize: 18 }} />
+                                <DeleteIcon sx={{ fontSize: 16 }} />
                               </IconButton>
                             </Box>
                           </Box>
