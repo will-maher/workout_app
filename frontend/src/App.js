@@ -26,6 +26,7 @@ import ExerciseLibrary from './components/ExerciseLibrary';
 import Performance from './components/Performance';
 import WorkoutPlanner from './components/WorkoutPlanner';
 import Goals from './components/Goals';
+import GoalDetail from './components/GoalDetail';
 import MenuPage from './components/Menu';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -130,7 +131,7 @@ function App() {
     if (path === '/' || path === '/add') setValue(0);
     else if (path === '/history') setValue(1);
     else if (path === '/performance') setValue(2);
-    else if (path === '/menu' || path === '/goals' || path === '/library' || path === '/plan') setValue(3);
+    else if (path === '/menu' || path.startsWith('/goals') || path === '/library' || path === '/plan') setValue(3);
   }, [location]);
 
   const handleLogin = (data) => {
@@ -242,6 +243,7 @@ function App() {
             <Route path="/performance" element={<Performance />} />
             <Route path="/plan" element={<WorkoutPlanner user={user} />} />
             <Route path="/goals" element={<Goals />} />
+            <Route path="/goals/:id" element={<GoalDetail />} />
             <Route path="/menu" element={<MenuPage user={user} onNavigate={navigate} onLogout={handleLogout} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />} />
             <Route path="/register" element={<Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />} />
