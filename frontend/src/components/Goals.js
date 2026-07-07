@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -22,6 +23,7 @@ import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 
 const Goals = () => {
+  const navigate = useNavigate();
   const [goals, setGoals] = useState(() => {
     try {
       const cached = localStorage.getItem('goals_cache');
@@ -205,12 +207,16 @@ const Goals = () => {
               return (
                 <Box
                   key={goal.id}
+                  onClick={() => navigate(`/goals/${goal.id}`)}
                   sx={{
                     border: '1px solid',
                     borderColor: 'divider',
                     borderRadius: 3,
                     p: 2,
                     backgroundColor: 'background.paper',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s ease',
+                    '&:hover': { borderColor: 'primary.main' },
                   }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
@@ -229,7 +235,7 @@ const Goals = () => {
                           backgroundColor: goal.achieved ? '#9FE1CB' : goal.on_track ? '#5DCAA5' : '#FAC775',
                         }}
                       />
-                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(goal)} sx={{ p: 0.5 }}>
+                      <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setDeleteTarget(goal); }} sx={{ p: 0.5 }}>
                         <DeleteIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Box>
