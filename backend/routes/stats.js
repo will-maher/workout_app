@@ -355,11 +355,13 @@ router.get('/suggested-weights', authenticateToken, async (req, res) => {
     }
     const estimatedOneRepMax = estimateCurrentOneRm(result.rows);
     const newOneRepMax = estimatedOneRepMax + 1;
+    // Reverse Brzycki (weight = 1RM * (1.0278 - 0.0278 * reps)) to match the
+    // forward 1RM formula used everywhere else in the app.
     const suggestedWeights = {
-      reps_3: Math.round((newOneRepMax * (1.02 - (0.02 * 3))) * 10) / 10,
-      reps_5: Math.round((newOneRepMax * (1.02 - (0.02 * 5))) * 10) / 10,
-      reps_8: Math.round((newOneRepMax * (1.02 - (0.02 * 8))) * 10) / 10,
-      reps_12: Math.round((newOneRepMax * (1.02 - (0.02 * 12))) * 10) / 10
+      reps_3: Math.round((newOneRepMax * (1.0278 - (0.0278 * 3))) * 10) / 10,
+      reps_5: Math.round((newOneRepMax * (1.0278 - (0.0278 * 5))) * 10) / 10,
+      reps_8: Math.round((newOneRepMax * (1.0278 - (0.0278 * 8))) * 10) / 10,
+      reps_12: Math.round((newOneRepMax * (1.0278 - (0.0278 * 12))) * 10) / 10
     };
     res.json({
       estimated_one_rep_max: Math.round(estimatedOneRepMax * 10) / 10,
