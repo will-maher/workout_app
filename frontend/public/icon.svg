@@ -1,16 +1,15 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#141a20"/>
-      <stop offset="1" stop-color="#080b0d"/>
-    </linearGradient>
-    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2ee8c0"/>
-      <stop offset="1" stop-color="#008f7a"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <polygon points="256,76 412,166 412,346 256,436 100,346 100,166" fill="url(#teal)"/>
-  <polygon points="256,136 360,196 360,316 256,376 152,316 152,196" fill="#0e1216"/>
-  <polygon points="256,212 294,234 294,278 256,300 218,278 218,234" fill="url(#teal)"/>
+  <rect width="512" height="512" fill="#0e1216"/>
+  <g transform="rotate(-28 256 256)" fill="#ffffff">
+    <!-- left outer plate -->
+    <rect x="105.2" y="196.2" width="33.8" height="119.6" rx="16.9"/>
+    <!-- left inner plate -->
+    <rect x="144.2" y="170.2" width="41.6" height="171.6" rx="20.8"/>
+    <!-- bar -->
+    <rect x="178" y="236.5" width="156" height="39" rx="19.5"/>
+    <!-- right inner plate -->
+    <rect x="326.2" y="170.2" width="41.6" height="171.6" rx="20.8"/>
+    <!-- right outer plate -->
+    <rect x="373" y="196.2" width="33.8" height="119.6" rx="16.9"/>
+  </g>
 </svg>
