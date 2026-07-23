@@ -150,7 +150,12 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const [selectedPlannedWorkout, setSelectedPlannedWorkout] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
   const [recentExerciseIds, setRecentExerciseIds] = useState([]);
-  const [showPlannedExercises, setShowPlannedExercises] = useState(true);
+  const [showPlannedExercises, setShowPlannedExercises] = useState(() => {
+    try {
+      const v = localStorage.getItem('planned_exercises_expanded');
+      return v === null ? true : v === 'true';
+    } catch { return true; }
+  });
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [oneRmRanges, setOneRmRanges] = useState({});
   const [goals, setGoals] = useState([]);
@@ -159,6 +164,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch {} };
+
+  // Remember whether the planned exercise list is collapsed between visits.
+  useEffect(() => {
+    try { localStorage.setItem('planned_exercises_expanded', String(showPlannedExercises)); } catch {}
+  }, [showPlannedExercises]);
   const adjustWeight = (delta) => {
     const next = Math.max(0, (parseFloat(weight) || 0) + delta);
     const rounded = Math.round(next * 10) / 10;
@@ -813,12 +823,26 @@ const WorkoutEntry = ({ onStatusMessage }) => {
               {/* Planned Workout Selector */}
               {userPlan && Object.keys(userPlan).length > 0 && (
                 <Box sx={{ ...sectionSx, px: 0 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
+                  <Box
+                    onClick={() => { if (selectedPlannedWorkout) { haptic(); setShowPlannedExercises(p => !p); } }}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: smallGap,
+                      cursor: selectedPlannedWorkout ? 'pointer' : 'default',
+                      userSelect: 'none',
+                      '&:hover .planned-toggle': selectedPlannedWorkout ? { color: 'text.primary' } : {},
+                    }}
+                  >
                     <Typography sx={{ ...sectionTitleSx, mb: 0 }}>Planned Workout</Typography>
                     {selectedPlannedWorkout && (
-                      <IconButton size="small" onClick={() => setShowPlannedExercises(p => !p)} sx={{ p: 0.25 }}>
-                        <ExpandMoreIcon sx={{ fontSize: 16, color: 'text.secondary', transform: showPlannedExercises ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                      </IconButton>
+                      <Box className="planned-toggle" sx={{ display: 'flex', alignItems: 'center', gap: 0.25, color: 'text.secondary', transition: 'color 0.2s ease' }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em' }}>
+                          {showPlannedExercises ? 'Hide' : 'Show'}
+                        </Typography>
+                        <ExpandMoreIcon sx={{ fontSize: 16, transform: showPlannedExercises ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                      </Box>
                     )}
                   </Box>
                     
