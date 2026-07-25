@@ -261,13 +261,15 @@ const ExerciseLibrary = () => {
                                     <Chip
                                       label={TRACKING_LABELS[ex.tracking_type] === 'Check off' ? 'mobility · check' : 'mobility'}
                                       size="small"
+                                      variant="outlined"
                                       sx={{
                                         height: 16,
                                         fontSize: 9,
                                         fontWeight: 700,
                                         letterSpacing: '0.04em',
-                                        color: '#3A0A22',
-                                        backgroundColor: MOBILITY_PINK,
+                                        color: MOBILITY_PINK,
+                                        borderColor: MOBILITY_PINK,
+                                        backgroundColor: 'transparent',
                                         '& .MuiChip-label': { px: 0.75 },
                                       }}
                                     />
