@@ -51,6 +51,9 @@ export const API_BASE_URL =
       ? ''
       : `https://${BACKEND_HOST}`);
 
+// Accent colour for mobility exercises (distinct from the teal strength accent).
+export const MOBILITY_PINK = '#E877A6';
+
 // For debugging - log the current environment and API URL (only in development)
 if (process.env.NODE_ENV === 'development') {
   console.log('Environment:', process.env.NODE_ENV);

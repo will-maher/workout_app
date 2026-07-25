@@ -56,6 +56,14 @@ const relativeDate = (dateStr) => {
   return format(date, 'd MMM yyyy');
 };
 
+const formatSetDuration = (secs) => {
+  if (secs == null) return '';
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2, '0')}`;
+};
+
 const HEATMAP_WEEKS = 20;
 
 const Heatmap = ({ workouts }) => {
@@ -199,7 +207,13 @@ const WorkoutCard = ({ workout, onDelete }) => {
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>{name}</Typography>
               </Box>
               <Typography sx={{ fontSize: 12, color: 'text.secondary', ml: 1.6 }}>
-                {exSets.map(s => `${s.weight}×${s.reps}`).join('  ·  ')}
+                {exSets.map(s =>
+                  s.duration_seconds != null
+                    ? formatSetDuration(s.duration_seconds)
+                    : (s.weight == null && s.reps == null)
+                      ? 'done'
+                      : `${s.weight}×${s.reps}`
+                ).join('  ·  ')}
               </Typography>
             </Box>
           ))}

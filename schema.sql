@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS exercises (
   name TEXT UNIQUE NOT NULL,
   muscle_group TEXT NOT NULL,
   category TEXT DEFAULT 'strength',
+  -- How the exercise is logged: 'weight_reps' (default), 'duration', or 'checkoff'
+  tracking_type TEXT NOT NULL DEFAULT 'weight_reps',
+  notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -24,14 +27,17 @@ CREATE TABLE IF NOT EXISTS workouts (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create workout_sets table
+-- Create workout_sets table.
+-- weight/reps are nullable so non-strength exercises (mobility) can log a
+-- hold duration or a simple completion instead.
 CREATE TABLE IF NOT EXISTS workout_sets (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   workout_id INTEGER REFERENCES workouts(id) ON DELETE CASCADE,
   exercise_id INTEGER REFERENCES exercises(id) ON DELETE CASCADE,
-  weight REAL NOT NULL,
-  reps INTEGER NOT NULL,
+  weight REAL,
+  reps INTEGER,
+  duration_seconds INTEGER,
   set_number INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

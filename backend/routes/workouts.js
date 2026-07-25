@@ -98,8 +98,16 @@ router.post('/', authenticateToken, async (req, res) => {
       const setNumberOffset = maxResult.rows[0].max_set;
       for (const [idx, set] of sets.entries()) {
         const setResult = await client.query(
-          'INSERT INTO workout_sets (user_id, workout_id, exercise_id, weight, reps, set_number) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-          [userId, workout.id, set.exercise_id, set.weight, set.reps, setNumberOffset + (set.set_number || idx + 1)]
+          'INSERT INTO workout_sets (user_id, workout_id, exercise_id, weight, reps, duration_seconds, set_number) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+          [
+            userId,
+            workout.id,
+            set.exercise_id,
+            set.weight ?? null,
+            set.reps ?? null,
+            set.duration_seconds ?? null,
+            setNumberOffset + (set.set_number || idx + 1),
+          ]
         );
         insertedSets.push(setResult.rows[0]);
       }

@@ -24,8 +24,17 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, subMonths, differenceInCalendarDays, parseISO } from 'date-fns';
 import axios from 'axios';
-import { API_BASE_URL } from '../App';
+import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import ScrollablePicker from './ScrollablePicker';
+
+// Format a hold duration for display, e.g. 45 -> "45s", 90 -> "1:30".
+const formatDuration = (secs) => {
+  if (secs == null) return '';
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2, '0')}`;
+};
 
 const StrengthCurveChart = React.memo(({ historicalSets, currentSets }) => {
   const data = useMemo(() => {
@@ -141,6 +150,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const [selectedExercise, setSelectedExercise] = useState('');
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
+  const [duration, setDuration] = useState('30');
   const [sets, setSets] = useState([]);
   const [saving, setSaving] = useState(false);
   const [recentSets, setRecentSets] = useState([]);
@@ -535,6 +545,16 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     [sets, selectedExercise]
   );
 
+  // Mobility exercises are logged as a timed hold or a plain check-off rather
+  // than weight/reps, so the Add-tab form and 1RM machinery adapt accordingly.
+  const selectedExerciseInfo = useMemo(
+    () => exercises.find(ex => ex.id === parseInt(selectedExercise, 10)) || null,
+    [exercises, selectedExercise]
+  );
+  const isMobility = selectedExerciseInfo?.category === 'mobility';
+  const trackingType = selectedExerciseInfo?.tracking_type
+    || (isMobility ? 'duration' : 'weight_reps');
+
   useEffect(() => {
     if (!selectedExercise) return;
     const goal = goals.find((g) => g.exercise_id === parseInt(selectedExercise, 10));
@@ -564,7 +584,38 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
 
   const handleAddSet = () => {
-    if (!selectedExercise || !weight || !reps) {
+    if (!selectedExercise) {
+      setMessage('Please select an exercise');
+      return;
+    }
+    const exercise = exercises.find(ex => ex.id === parseInt(selectedExercise));
+    const base = {
+      id: Date.now(),
+      exercise_id: parseInt(selectedExercise),
+      exercise_name: exercise.name,
+      muscle_group: exercise.muscle_group,
+      tracking_type: trackingType,
+      date: format(new Date(), 'yyyy-MM-dd'),
+    };
+
+    // Mobility: log a timed hold or a plain completion instead of weight/reps.
+    if (isMobility) {
+      if (trackingType === 'duration') {
+        if (!duration || !isNumeric(duration) || parseInt(duration, 10) <= 0) {
+          setMessage('Enter a hold duration in seconds');
+          return;
+        }
+        setSets([...sets, { ...base, weight: null, reps: null, duration_seconds: parseInt(duration, 10) }]);
+      } else {
+        // checkoff — a row with no metrics simply means "done"
+        setSets([...sets, { ...base, weight: null, reps: null, duration_seconds: null }]);
+      }
+      haptic();
+      setMessage('');
+      return;
+    }
+
+    if (!weight || !reps) {
       setMessage('Please fill in all fields');
       return;
     }
@@ -572,17 +623,12 @@ const WorkoutEntry = ({ onStatusMessage }) => {
       setMessage('Weight and reps must be numeric');
       return;
     }
-    const exercise = exercises.find(ex => ex.id === parseInt(selectedExercise));
-    const newSet = {
-      id: Date.now(),
-      exercise_id: parseInt(selectedExercise),
-      exercise_name: exercise.name,
-      muscle_group: exercise.muscle_group,
+    setSets([...sets, {
+      ...base,
       weight: parseFloat(weight),
       reps: parseInt(reps),
-      date: format(new Date(), 'yyyy-MM-dd'),
-    };
-    setSets([...sets, newSet]);
+      duration_seconds: null,
+    }]);
     haptic();
     setMessage('');
     setReps('');
@@ -674,8 +720,9 @@ const WorkoutEntry = ({ onStatusMessage }) => {
         }
         setsByDate[set.date].push({
           exercise_id: set.exercise_id,
-          weight: set.weight,
-          reps: set.reps,
+          weight: set.weight ?? null,
+          reps: set.reps ?? null,
+          duration_seconds: set.duration_seconds ?? null,
           set_number: setsByDate[set.date].length + 1,
         });
       });
@@ -1120,7 +1167,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                 )}
 
                 {/* Weight Calculator Slider */}
-                {selectedExercise && estimatedOneRepMax > 0 && (
+                {selectedExercise && !isMobility && estimatedOneRepMax > 0 && (
                   <Box sx={{ mb: 1.5 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
                       <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
@@ -1183,7 +1230,71 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   </Box>
                 )}
                 
-                {/* Reps and Weight on one line */}
+                {/* Logging row — mobility (timed hold / check-off) or strength (reps & weight) */}
+                {isMobility ? (
+                  trackingType === 'checkoff' ? (
+                    <Box sx={{ mb: sectionGap }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddSet}
+                        fullWidth
+                        sx={{ height: 44, fontWeight: 600, fontSize: 13, backgroundColor: MOBILITY_PINK, color: '#2B0716', '&:hover': { backgroundColor: '#D96699' } }}
+                      >
+                        Log completed
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box sx={{ mb: sectionGap }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Box sx={{ flex: 2 }}>
+                          <TextField
+                            label="Hold (seconds)"
+                            type="number"
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                            fullWidth
+                            size="small"
+                            inputProps={{ min: 1, step: 5, inputMode: 'numeric' }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                height: 40, backgroundColor: inputSurface,
+                                '& fieldset': { borderColor: 'divider' },
+                                '&:hover fieldset': { borderColor: MOBILITY_PINK },
+                                '&.Mui-focused fieldset': { borderColor: MOBILITY_PINK },
+                              },
+                              '& .MuiInputBase-input': { color: 'text.primary', fontSize: 13 },
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={handleAddSet}
+                            fullWidth
+                            sx={{ height: 40, fontWeight: 600, fontSize: 13, backgroundColor: MOBILITY_PINK, color: '#2B0716', '&:hover': { backgroundColor: '#D96699' } }}
+                          >
+                            Add
+                          </Button>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                        {[15, 30, 45, 60].map((s) => (
+                          <Button
+                            key={s}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => setDuration(String(s))}
+                            sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0, color: MOBILITY_PINK, borderColor: 'divider', '&:hover': { borderColor: MOBILITY_PINK } }}
+                          >
+                            {s}s
+                          </Button>
+                        ))}
+                      </Box>
+                    </Box>
+                  )
+                ) : (
                 <Box sx={{ display: 'flex', gap: 1, mb: sectionGap, alignItems: 'flex-start' }}>
                   <Box sx={{ flex: 1 }}>
                     <ScrollablePicker
@@ -1272,8 +1383,9 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     </Button>
                   </Box>
                 </Box>
+                )}
             </Box>
-            
+
             {/* Sets Display */}
             {sets.length > 0 && (
               <Box sx={{ ...sectionSx, px: 0 }}>
@@ -1410,7 +1522,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                   fontWeight: 500
                                 }}
                               >
-                                {set.reps} reps @ {set.weight} kg
+                                {set.duration_seconds != null
+                                  ? `Hold ${formatDuration(set.duration_seconds)}`
+                                  : (set.weight == null && set.reps == null)
+                                    ? 'Completed ✓'
+                                    : `${set.reps} reps @ ${set.weight} kg`}
                               </Typography>
                             </Box>
                             <Box sx={{
@@ -1441,7 +1557,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
             )}
 
             {/* Strength Curve Chart */}
-            {selectedExercise && (recentSets.length > 0 || currentExerciseSets.length > 0) && (
+            {selectedExercise && !isMobility && (recentSets.length > 0 || currentExerciseSets.length > 0) && (
               <Box sx={{ ...sectionSx, px: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
                   <Typography sx={sectionTitleSx}>Strength Curve</Typography>

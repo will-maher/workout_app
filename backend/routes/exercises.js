@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
 
 // POST new exercise
 router.post('/', authenticateToken, async (req, res) => {
-  const { name, muscle_group, category = 'strength', notes } = req.body;
+  const { name, muscle_group, category = 'strength', tracking_type = 'weight_reps', notes } = req.body;
 
   if (!name || !muscle_group) {
     return res.status(400).json({ error: 'Name and muscle_group are required' });
@@ -59,14 +59,15 @@ router.post('/', authenticateToken, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO exercises (name, muscle_group, category, notes) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name, muscle_group, category, notes]
+      'INSERT INTO exercises (name, muscle_group, category, tracking_type, notes) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [name, muscle_group, category, tracking_type, notes]
     );
       res.status(201).json({
       id: result.rows[0].id,
         name,
         muscle_group,
         category,
+        tracking_type,
         notes,
         message: 'Exercise created successfully'
       });
@@ -82,7 +83,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // PUT update exercise
 router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { name, muscle_group, category, notes } = req.body;
+  const { name, muscle_group, category, tracking_type, notes } = req.body;
 
   if (!name || !muscle_group) {
     return res.status(400).json({ error: 'Name and muscle_group are required' });
@@ -90,8 +91,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'UPDATE exercises SET name = $1, muscle_group = $2, category = $3, notes = $4 WHERE id = $5',
-      [name, muscle_group, category, notes, id]
+      `UPDATE exercises SET name = $1, muscle_group = $2,
+         category = COALESCE($3, category),
+         tracking_type = COALESCE($4, tracking_type),
+         notes = $5
+       WHERE id = $6`,
+      [name, muscle_group, category, tracking_type, notes, id]
     );
     if (result.rowCount === 0) {
         return res.status(404).json({ error: 'Exercise not found' });

@@ -8,6 +8,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { pool } = require('./database.pg');
 const { logMemoryUsage } = require('./memory-monitor');
+const { runMigrations } = require('./migrate');
 
 const authRoutes = require('./routes/auth');
 const exercisesRoutes = require('./routes/exercises');
@@ -111,10 +112,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT} on all interfaces`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Apply idempotent schema migrations, then start listening regardless of the
+// outcome so a migration hiccup can't take the service down.
+runMigrations().finally(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT} on all interfaces`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 
-  // Log initial memory usage
-  logMemoryUsage();
+    // Log initial memory usage
+    logMemoryUsage();
+  });
 });
