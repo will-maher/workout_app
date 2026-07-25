@@ -1235,11 +1235,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   trackingType === 'checkoff' ? (
                     <Box sx={{ mb: sectionGap }}>
                       <Button
-                        variant="contained"
+                        variant="outlined"
                         startIcon={<AddIcon />}
                         onClick={handleAddSet}
                         fullWidth
-                        sx={{ height: 44, fontWeight: 600, fontSize: 13, backgroundColor: MOBILITY_PINK, color: '#2B0716', '&:hover': { backgroundColor: '#D96699' } }}
+                        sx={{ height: 44, fontWeight: 600, fontSize: 13, color: MOBILITY_PINK, borderColor: MOBILITY_PINK, '&:hover': { borderColor: MOBILITY_PINK, backgroundColor: 'rgba(194,71,125,0.08)' } }}
                       >
                         Log completed
                       </Button>
@@ -1269,11 +1269,11 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         </Box>
                         <Box sx={{ flex: 1 }}>
                           <Button
-                            variant="contained"
+                            variant="outlined"
                             startIcon={<AddIcon />}
                             onClick={handleAddSet}
                             fullWidth
-                            sx={{ height: 40, fontWeight: 600, fontSize: 13, backgroundColor: MOBILITY_PINK, color: '#2B0716', '&:hover': { backgroundColor: '#D96699' } }}
+                            sx={{ height: 40, fontWeight: 600, fontSize: 13, color: MOBILITY_PINK, borderColor: MOBILITY_PINK, '&:hover': { borderColor: MOBILITY_PINK, backgroundColor: 'rgba(194,71,125,0.08)' } }}
                           >
                             Add
                           </Button>
