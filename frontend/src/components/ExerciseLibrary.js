@@ -20,12 +20,19 @@ import {
   Select,
   Alert,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import axios from 'axios';
-import { API_BASE_URL } from '../App';
+import { API_BASE_URL, MOBILITY_PINK } from '../App';
+
+const TRACKING_LABELS = {
+  duration: 'Timed hold',
+  checkoff: 'Check off',
+  weight_reps: 'Weight & reps',
+};
 
 const muscleGroups = [
   'Chest',
@@ -51,6 +58,8 @@ const ExerciseLibrary = () => {
   const [newName, setNewName] = useState('');
   const [newMuscle, setNewMuscle] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [newCategory, setNewCategory] = useState('strength');
+  const [newTracking, setNewTracking] = useState('duration');
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -62,6 +71,8 @@ const ExerciseLibrary = () => {
   const [editName, setEditName] = useState('');
   const [editMuscle, setEditMuscle] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editCategory, setEditCategory] = useState('strength');
+  const [editTracking, setEditTracking] = useState('weight_reps');
   const [editError, setEditError] = useState('');
   const [editing, setEditing] = useState(false);
   const sectionSx = {
@@ -103,12 +114,16 @@ const ExerciseLibrary = () => {
       await axios.post(`${API_BASE_URL}/api/exercises`, {
         name: newName.trim(),
         muscle_group: newMuscle,
+        category: newCategory,
+        tracking_type: newCategory === 'mobility' ? newTracking : 'weight_reps',
         notes: newNotes.trim(),
       });
       setOpen(false);
       setNewName('');
       setNewMuscle('');
       setNewNotes('');
+      setNewCategory('strength');
+      setNewTracking('duration');
       fetchExercises();
     } catch (err) {
       setAddError(err.response?.data?.error || 'Failed to add exercise');
@@ -135,6 +150,8 @@ const ExerciseLibrary = () => {
     setEditName(exercise.name);
     setEditMuscle(exercise.muscle_group);
     setEditNotes(exercise.notes || '');
+    setEditCategory(exercise.category || 'strength');
+    setEditTracking(exercise.tracking_type || (exercise.category === 'mobility' ? 'duration' : 'weight_reps'));
     setEditError('');
     setEditOpen(true);
   };
@@ -150,6 +167,8 @@ const ExerciseLibrary = () => {
       await axios.put(`${API_BASE_URL}/api/exercises/${editingExercise.id}`, {
         name: editName.trim(),
         muscle_group: editMuscle,
+        category: editCategory,
+        tracking_type: editCategory === 'mobility' ? editTracking : 'weight_reps',
         notes: editNotes.trim(),
       });
       setEditOpen(false);
@@ -234,9 +253,26 @@ const ExerciseLibrary = () => {
                           <ListItemText
                             primary={
                               <Box>
-                                <Typography fontWeight={600} sx={{ fontSize: 13 }}>
-                                  {ex.name}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                  <Typography fontWeight={600} sx={{ fontSize: 13 }}>
+                                    {ex.name}
+                                  </Typography>
+                                  {ex.category === 'mobility' && (
+                                    <Chip
+                                      label={TRACKING_LABELS[ex.tracking_type] === 'Check off' ? 'mobility · check' : 'mobility'}
+                                      size="small"
+                                      sx={{
+                                        height: 16,
+                                        fontSize: 9,
+                                        fontWeight: 700,
+                                        letterSpacing: '0.04em',
+                                        color: '#3A0A22',
+                                        backgroundColor: MOBILITY_PINK,
+                                        '& .MuiChip-label': { px: 0.75 },
+                                      }}
+                                    />
+                                  )}
+                                </Box>
                                 {ex.notes && (
                                   <Typography
                                     variant="caption"
@@ -269,7 +305,7 @@ const ExerciseLibrary = () => {
           </CardContent>
         </Card>
       )}
-      <Dialog open={open} onClose={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setAddError(''); }}>
+      <Dialog open={open} onClose={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setNewCategory('strength'); setNewTracking('duration'); setAddError(''); }}>
         <DialogTitle sx={{ fontSize: 13 }}>Add New Exercise</DialogTitle>
         <DialogContent>
           <TextField
@@ -292,6 +328,22 @@ const ExerciseLibrary = () => {
               ))}
             </Select>
           </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Type</InputLabel>
+            <Select value={newCategory} onChange={e => setNewCategory(e.target.value)} label="Type">
+              <MenuItem value="strength">Strength</MenuItem>
+              <MenuItem value="mobility">Mobility</MenuItem>
+            </Select>
+          </FormControl>
+          {newCategory === 'mobility' && (
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>How to log it</InputLabel>
+              <Select value={newTracking} onChange={e => setNewTracking(e.target.value)} label="How to log it">
+                <MenuItem value="duration">Timed hold (seconds)</MenuItem>
+                <MenuItem value="checkoff">Just check off (done)</MenuItem>
+              </Select>
+            </FormControl>
+          )}
           <TextField
             label="Notes (optional)"
             value={newNotes}
@@ -305,7 +357,7 @@ const ExerciseLibrary = () => {
           {addError && <Alert severity="error" sx={{ mb: 1 }}>{addError}</Alert>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setAddError(''); }} disabled={adding}>Cancel</Button>
+          <Button onClick={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setNewCategory('strength'); setNewTracking('duration'); setAddError(''); }} disabled={adding}>Cancel</Button>
           <Button onClick={handleAdd} variant="contained" disabled={adding}>
             {adding ? 'Adding...' : 'Add'}
           </Button>
@@ -351,6 +403,22 @@ const ExerciseLibrary = () => {
               ))}
             </Select>
           </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Type</InputLabel>
+            <Select value={editCategory} onChange={e => setEditCategory(e.target.value)} label="Type">
+              <MenuItem value="strength">Strength</MenuItem>
+              <MenuItem value="mobility">Mobility</MenuItem>
+            </Select>
+          </FormControl>
+          {editCategory === 'mobility' && (
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>How to log it</InputLabel>
+              <Select value={editTracking} onChange={e => setEditTracking(e.target.value)} label="How to log it">
+                <MenuItem value="duration">Timed hold (seconds)</MenuItem>
+                <MenuItem value="checkoff">Just check off (done)</MenuItem>
+              </Select>
+            </FormControl>
+          )}
           <TextField
             label="Notes (optional)"
             value={editNotes}
