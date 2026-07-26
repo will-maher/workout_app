@@ -952,6 +952,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           }}>
                           {getSelectedWorkoutExercises().map((exercise, index) => {
                             const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
+                            const isMobilityRow = exerciseData?.category === 'mobility';
+                            const isRowSelected = exerciseData && selectedExercise === exerciseData.id;
                             return (
                               <Box
                                 key={index}
@@ -983,10 +985,14 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                                 }}>
                                   <Typography
                                     variant="body2"
-                                    color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.primary'}
                                     sx={{
                                       fontSize: 13,
-                                      fontWeight: 500
+                                      fontWeight: 500,
+                                      color: isRowSelected
+                                        ? 'primary.contrastText'
+                                        : isMobilityRow
+                                          ? MOBILITY_PINK
+                                          : 'text.primary',
                                     }}
                                   >
                                     {exercise.exercise}
