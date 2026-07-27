@@ -50,7 +50,7 @@ const Panel = ({ children, sx = {}, ...rest }) => (
       borderRadius: 3,
       border: '1px solid rgba(255,255,255,0.07)',
       background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.012) 100%)',
-      p: 1.75,
+      p: 1.5,
       ...sx,
     }}
     {...rest}
@@ -60,7 +60,7 @@ const Panel = ({ children, sx = {}, ...rest }) => (
 );
 
 const PanelLabel = ({ children, right, sx = {} }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25, ...sx }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1, ...sx }}>
     <Typography
       sx={{
         fontWeight: 700,
@@ -77,21 +77,21 @@ const PanelLabel = ({ children, right, sx = {} }) => (
 );
 
 // Compact completion ring for the planned-workout progress.
-const ProgressRing = ({ value, total, accent, size = 46 }) => {
+const ProgressRing = ({ value, total, accent, size = 40 }) => {
   const pct = total > 0 ? Math.min(1, value / total) : 0;
   const r = (size - 5) / 2;
   const circ = 2 * Math.PI * r;
   return (
     <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3" />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
           stroke={accent}
-          strokeWidth="3.5"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={circ * (1 - pct)}
@@ -110,7 +110,7 @@ const ProgressRing = ({ value, total, accent, size = 46 }) => {
 // Horizontal rep selector — replaces the old 1-20 slider with a tactile strip
 // that keeps the chosen value visible and one tap away.
 const RepStrip = ({ value, onChange, accent, max = 30 }) => (
-  <Box sx={{ display: 'flex', gap: 0.625, overflowX: 'auto', py: 0.25, ...hideScrollbarSx }}>
+  <Box sx={{ display: 'flex', gap: 0.5, overflowX: 'auto', py: 0.25, ...hideScrollbarSx }}>
     {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
       const active = value === r;
       return (
@@ -119,8 +119,8 @@ const RepStrip = ({ value, onChange, accent, max = 30 }) => (
           onClick={() => onChange(r)}
           sx={{
             flex: '0 0 auto',
-            minWidth: 36,
-            height: 36,
+            minWidth: 32,
+            height: 32,
             px: 0.5,
             borderRadius: 2,
             display: 'grid',
@@ -145,47 +145,51 @@ const RepStrip = ({ value, onChange, accent, max = 30 }) => (
   </Box>
 );
 
-// Big borderless numeric field used for the weight / reps readout.
-const MetricInput = ({ value, onChange, placeholder, accent, suffix, label, size = 42 }) => (
-  <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 0.5 }}>
-      <Box
-        component="input"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type="number"
-        inputMode="decimal"
-        sx={{
-          width: '100%',
-          maxWidth: 130,
-          textAlign: 'right',
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          p: 0,
-          m: 0,
-          color: value ? 'text.primary' : 'rgba(255,255,255,0.16)',
-          fontSize: size,
-          fontWeight: 750,
-          lineHeight: 1.05,
-          letterSpacing: '-0.035em',
-          fontVariantNumeric: 'tabular-nums',
-          fontFamily: 'inherit',
-          caretColor: accent,
-          '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', margin: 0 },
-          MozAppearance: 'textfield',
-          '&::placeholder': { color: 'rgba(255,255,255,0.16)' },
-        }}
-      />
-      <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>
-        {suffix}
-      </Typography>
-    </Box>
+// Big borderless numeric field used for the weight / reps readout. The unit
+// sits in a fixed-width gutter so both halves stay optically balanced
+// regardless of how wide the unit label is.
+const MetricInput = ({ value, onChange, placeholder, accent, suffix, size = 36 }) => (
+  <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 0.5 }}>
+    <Box
+      component="input"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      type="number"
+      inputMode="decimal"
+      sx={{
+        width: '100%',
+        maxWidth: 104,
+        textAlign: 'right',
+        background: 'transparent',
+        border: 'none',
+        outline: 'none',
+        p: 0,
+        m: 0,
+        color: value ? 'text.primary' : 'rgba(255,255,255,0.16)',
+        fontSize: size,
+        fontWeight: 700,
+        lineHeight: 1.05,
+        letterSpacing: '-0.035em',
+        fontVariantNumeric: 'tabular-nums',
+        fontFamily: 'inherit',
+        caretColor: accent,
+        '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', margin: 0 },
+        MozAppearance: 'textfield',
+        '&::placeholder': { color: 'rgba(255,255,255,0.16)' },
+      }}
+    />
     <Typography
-      sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mt: 0.5 }}
+      sx={{
+        width: 32,
+        flexShrink: 0,
+        fontSize: 12,
+        fontWeight: 600,
+        letterSpacing: '0.01em',
+        color: 'rgba(255,255,255,0.32)',
+      }}
     >
-      {label}
+      {suffix}
     </Typography>
   </Box>
 );
@@ -1033,7 +1037,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const nudgeSx = {
     flex: 1,
     minWidth: 0,
-    height: 34,
+    height: 32,
     borderRadius: 2,
     fontSize: 12,
     fontWeight: 700,
@@ -1049,8 +1053,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   // Strength logs with a solid teal action; mobility stays outline-only in pink.
   const primaryActionSx = isMobility
     ? {
-        mt: 1.75,
-        height: 48,
+        mt: 1.5,
+        height: 44,
         borderRadius: 2.5,
         fontWeight: 800,
         fontSize: 14,
@@ -1065,8 +1069,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
         transition: 'transform .12s ease, background-color .2s ease',
       }
     : {
-        mt: 1.75,
-        height: 48,
+        mt: 1.5,
+        height: 44,
         borderRadius: 2.5,
         fontWeight: 800,
         fontSize: 14,
@@ -1074,8 +1078,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
         textTransform: 'none',
         color: '#06140F',
         background: `linear-gradient(135deg, ${accent} 0%, ${accent}c8 100%)`,
-        boxShadow: `0 8px 22px -10px ${accent}`,
-        '&:hover': { background: `linear-gradient(135deg, ${accent} 0%, ${accent} 100%)`, boxShadow: `0 10px 26px -10px ${accent}` },
+        boxShadow: `0 4px 14px -8px ${accent}`,
+        '&:hover': { background: `linear-gradient(135deg, ${accent} 0%, ${accent} 100%)`, boxShadow: `0 6px 18px -8px ${accent}` },
         '&:active': { transform: 'scale(0.985)' },
         transition: 'transform .12s ease, box-shadow .2s ease',
       };
@@ -1087,7 +1091,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box sx={{ maxWidth: 540, mx: 'auto', pt: 1.5, pb: 2, px: { xs: 1.5, sm: 0 } }}>
         {isInitializing ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
             {[76, 120, 300].map((h, i) => (
               <Box
                 key={i}
@@ -1103,16 +1107,16 @@ const WorkoutEntry = ({ onStatusMessage }) => {
             ))}
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
 
             {/* ── Session header ─────────────────────────────────────────── */}
             <Panel sx={{ p: 1.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.34)' }}>
                     {format(new Date(), 'EEEE d MMM')}
                   </Typography>
-                  <Typography sx={{ fontSize: 19, fontWeight: 750, letterSpacing: '-0.025em', mt: 0.25, lineHeight: 1.2 }}>
+                  <Typography sx={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.025em', mt: 0.25, lineHeight: 1.2 }}>
                     {sets.length === 0 ? 'New session' : `${sets.length} set${sets.length === 1 ? '' : 's'} logged`}
                   </Typography>
                 </Box>
@@ -1207,7 +1211,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           }}
                           sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
-                            px: 1, py: 0.875, mx: -0.5, borderRadius: 1.5,
+                            px: 1, py: 0.75, mx: -0.5, borderRadius: 1.5,
                             cursor: exerciseData ? 'pointer' : 'default',
                             borderLeft: '2px solid',
                             borderLeftColor: isRowSelected ? rowAccent : 'transparent',
@@ -1257,7 +1261,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           onClick={() => { setSelectedExercise(exercise.id); haptic(); }}
                           sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
-                            px: 1, py: 0.875, mx: -0.5, borderRadius: 1.5, cursor: 'pointer',
+                            px: 1, py: 0.75, mx: -0.5, borderRadius: 1.5, cursor: 'pointer',
                             borderLeft: '2px solid',
                             borderLeftColor: isSelected ? rowAccent : 'transparent',
                             backgroundColor: isSelected ? `${rowAccent}10` : 'transparent',
@@ -1300,7 +1304,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
 
             {/* ── Composer: exercise + entry ─────────────────────────────── */}
             <Panel sx={{ p: 0, overflow: 'hidden' }}>
-              <Box sx={{ p: 1.75, pb: selectedExercise ? 1.25 : 1.75 }}>
+              <Box sx={{ p: 1.5, pb: selectedExercise ? 1 : 1.5 }}>
                 <PanelLabel>Exercise</PanelLabel>
                 <ScrollablePicker
                   items={
@@ -1334,9 +1338,9 @@ const WorkoutEntry = ({ onStatusMessage }) => {
               {selectedExercise ? (
                 <Box
                   sx={{
-                    px: 1.75, pt: 1.75, pb: 1.75,
+                    px: 1.5, pt: 1.5, pb: 1.5,
                     borderTop: '1px solid rgba(255,255,255,0.06)',
-                    background: `radial-gradient(130% 100% at 50% 0%, ${accent}12 0%, transparent 68%)`,
+                    background: `radial-gradient(130% 100% at 50% 0%, ${accent}0d 0%, transparent 70%)`,
                   }}
                 >
                   {isMobility && trackingType === 'checkoff' ? (
@@ -1356,9 +1360,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         placeholder="30"
                         accent={accent}
                         suffix="sec"
-                        label="Hold"
                       />
-                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.75 }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.5 }}>
                         {[15, 30, 45, 60].map((s) => (
                           <Button
                             key={s}
@@ -1379,13 +1382,13 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                     </>
                   ) : (
                     <>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
-                        <MetricInput value={weight} onChange={setWeight} placeholder="0" accent={accent} suffix="kg" label="Weight" />
-                        <Typography sx={{ fontSize: 22, fontWeight: 300, color: 'rgba(255,255,255,0.18)', pt: 1, flexShrink: 0 }}>×</Typography>
-                        <MetricInput value={reps} onChange={setReps} placeholder="0" accent={accent} suffix="" label="Reps" />
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.25 }}>
+                        <MetricInput value={weight} onChange={setWeight} placeholder="0" accent={accent} suffix="kg" />
+                        <Typography sx={{ fontSize: 18, fontWeight: 300, color: 'rgba(255,255,255,0.16)', flexShrink: 0 }}>×</Typography>
+                        <MetricInput value={reps} onChange={setReps} placeholder="0" accent={accent} suffix="reps" />
                       </Box>
 
-                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.75 }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.5 }}>
                         {[-5, -2.5, 2.5, 5].map((d) => (
                           <Button key={d} onClick={() => { adjustWeight(d); haptic(); }} sx={nudgeSx}>
                             {d > 0 ? `+${d}` : `−${Math.abs(d)}`}
@@ -1393,7 +1396,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         ))}
                       </Box>
 
-                      <Box sx={{ mt: 1.75 }}>
+                      <Box sx={{ mt: 1.5 }}>
                         <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.75 }}>
                           Quick reps
                         </Typography>
@@ -1410,7 +1413,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                           sx={{
                             mt: 1.5, px: 1.25, py: 1, borderRadius: 2, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
-                            border: '1px dashed', borderColor: `${accent}55`,
+                            border: '1px solid', borderColor: `${accent}40`,
                             backgroundColor: `${accent}0a`,
                             transition: 'all .2s ease',
                             '&:hover': { backgroundColor: `${accent}16`, borderColor: accent },
@@ -1444,7 +1447,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   )}
                 </Box>
               ) : (
-                <Box sx={{ px: 1.75, pb: 2.25, pt: 0.5 }}>
+                <Box sx={{ px: 1.5, pb: 1.75, pt: 0.25 }}>
                   <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
                     Choose an exercise to start logging
                   </Typography>
@@ -1471,7 +1474,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                 </PanelLabel>
 
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, mb: 1 }}>
-                  <Typography sx={{ fontSize: 24, fontWeight: 750, color: TEAL, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                  <Typography sx={{ fontSize: 22, fontWeight: 700, color: TEAL, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                     {activeGoal.current_one_rm}
                   </Typography>
                   <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
@@ -1702,7 +1705,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   disabled={saving}
                   fullWidth
                   sx={{
-                    height: 50,
+                    height: 46,
                     borderRadius: 3,
                     fontWeight: 800,
                     fontSize: 14,
