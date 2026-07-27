@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
-  TextField,
   Button,
   IconButton,
-  Slider,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -35,6 +33,162 @@ const formatDuration = (secs) => {
   const s = secs % 60;
   return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2, '0')}`;
 };
+
+const TEAL = '#00d4aa';
+
+const hideScrollbarSx = {
+  '&::-webkit-scrollbar': { display: 'none' },
+  msOverflowStyle: 'none',
+  scrollbarWidth: 'none',
+};
+
+// Frosted surface used for every block on the tab, so the screen reads as one
+// system rather than a stack of unrelated sections.
+const Panel = ({ children, sx = {}, ...rest }) => (
+  <Box
+    sx={{
+      borderRadius: 3,
+      border: '1px solid rgba(255,255,255,0.07)',
+      background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.012) 100%)',
+      p: 1.75,
+      ...sx,
+    }}
+    {...rest}
+  >
+    {children}
+  </Box>
+);
+
+const PanelLabel = ({ children, right, sx = {} }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25, ...sx }}>
+    <Typography
+      sx={{
+        fontWeight: 700,
+        fontSize: 10,
+        letterSpacing: '0.11em',
+        textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.42)',
+      }}
+    >
+      {children}
+    </Typography>
+    {right}
+  </Box>
+);
+
+// Compact completion ring for the planned-workout progress.
+const ProgressRing = ({ value, total, accent, size = 46 }) => {
+  const pct = total > 0 ? Math.min(1, value / total) : 0;
+  const r = (size - 5) / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={accent}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - pct)}
+          style={{ transition: 'stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)' }}
+        />
+      </svg>
+      <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+          {value}
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+// Horizontal rep selector — replaces the old 1-20 slider with a tactile strip
+// that keeps the chosen value visible and one tap away.
+const RepStrip = ({ value, onChange, accent, max = 30 }) => (
+  <Box sx={{ display: 'flex', gap: 0.625, overflowX: 'auto', py: 0.25, ...hideScrollbarSx }}>
+    {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
+      const active = value === r;
+      return (
+        <Box
+          key={r}
+          onClick={() => onChange(r)}
+          sx={{
+            flex: '0 0 auto',
+            minWidth: 36,
+            height: 36,
+            px: 0.5,
+            borderRadius: 2,
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+            userSelect: 'none',
+            border: '1px solid',
+            borderColor: active ? accent : 'rgba(255,255,255,0.09)',
+            backgroundColor: active ? accent : 'transparent',
+            color: active ? '#06140F' : 'rgba(255,255,255,0.62)',
+            fontWeight: active ? 800 : 500,
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+            transition: 'all .18s cubic-bezier(.4,0,.2,1)',
+            '&:active': { transform: 'scale(0.92)' },
+          }}
+        >
+          {r}
+        </Box>
+      );
+    })}
+  </Box>
+);
+
+// Big borderless numeric field used for the weight / reps readout.
+const MetricInput = ({ value, onChange, placeholder, accent, suffix, label, size = 42 }) => (
+  <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 0.5 }}>
+      <Box
+        component="input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type="number"
+        inputMode="decimal"
+        sx={{
+          width: '100%',
+          maxWidth: 130,
+          textAlign: 'right',
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          p: 0,
+          m: 0,
+          color: value ? 'text.primary' : 'rgba(255,255,255,0.16)',
+          fontSize: size,
+          fontWeight: 750,
+          lineHeight: 1.05,
+          letterSpacing: '-0.035em',
+          fontVariantNumeric: 'tabular-nums',
+          fontFamily: 'inherit',
+          caretColor: accent,
+          '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', margin: 0 },
+          MozAppearance: 'textfield',
+          '&::placeholder': { color: 'rgba(255,255,255,0.16)' },
+        }}
+      />
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>
+        {suffix}
+      </Typography>
+    </Box>
+    <Typography
+      sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mt: 0.5 }}
+    >
+      {label}
+    </Typography>
+  </Box>
+);
 
 const StrengthCurveChart = React.memo(({ historicalSets, currentSets }) => {
   const data = useMemo(() => {
@@ -175,6 +329,9 @@ const WorkoutEntry = ({ onStatusMessage }) => {
 
   const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch {} };
 
+  // Target reps from a planned row, carried across the exercise-change reset.
+  const pendingRepsRef = useRef(null);
+
   // Remember whether the planned exercise list is collapsed between visits.
   useEffect(() => {
     try { localStorage.setItem('planned_exercises_expanded', String(showPlannedExercises)); } catch {}
@@ -185,29 +342,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     setWeight(rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1));
   };
 
-  const inputSurface = 'background.paper';
-
-  const smallTextSize = 11;
-  const sectionGap = 2;
-  const smallGap = 1;
-
-  const sectionSx = {
-    pb: 1.5,
-    borderBottom: '1px solid',
-    borderColor: 'divider',
-  };
-
-  const sectionTitleSx = {
-    mb: smallGap,
-    fontWeight: 700,
-    fontSize: smallTextSize,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: 'text.secondary',
-  };
-
-  // Generate reps options (1-50)
-  const repsOptions = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `${i + 1} reps` }));
+  const inputSurface = 'rgba(255,255,255,0.03)';
 
   // Calculate weight for given reps using Brzycki formula (reversed)
   const calculateWeightForReps = (targetReps, oneRepMax) => {
@@ -532,10 +667,18 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     }
   }, [selectedExercise]);
 
+  // Switching exercise clears the entry fields — unless a planned row asked for
+  // a specific target rep count, which is carried across the change.
   useEffect(() => {
     if (selectedExercise !== '') {
       setWeight('');
-      setReps('');
+      if (pendingRepsRef.current != null) {
+        setReps(String(pendingRepsRef.current));
+        setSliderReps(pendingRepsRef.current);
+        pendingRepsRef.current = null;
+      } else {
+        setReps('');
+      }
       fetchRecentData();
     }
   }, [selectedExercise, fetchRecentData]);
@@ -554,6 +697,36 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   const isMobility = selectedExerciseInfo?.category === 'mobility';
   const trackingType = selectedExerciseInfo?.tracking_type
     || (isMobility ? 'duration' : 'weight_reps');
+
+  // The whole composer re-tints for mobility so the mode is unmistakable.
+  const accent = isMobility ? MOBILITY_PINK : TEAL;
+
+  // Sets logged so far per exercise name — drives the per-exercise set pips
+  // in the planned list.
+  const completedByExercise = useMemo(
+    () => sets.reduce((acc, s) => {
+      acc[s.exercise_name] = (acc[s.exercise_name] || 0) + 1;
+      return acc;
+    }, {}),
+    [sets]
+  );
+
+  // Reps currently being previewed: whatever is typed, else the last strip pick.
+  const previewReps = reps && parseInt(reps, 10) > 0 ? parseInt(reps, 10) : sliderReps;
+
+  // Suggested working weight for the previewed rep count, from the LOESS 1RM.
+  // Replaces the old slider + "Use" pairing with an inline, tappable hint.
+  const suggestedWeight = useMemo(() => {
+    if (!estimatedOneRepMax || estimatedOneRepMax <= 0) return 0;
+    return roundToNearest2_5(calculateWeightForReps(previewReps, estimatedOneRepMax));
+  }, [estimatedOneRepMax, previewReps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applySuggestion = () => {
+    if (!suggestedWeight) return;
+    setWeight(String(suggestedWeight));
+    setReps(String(previewReps));
+    haptic();
+  };
 
   useEffect(() => {
     if (!selectedExercise) return;
@@ -857,803 +1030,727 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     fetchRanges();
   }, [sets]);
 
+  const nudgeSx = {
+    flex: 1,
+    minWidth: 0,
+    height: 34,
+    borderRadius: 2,
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'rgba(255,255,255,0.72)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    fontVariantNumeric: 'tabular-nums',
+    '&:hover': { borderColor: accent, backgroundColor: 'rgba(255,255,255,0.05)' },
+    '&:active': { transform: 'scale(0.94)' },
+    transition: 'all .15s cubic-bezier(.4,0,.2,1)',
+  };
+
+  // Strength logs with a solid teal action; mobility stays outline-only in pink.
+  const primaryActionSx = isMobility
+    ? {
+        mt: 1.75,
+        height: 48,
+        borderRadius: 2.5,
+        fontWeight: 800,
+        fontSize: 14,
+        letterSpacing: '0.01em',
+        textTransform: 'none',
+        color: accent,
+        border: '1.5px solid',
+        borderColor: accent,
+        backgroundColor: `${accent}0d`,
+        '&:hover': { backgroundColor: `${accent}1f`, borderColor: accent },
+        '&:active': { transform: 'scale(0.985)' },
+        transition: 'transform .12s ease, background-color .2s ease',
+      }
+    : {
+        mt: 1.75,
+        height: 48,
+        borderRadius: 2.5,
+        fontWeight: 800,
+        fontSize: 14,
+        letterSpacing: '0.01em',
+        textTransform: 'none',
+        color: '#06140F',
+        background: `linear-gradient(135deg, ${accent} 0%, ${accent}c8 100%)`,
+        boxShadow: `0 8px 22px -10px ${accent}`,
+        '&:hover': { background: `linear-gradient(135deg, ${accent} 0%, ${accent} 100%)`, boxShadow: `0 10px 26px -10px ${accent}` },
+        '&:active': { transform: 'scale(0.985)' },
+        transition: 'transform .12s ease, box-shadow .2s ease',
+      };
+
+  const plannedOptions = getPlannedWorkoutOptions();
+  const hasPlan = userPlan && Object.keys(userPlan).length > 0;
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ maxWidth: 520, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
+      <Box sx={{ maxWidth: 540, mx: 'auto', pt: 1.5, pb: 2, px: { xs: 1.5, sm: 0 } }}>
         {isInitializing ? (
-          <Box display="flex" justifyContent="center" py={6}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {[76, 120, 300].map((h, i) => (
+              <Box
+                key={i}
+                sx={{
+                  height: h,
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.01) 100%)',
+                  animation: 'pulseFade 1.4s ease-in-out infinite',
+                  '@keyframes pulseFade': { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 0.85 } },
+                }}
+              />
+            ))}
           </Box>
         ) : (
-          <>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {/* Planned Workout Selector */}
-              {userPlan && Object.keys(userPlan).length > 0 && (
-                <Box sx={{ ...sectionSx, px: 0 }}>
-                  <Box
-                    onClick={() => { if (selectedPlannedWorkout) { haptic(); setShowPlannedExercises(p => !p); } }}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      mb: smallGap,
-                      cursor: selectedPlannedWorkout ? 'pointer' : 'default',
-                      userSelect: 'none',
-                      '&:hover .planned-toggle': selectedPlannedWorkout ? { color: 'text.primary' } : {},
-                    }}
-                  >
-                    <Typography sx={{ ...sectionTitleSx, mb: 0 }}>Planned Workout</Typography>
-                    {selectedPlannedWorkout && (
-                      <Box className="planned-toggle" sx={{ display: 'flex', alignItems: 'center', gap: 0.25, color: 'text.secondary', transition: 'color 0.2s ease' }}>
-                        <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em' }}>
-                          {showPlannedExercises ? 'Hide' : 'Show'}
-                        </Typography>
-                        <ExpandMoreIcon sx={{ fontSize: 16, transform: showPlannedExercises ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                      </Box>
-                    )}
-                  </Box>
-                    
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+
+            {/* ── Session header ─────────────────────────────────────────── */}
+            <Panel sx={{ p: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.34)' }}>
+                    {format(new Date(), 'EEEE d MMM')}
+                  </Typography>
+                  <Typography sx={{ fontSize: 19, fontWeight: 750, letterSpacing: '-0.025em', mt: 0.25, lineHeight: 1.2 }}>
+                    {sets.length === 0 ? 'New session' : `${sets.length} set${sets.length === 1 ? '' : 's'} logged`}
+                  </Typography>
+                </Box>
+                {selectedPlannedWorkout && plannedWorkoutStats.total > 0 && (
+                  <ProgressRing value={plannedWorkoutStats.completed} total={plannedWorkoutStats.total} accent={TEAL} />
+                )}
+              </Box>
+
+              {hasPlan && (
+                <Box sx={{ mt: 1.25 }}>
                   <ScrollablePicker
-                    items={getPlannedWorkoutOptions()}
+                    items={plannedOptions}
                     value={selectedPlannedWorkout}
                     onChange={setSelectedPlannedWorkout}
-                    label="Select Planned Workout"
+                    label="Select a planned day"
                     getItemLabel={(item) => item.name}
                     getItemValue={(item) => item.id}
                     inputBackground={inputSurface}
+                    buttonHeight={42}
                   />
+                </Box>
+              )}
+            </Panel>
 
-                  {selectedPlannedWorkout && plannedWorkoutStats.total > 0 && (
-                    <Box sx={{ mt: sectionGap }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: smallGap }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                          Workout progress
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: 11 }}>
-                          {plannedWorkoutStats.completed}/{plannedWorkoutStats.total} sets
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: `repeat(${plannedWorkoutStats.total}, minmax(0, 1fr))`,
-                          gap: 0.5,
-                        }}
-                      >
-                        {Array.from({ length: plannedWorkoutStats.total }).map((_, index) => {
-                          const isComplete = index < plannedWorkoutStats.completed;
+            {/* ── Planned workout ────────────────────────────────────────── */}
+            {hasPlan && selectedPlannedWorkout && (
+              <Panel>
+                <PanelLabel
+                  sx={{ mb: 1 }}
+                  right={
+                    <Box
+                      onClick={() => { haptic(); setShowPlannedExercises((p) => !p); }}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 0.25, cursor: 'pointer', userSelect: 'none',
+                        color: 'rgba(255,255,255,0.45)', transition: 'color .2s ease', '&:hover': { color: 'text.primary' },
+                      }}
+                    >
+                      <Typography sx={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em' }}>
+                        {showPlannedExercises ? 'HIDE' : 'SHOW'}
+                      </Typography>
+                      <ExpandMoreIcon sx={{ fontSize: 16, transform: showPlannedExercises ? 'rotate(180deg)' : 'none', transition: 'transform .25s cubic-bezier(.4,0,.2,1)' }} />
+                    </Box>
+                  }
+                >
+                  {selectedPlannedWorkout}
+                </PanelLabel>
+
+                {plannedWorkoutStats.total > 0 && (
+                  <Box sx={{ mb: showPlannedExercises ? 1.5 : 0 }}>
+                    <Box sx={{ display: 'flex', gap: 0.375 }}>
+                      {Array.from({ length: plannedWorkoutStats.total }).map((_, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            flex: 1,
+                            height: 3,
+                            borderRadius: 2,
+                            backgroundColor: index < plannedWorkoutStats.completed ? TEAL : 'rgba(255,255,255,0.1)',
+                            transition: 'background-color .35s cubic-bezier(.4,0,.2,1)',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.4)', mt: 0.75, fontVariantNumeric: 'tabular-nums' }}>
+                      {plannedWorkoutStats.completed} of {plannedWorkoutStats.total} sets complete
+                    </Typography>
+                  </Box>
+                )}
+
+                {showPlannedExercises && (
+                  <Box>
+                    {getSelectedWorkoutExercises().map((exercise, index) => {
+                      const exerciseData = exercises.find((ex) => ex.name === exercise.exercise);
+                      const isMobilityRow = exerciseData?.category === 'mobility';
+                      const isRowSelected = exerciseData && selectedExercise === exerciseData.id;
+                      const rowAccent = isMobilityRow ? MOBILITY_PINK : TEAL;
+                      const target = parseInt(exercise.sets, 10) || 0;
+                      const done = Math.min(target, completedByExercise[exercise.exercise] || 0);
+                      return (
+                        <Box
+                          key={index}
+                          onClick={() => {
+                            if (!exerciseData) return;
+                            const t = exercise.targetReps ? parseInt(exercise.targetReps, 10) : null;
+                            if (selectedExercise === exerciseData.id) {
+                              if (t) { setReps(String(t)); setSliderReps(t); }
+                            } else {
+                              pendingRepsRef.current = t;
+                              setSelectedExercise(exerciseData.id);
+                            }
+                            haptic();
+                          }}
+                          sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            px: 1, py: 0.875, mx: -0.5, borderRadius: 1.5,
+                            cursor: exerciseData ? 'pointer' : 'default',
+                            borderLeft: '2px solid',
+                            borderLeftColor: isRowSelected ? rowAccent : 'transparent',
+                            backgroundColor: isRowSelected ? `${rowAccent}14` : 'transparent',
+                            transition: 'all .2s cubic-bezier(.4,0,.2,1)',
+                            '&:hover': { backgroundColor: isRowSelected ? `${rowAccent}1c` : 'rgba(255,255,255,0.03)' },
+                          }}
+                        >
+                          <Typography
+                            noWrap
+                            sx={{
+                              flex: 1, minWidth: 0, fontSize: 13,
+                              fontWeight: isRowSelected ? 700 : 500,
+                              color: isMobilityRow ? MOBILITY_PINK : isRowSelected ? 'text.primary' : 'rgba(255,255,255,0.82)',
+                            }}
+                          >
+                            {exercise.exercise}
+                          </Typography>
+                          {target > 0 && (
+                            <Box sx={{ display: 'flex', gap: 0.375, flexShrink: 0 }}>
+                              {Array.from({ length: Math.min(target, 8) }).map((_, i) => (
+                                <Box
+                                  key={i}
+                                  sx={{
+                                    width: 5, height: 5, borderRadius: '50%',
+                                    backgroundColor: i < done ? rowAccent : 'rgba(255,255,255,0.15)',
+                                    transition: 'background-color .3s ease',
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                          <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', flexShrink: 0, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
+                            {exercise.sets} × {exercise.targetReps || '?'}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+
+                    {temporaryExercises.map((exercise) => {
+                      const isSelected = selectedExercise === exercise.id;
+                      const isMobilityRow = exercise.category === 'mobility';
+                      const rowAccent = isMobilityRow ? MOBILITY_PINK : TEAL;
+                      return (
+                        <Box
+                          key={`tmp-${exercise.id}`}
+                          onClick={() => { setSelectedExercise(exercise.id); haptic(); }}
+                          sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            px: 1, py: 0.875, mx: -0.5, borderRadius: 1.5, cursor: 'pointer',
+                            borderLeft: '2px solid',
+                            borderLeftColor: isSelected ? rowAccent : 'transparent',
+                            backgroundColor: isSelected ? `${rowAccent}10` : 'transparent',
+                            transition: 'all .2s cubic-bezier(.4,0,.2,1)',
+                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.03)' },
+                          }}
+                        >
+                          <Typography
+                            noWrap
+                            sx={{
+                              flex: 1, minWidth: 0, fontSize: 13, fontStyle: 'italic', fontWeight: 400,
+                              color: isMobilityRow ? MOBILITY_PINK : 'rgba(255,255,255,0.5)',
+                            }}
+                          >
+                            {exercise.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>
+                            extra
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+
+                    {getSelectedWorkoutExercises().some((ex) => ex.notes) && (
+                      <Box sx={{ mt: 1.25, pt: 1.25, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        {getSelectedWorkoutExercises().map((exercise, index) => {
+                          if (!exercise.notes) return null;
                           return (
-                            <Box
-                              key={index}
-                              sx={{
-                                height: 10,
-                                borderRadius: 2,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                backgroundColor: isComplete ? 'primary.main' : 'transparent',
-                                transition: 'background-color 0.2s ease',
-                              }}
-                            />
+                            <Typography key={index} sx={{ display: 'block', fontSize: 11, fontStyle: 'italic', color: 'rgba(255,255,255,0.42)', mb: 0.5, lineHeight: 1.5 }}>
+                              <Box component="span" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>{exercise.exercise}:</Box> {exercise.notes}
+                            </Typography>
                           );
                         })}
                       </Box>
-                    </Box>
-                  )}
-                  
-                  {/* Show exercises for selected workout */}
-                  {selectedPlannedWorkout && (
-                    <Box sx={{ mt: 1 }}>
-                      {showPlannedExercises && (
-                        <>
-                          <Box sx={{ 
-                            display: 'table', 
-                            width: '100%',
-                            borderCollapse: 'collapse'
-                          }}>
-                          {getSelectedWorkoutExercises().map((exercise, index) => {
-                            const exerciseData = exercises.find(ex => ex.name === exercise.exercise);
-                            const isMobilityRow = exerciseData?.category === 'mobility';
-                            const isRowSelected = exerciseData && selectedExercise === exerciseData.id;
-                            return (
-                              <Box
-                                key={index}
-                                onClick={() => {
-                                  if (exerciseData) {
-                                    setSelectedExercise(exerciseData.id);
-                                    if (exercise.targetReps) {
-                                      setReps(exercise.targetReps.toString());
-                                    }
-                                  }
-                                }}
-                                sx={{
-                                  display: 'table-row',
-                                  cursor: exerciseData ? 'pointer' : 'default',
-                                  '&:hover': {
-                                    bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.dark' : 'background.paper'
-                                  },
-                                  bgcolor: exerciseData && selectedExercise === exerciseData.id ? 'primary.main' : 'transparent',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                <Box sx={{
-                                  display: 'table-cell',
-                                  py: 0.75,
-                                  px: 1,
-                                  borderBottom: '1px solid',
-                                  borderColor: 'divider',
-                                  verticalAlign: 'middle'
-                                }}>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: 13,
-                                      fontWeight: 500,
-                                      color: isRowSelected
-                                        ? 'primary.contrastText'
-                                        : isMobilityRow
-                                          ? MOBILITY_PINK
-                                          : 'text.primary',
-                                    }}
-                                  >
-                                    {exercise.exercise}
-                                  </Typography>
-                                </Box>
-                                <Box sx={{
-                                  display: 'table-cell',
-                                  py: 0.75,
-                                  px: 1,
-                                  borderBottom: '1px solid',
-                                  borderColor: 'divider',
-                                  verticalAlign: 'middle',
-                                  textAlign: 'right',
-                                  width: '120px'
-                                }}>
-                                  <Typography
-                                    variant="body2"
-                                    color={exerciseData && selectedExercise === exerciseData.id ? 'primary.contrastText' : 'text.secondary'}
-                                    sx={{
-                                      fontWeight: 600,
-                                      fontSize: 13
-                                    }}
-                                  >
-                                    {exercise.sets} × {exercise.targetReps || '?'}
-                                  </Typography>
-                                </Box>
-                              </Box>
-                            );
-                          })}
-                          {temporaryExercises.map((exercise) => {
-                            const isSelected = selectedExercise === exercise.id;
-                            return (
-                              <Box
-                                key={`tmp-${exercise.id}`}
-                                onClick={() => setSelectedExercise(exercise.id)}
-                                sx={{
-                                  display: 'table-row',
-                                  cursor: 'pointer',
-                                  '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' },
-                                  bgcolor: isSelected ? 'rgba(255,255,255,0.05)' : 'transparent',
-                                  transition: 'background-color 0.2s ease',
-                                }}
-                              >
-                                <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle' }}>
-                                  <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 400, fontStyle: 'italic', color: 'text.secondary' }}>
-                                    {exercise.name}
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ display: 'table-cell', py: 0.75, px: 1, borderBottom: '1px dashed', borderColor: 'divider', verticalAlign: 'middle', textAlign: 'right', width: '120px' }}>
-                                  <Typography variant="body2" sx={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-                                    extra
-                                  </Typography>
-                                </Box>
-                              </Box>
-                            );
-                          })}
-                          </Box>
-                          {/* Show notes if any exercise has them */}
-                          {getSelectedWorkoutExercises().some(ex => ex.notes) && (
-                            <Box sx={{ mt: sectionGap, p: sectionGap, bgcolor: 'background.default', borderRadius: 2 }}>
-                              {getSelectedWorkoutExercises().map((exercise, index) => {
-                                if (!exercise.notes) return null;
-                                return (
-                                  <Typography 
-                                    key={index}
-                                    variant="caption" 
-                                    color="text.secondary"
-                                    sx={{ 
-                                      display: 'block',
-                                      fontSize: 11,
-                                      fontStyle: 'italic',
-                                      opacity: 0.8,
-                                      mb: 0.5
-                                    }}
-                                  >
-                                    <strong>{exercise.exercise}:</strong> {exercise.notes}
-                                  </Typography>
-                                );
-                              })}
-                            </Box>
-                          )}
-                        </>
-                      )}
-                    </Box>
-                  )}
-                </Box>
-              )}
-            
-            {/* Main Form */}
-            <Box sx={{ ...sectionSx, px: 0 }}>
-                {/* Header spacer removed for compact layout */}
-                
-                {/* Exercise Selection */}
-                <Box sx={{ mb: sectionGap }}>
-                  <ScrollablePicker
-                    items={
-                      groupedExercises.length > 0
-                        ? [
-                            ...(recentExercises.length > 0
-                              ? [{ label: 'Recent', items: recentExercises }]
-                              : []),
-                            ...groupedExercises,
-                          ]
-                        : [{ label: 'Loading...', items: [] }]
-                    }
-                    value={selectedExercise}
-                    onChange={setSelectedExercise}
-                    label="Select Exercise"
-                    getItemLabel={(item) => item.name}
-                    getItemValue={(item) => item.id}
-                    grouped={true}
-                    getGroupLabel={(group) => group.label}
-                    searchEnabled={true}
-                    searchPlaceholder="Search exercises..."
-                    inputBackground={inputSurface}
+                    )}
+                  </Box>
+                )}
+              </Panel>
+            )}
+
+            {/* ── Composer: exercise + entry ─────────────────────────────── */}
+            <Panel sx={{ p: 0, overflow: 'hidden' }}>
+              <Box sx={{ p: 1.75, pb: selectedExercise ? 1.25 : 1.75 }}>
+                <PanelLabel>Exercise</PanelLabel>
+                <ScrollablePicker
+                  items={
+                    groupedExercises.length > 0
+                      ? [
+                          ...(recentExercises.length > 0 ? [{ label: 'Recent', items: recentExercises }] : []),
+                          ...groupedExercises,
+                        ]
+                      : [{ label: 'Loading...', items: [] }]
+                  }
+                  value={selectedExercise}
+                  onChange={setSelectedExercise}
+                  label="Select an exercise"
+                  getItemLabel={(item) => item.name}
+                  getItemValue={(item) => item.id}
+                  grouped
+                  getGroupLabel={(group) => group.label}
+                  searchEnabled
+                  searchPlaceholder="Search exercises..."
+                  inputBackground={inputSurface}
                   autoFocusSearch={!isMobile}
-                  />
-                  {/* Exercise Notes Display */}
-                  {selectedExercise && (() => {
-                    const selectedExerciseData = exercises.find(ex => ex.id === parseInt(selectedExercise));
-                    return selectedExerciseData && selectedExerciseData.notes ? (
-                      <Box sx={{ mt: 1, p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          sx={{ 
-                            fontStyle: 'italic',
-                            lineHeight: 1.5
-                          }}
-                        >
-                          {selectedExerciseData.notes}
-                        </Typography>
-                      </Box>
-                    ) : null;
-                  })()}
-                </Box>
-
-                {/* Active goal card */}
-                {activeGoal && (
-                  <Box sx={{ mb: 1.5, p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                      <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'text.secondary' }}>
-                        Goal{daysToGoal !== null ? ` · ${daysToGoal}d left` : ''}
-                      </Typography>
-                      <Chip
-                        label={activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind'}
-                        size="small"
-                        sx={{ fontSize: 10, height: 18, fontWeight: 600, color: '#04342C', backgroundColor: activeGoal.achieved ? '#9FE1CB' : activeGoal.on_track ? '#5DCAA5' : '#FAC775' }}
-                      />
-                    </Box>
-                    <Box sx={{ height: 4, borderRadius: 2, backgroundColor: 'divider', mb: 1 }}>
-                      <Box sx={{ height: '100%', borderRadius: 2, width: `${activeGoal.progress * 100}%`, backgroundColor: 'primary.main', transition: 'width 0.4s ease' }} />
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                        <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>{activeGoal.current_one_rm} kg</Box>
-                        {' → '}
-                        <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{activeGoal.target_one_rm} kg</Box>
-                      </Typography>
-                      <Box
-                        component="button"
-                        onClick={() => {
-                          setWeight(roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5)).toString());
-                          setReps('5');
-                          haptic();
-                        }}
-                        sx={{ background: 'none', border: 'none', cursor: 'pointer', p: 0, display: 'inline-flex', alignItems: 'baseline' }}
-                      >
-                        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                          aim for{' '}
-                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 700 }}>
-                            {roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5))} kg × 5
-                          </Box>
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
+                  buttonHeight={44}
+                />
+                {selectedExerciseInfo?.notes && (
+                  <Typography sx={{ mt: 1, fontSize: 11.5, fontStyle: 'italic', color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
+                    {selectedExerciseInfo.notes}
+                  </Typography>
                 )}
+              </Box>
 
-                {/* Weight Calculator Slider */}
-                {selectedExercise && !isMobility && estimatedOneRepMax > 0 && (
-                  <Box sx={{ mb: 1.5 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: smallGap }}>
-                      <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ fontSize: 13 }}>
-                        {roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax))} kg · {sliderReps} reps
+              {selectedExercise ? (
+                <Box
+                  sx={{
+                    px: 1.75, pt: 1.75, pb: 1.75,
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    background: `radial-gradient(130% 100% at 50% 0%, ${accent}12 0%, transparent 68%)`,
+                  }}
+                >
+                  {isMobility && trackingType === 'checkoff' ? (
+                    <>
+                      <Typography sx={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)', py: 1 }}>
+                        Log this as completed for today
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                        est. 1RM {roundToNearest2_5(estimatedOneRepMax)} kg
-                      </Typography>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: sectionGap }}>
-                      <Box sx={{ flex: 3 }}>
-                      <Slider
-                        value={sliderReps}
-                        onChange={(event, newValue) => setSliderReps(newValue)}
-                        min={1}
-                        max={20}
-                        step={1}
-                        marks={[
-                          { value: 1 }, { value: 5 }, { value: 10 }, { value: 15 }, { value: 20 },
-                        ]}
-                        valueLabelDisplay="auto"
-                        valueLabelFormat={(value) => `${value}`}
-                        sx={{
-                        '& .MuiSlider-valueLabel': {
-                          fontSize: 11,
-                        },
-                          '& .MuiSlider-track': {
-                            height: 3,
-                          },
-                          '& .MuiSlider-thumb': {
-                            width: 16,
-                            height: 16,
-                          }
-                        }}
-                      />
-                      </Box>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => {
-                          setReps(sliderReps.toString());
-                          setWeight(roundToNearest2_5(calculateWeightForReps(sliderReps, estimatedOneRepMax)).toString());
-                        }}
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          fontWeight: 600,
-                          fontSize: 13,
-                          whiteSpace: 'nowrap',
-                          height: 40,
-                          flex: 1,
-                        }}
-                      >
-                        Use
-                      </Button>
-                    </Box>
-                    
-
-                  </Box>
-                )}
-                
-                {/* Logging row — mobility (timed hold / check-off) or strength (reps & weight) */}
-                {isMobility ? (
-                  trackingType === 'checkoff' ? (
-                    <Box sx={{ mb: sectionGap }}>
-                      <Button
-                        variant="outlined"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddSet}
-                        fullWidth
-                        sx={{ height: 44, fontWeight: 600, fontSize: 13, color: MOBILITY_PINK, borderColor: MOBILITY_PINK, '&:hover': { borderColor: MOBILITY_PINK, backgroundColor: 'rgba(194,71,125,0.08)' } }}
-                      >
+                      <Button onClick={handleAddSet} fullWidth startIcon={<AddIcon />} sx={{ ...primaryActionSx, mt: 0.5 }}>
                         Log completed
                       </Button>
-                    </Box>
-                  ) : (
-                    <Box sx={{ mb: sectionGap }}>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                        <Box sx={{ flex: 2 }}>
-                          <TextField
-                            label="Hold (seconds)"
-                            type="number"
-                            value={duration}
-                            onChange={(e) => setDuration(e.target.value)}
-                            fullWidth
-                            size="small"
-                            inputProps={{ min: 1, step: 5, inputMode: 'numeric' }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                height: 40, backgroundColor: inputSurface,
-                                '& fieldset': { borderColor: 'divider' },
-                                '&:hover fieldset': { borderColor: MOBILITY_PINK },
-                                '&.Mui-focused fieldset': { borderColor: MOBILITY_PINK },
-                              },
-                              '& .MuiInputBase-input': { color: 'text.primary', fontSize: 13 },
-                            }}
-                          />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Button
-                            variant="outlined"
-                            startIcon={<AddIcon />}
-                            onClick={handleAddSet}
-                            fullWidth
-                            sx={{ height: 40, fontWeight: 600, fontSize: 13, color: MOBILITY_PINK, borderColor: MOBILITY_PINK, '&:hover': { borderColor: MOBILITY_PINK, backgroundColor: 'rgba(194,71,125,0.08)' } }}
-                          >
-                            Add
-                          </Button>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                    </>
+                  ) : isMobility ? (
+                    <>
+                      <MetricInput
+                        value={duration}
+                        onChange={setDuration}
+                        placeholder="30"
+                        accent={accent}
+                        suffix="sec"
+                        label="Hold"
+                      />
+                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.75 }}>
                         {[15, 30, 45, 60].map((s) => (
                           <Button
                             key={s}
-                            size="small"
-                            variant="outlined"
-                            onClick={() => setDuration(String(s))}
-                            sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0, color: MOBILITY_PINK, borderColor: 'divider', '&:hover': { borderColor: MOBILITY_PINK } }}
+                            onClick={() => { setDuration(String(s)); haptic(); }}
+                            sx={{
+                              ...nudgeSx,
+                              borderColor: String(s) === String(duration) ? accent : 'rgba(255,255,255,0.09)',
+                              color: String(s) === String(duration) ? accent : 'rgba(255,255,255,0.72)',
+                            }}
                           >
                             {s}s
                           </Button>
                         ))}
                       </Box>
-                    </Box>
-                  )
-                ) : (
-                <Box sx={{ display: 'flex', gap: 1, mb: sectionGap, alignItems: 'flex-start' }}>
-                  <Box sx={{ flex: 1 }}>
-                    <ScrollablePicker
-                      items={repsOptions}
-                      value={reps ? parseInt(reps) : ''}
-                      onChange={(value) => setReps(value.toString())}
-                      label="Reps"
-                      getItemLabel={(item) => item.name}
-                      getItemValue={(item) => item.id}
-                      buttonHeight={40}
-                      inputBackground={inputSurface}
-                    />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <TextField
-                      label="Weight (kg)"
-                      type="number"
-                      value={weight}
-                      onChange={(e) => setWeight(e.target.value)}
-                      fullWidth
-                      size="small"
-                      inputProps={{
-                        min: 0,
-                        step: 0.5,
-                        inputMode: 'decimal',
-                        pattern: '[0-9]*[.]?[0-9]*'
-                      }}
-                      error={!!weight && !isNumeric(weight)}
-                      helperText={!!weight && !isNumeric(weight) ? 'Enter a valid number' : ''}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          height: 40,
-                          minHeight: 40,
-                          maxHeight: 40,
-                          backgroundColor: inputSurface,
-                          '& fieldset': {
-                            borderColor: 'divider'
-                          },
-                          '&:hover fieldset': {
-                            borderColor: 'primary.main'
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: 'primary.main'
-                          }
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'text.primary',
-                          fontSize: 13,
-                          transform: 'translate(14px, 8px) scale(1)',
-                          '&.Mui-focused': {
-                            color: 'text.primary',
-                            transform: 'translate(14px, -9px) scale(0.75)'
-                          },
-                          '&.MuiFormLabel-filled': {
-                            transform: 'translate(14px, -9px) scale(0.75)'
-                          }
-                        },
-                        '& .MuiInputBase-input': {
-                          color: 'text.primary',
-                          padding: '8px 14px',
-                          height: '24px',
-                          fontSize: 13
-                        }
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => adjustWeight(-2.5)} sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0 }}>−2.5</Button>
-                      <Button size="small" variant="outlined" onClick={() => adjustWeight(2.5)} sx={{ flex: 1, py: 0.25, px: 0, fontSize: 11, minWidth: 0 }}>+2.5</Button>
-                    </Box>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddSet}
-                      fullWidth
-                      size="medium"
-                      sx={{
-                        py: 1,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        height: 40,
-                      }}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-                </Box>
-                )}
-            </Box>
+                      <Button onClick={handleAddSet} fullWidth startIcon={<AddIcon />} sx={primaryActionSx}>
+                        Add hold
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                        <MetricInput value={weight} onChange={setWeight} placeholder="0" accent={accent} suffix="kg" label="Weight" />
+                        <Typography sx={{ fontSize: 22, fontWeight: 300, color: 'rgba(255,255,255,0.18)', pt: 1, flexShrink: 0 }}>×</Typography>
+                        <MetricInput value={reps} onChange={setReps} placeholder="0" accent={accent} suffix="" label="Reps" />
+                      </Box>
 
-            {/* Sets Display */}
-            {sets.length > 0 && (
-              <Box sx={{ ...sectionSx, px: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={sectionTitleSx}>
-                      Sets Added ({sets.length})
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      onClick={() => setSaveConfirmOpen(true)}
-                      disabled={saving || sets.length === 0}
+                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.75 }}>
+                        {[-5, -2.5, 2.5, 5].map((d) => (
+                          <Button key={d} onClick={() => { adjustWeight(d); haptic(); }} sx={nudgeSx}>
+                            {d > 0 ? `+${d}` : `−${Math.abs(d)}`}
+                          </Button>
+                        ))}
+                      </Box>
+
+                      <Box sx={{ mt: 1.75 }}>
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.75 }}>
+                          Quick reps
+                        </Typography>
+                        <RepStrip
+                          value={previewReps}
+                          onChange={(r) => { setReps(String(r)); setSliderReps(r); haptic(); }}
+                          accent={accent}
+                        />
+                      </Box>
+
+                      {estimatedOneRepMax > 0 && suggestedWeight > 0 && (
+                        <Box
+                          onClick={applySuggestion}
+                          sx={{
+                            mt: 1.5, px: 1.25, py: 1, borderRadius: 2, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+                            border: '1px dashed', borderColor: `${accent}55`,
+                            backgroundColor: `${accent}0a`,
+                            transition: 'all .2s ease',
+                            '&:hover': { backgroundColor: `${accent}16`, borderColor: accent },
+                            '&:active': { transform: 'scale(0.99)' },
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                              Target for {previewReps} rep{previewReps === 1 ? '' : 's'}
+                            </Typography>
+                            <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+                              est. 1RM {roundToNearest2_5(estimatedOneRepMax)} kg
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                            <Typography sx={{ fontSize: 17, fontWeight: 800, color: accent, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+                              {suggestedWeight}
+                              <Box component="span" sx={{ fontSize: 11, fontWeight: 600, ml: 0.25, opacity: 0.7 }}>kg</Box>
+                            </Typography>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', color: accent, border: '1px solid', borderColor: `${accent}66`, borderRadius: 1, px: 0.75, py: 0.25 }}>
+                              USE
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+
+                      <Button onClick={handleAddSet} fullWidth startIcon={<AddIcon />} sx={primaryActionSx}>
+                        Add set
+                      </Button>
+                    </>
+                  )}
+                </Box>
+              ) : (
+                <Box sx={{ px: 1.75, pb: 2.25, pt: 0.5 }}>
+                  <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
+                    Choose an exercise to start logging
+                  </Typography>
+                </Box>
+              )}
+            </Panel>
+
+            {/* ── Active goal ────────────────────────────────────────────── */}
+            {activeGoal && (
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Chip
+                      label={activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind'}
+                      size="small"
                       sx={{
-                        py: 0.5,
-                        px: 1.5,
-                        fontWeight: 600,
-                        fontSize: 13,
+                        fontSize: 9.5, height: 19, fontWeight: 700, letterSpacing: '0.03em', color: '#04342C',
+                        backgroundColor: activeGoal.achieved ? '#9FE1CB' : activeGoal.on_track ? '#5DCAA5' : '#FAC775',
                       }}
-                    >
-                      {saving ? 'Saving...' : 'Save All'}
-                    </Button>
-                  </Box>
-                  <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', mb: 1 }} />
-                  <Dialog open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)}>
-                    <DialogTitle sx={{ fontSize: 13 }}>Save workout?</DialogTitle>
-                    <DialogContent>
-                      <Typography sx={{ fontSize: 13 }}>
-                        Are you sure you want to save your workout? This will log {sets.length} set{sets.length !== 1 ? 's' : ''} to your history.
-                      </Typography>
-                    </DialogContent>
-                    <DialogActions>
-                      <Button onClick={() => setSaveConfirmOpen(false)} sx={{ fontSize: 13 }}>Cancel</Button>
-                      <Button onClick={handleSaveSets} variant="contained" disabled={saving} sx={{ fontSize: 13 }}>Yes, save</Button>
-                    </DialogActions>
-                  </Dialog>
-                
-                {/* Group sets by exercise */}
+                    />
+                  }
+                >
+                  Goal{daysToGoal !== null ? ` · ${daysToGoal}d left` : ''}
+                </PanelLabel>
+
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, mb: 1 }}>
+                  <Typography sx={{ fontSize: 24, fontWeight: 750, color: TEAL, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                    {activeGoal.current_one_rm}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                    → {activeGoal.target_one_rm} kg
+                  </Typography>
+                </Box>
+
+                <Box sx={{ position: 'relative', height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                  <Box
+                    sx={{
+                      position: 'absolute', inset: 0, width: `${Math.min(100, activeGoal.progress * 100)}%`,
+                      borderRadius: 3, background: `linear-gradient(90deg, ${TEAL}99 0%, ${TEAL} 100%)`,
+                      transition: 'width .5s cubic-bezier(.4,0,.2,1)',
+                    }}
+                  />
+                </Box>
+
+                <Box
+                  onClick={() => {
+                    setWeight(roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5)).toString());
+                    setReps('5');
+                    setSliderReps(5);
+                    haptic();
+                  }}
+                  sx={{
+                    mt: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    cursor: 'pointer', borderRadius: 1.5, px: 0.5, py: 0.5, mx: -0.5,
+                    transition: 'background-color .2s ease',
+                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
+                  }}
+                >
+                  <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                    On-pace target today
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: TEAL, fontVariantNumeric: 'tabular-nums' }}>
+                    {roundToNearest2_5(activeGoal.expected_one_rm * (1.0278 - 0.0278 * 5))} kg × 5
+                  </Typography>
+                </Box>
+              </Panel>
+            )}
+
+            {/* ── This session ───────────────────────────────────────────── */}
+            {sets.length > 0 && (
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+                      {sets.length} set{sets.length === 1 ? '' : 's'}
+                    </Typography>
+                  }
+                >
+                  This session
+                </PanelLabel>
+
                 {(() => {
                   const groupedSets = sets.reduce((acc, set) => {
-                    if (!acc[set.exercise_name]) {
-                      acc[set.exercise_name] = [];
-                    }
+                    if (!acc[set.exercise_name]) acc[set.exercise_name] = [];
                     acc[set.exercise_name].push(set);
                     return acc;
                   }, {});
-                  
-                  return Object.entries(groupedSets).map(([exerciseName, exerciseSets]) => {
+
+                  return Object.entries(groupedSets).map(([exerciseName, exerciseSets], gi) => {
                     const exerciseId = exerciseSets[0]?.exercise_id;
+                    const exInfo = exercises.find((e) => e.id === exerciseId);
+                    const rowAccent = exInfo?.category === 'mobility' ? MOBILITY_PINK : TEAL;
                     const range = exerciseId ? oneRmRanges[exerciseId] : null;
                     const current1RMs = exerciseSets.map((s) => calc1RM(s.weight, s.reps)).filter((v) => v > 0);
                     const hasBar = range && range.max > range.min && current1RMs.length > 0;
                     const barMin = range?.min ?? 0;
                     const barMax = range?.max ?? 1;
-                    const barSpan = barMax - barMin || 1;
-                    const barMaxExtended = barMax + 0.1 * barSpan;
-                    const extendedSpan = barMaxExtended - barMin || 1;
+                    const span = (barMax - barMin) || 1;
+
                     return (
-                    <Box key={exerciseName} sx={{ mb: smallGap }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
-                        <Typography variant="subtitle1" fontWeight={600} sx={{ color: 'primary.main', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, mr: 1 }}>
-                          {exerciseName}
-                        </Typography>
-                        {hasBar && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: 180, flexShrink: 0, mr: 1.5 }}>
-                            <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary', width: 20, flexShrink: 0 }}>
-                              {barMin.toFixed(0)}
-                            </Typography>
-                            <Box sx={{ flex: 1, minWidth: 80, display: 'flex', alignItems: 'center', position: 'relative' }}>
-                              <Box sx={{ display: 'flex', width: '100%', position: 'relative' }}>
-                                <Box sx={{ width: `${(barSpan / extendedSpan) * 100}%`, height: 14, borderRadius: 0, backgroundColor: 'divider', flexShrink: 0 }} />
-                                <Box sx={{ width: `${(0.1 * barSpan / extendedSpan) * 100}%`, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.5, flexShrink: 0 }}>
-                                  <Box sx={{ display: 'flex', gap: 2 }}>
-                                    <Box sx={{ width: 6, height: 2, backgroundColor: 'divider' }} />
-                                    <Box sx={{ width: 6, height: 2, backgroundColor: 'divider' }} />
-                                  </Box>
-                                  <Box sx={{ width: 2, height: 14, backgroundColor: 'divider', flexShrink: 0 }} />
-                                </Box>
-                              </Box>
-                              <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary', position: 'absolute', left: `${(barSpan / extendedSpan) * 100}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
-                                {barMax.toFixed(0)}
-                              </Typography>
-                              <Box sx={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none' }}>
+                      <Box key={exerciseName} sx={{ mt: gi === 0 ? 0 : 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 700, color: rowAccent, flex: 1, minWidth: 0 }}>
+                            {exerciseName}
+                          </Typography>
+                          {hasBar && (
+                            <Box sx={{ width: 108, flexShrink: 0 }}>
+                              <Box sx={{ position: 'relative', height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.09)' }}>
                                 {current1RMs.map((oneRm, idx) => {
-                                  const pct = Math.max(0, Math.min(100, ((oneRm - barMin) / extendedSpan) * 100));
+                                  const pct = Math.max(0, Math.min(100, ((oneRm - barMin) / span) * 100));
                                   return (
                                     <Box
                                       key={idx}
                                       sx={{
-                                        position: 'absolute',
-                                        left: `${pct}%`,
-                                        top: '50%',
-                                        transform: 'translate(-50%, -50%) rotate(45deg)',
-                                        width: 8,
-                                        height: 8,
-                                        borderRadius: 0,
-                                        backgroundColor: 'primary.main',
-                                        border: '1px solid',
-                                        borderColor: 'background.paper',
+                                        position: 'absolute', left: `${pct}%`, top: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: 7, height: 7, borderRadius: '50%',
+                                        backgroundColor: rowAccent,
+                                        boxShadow: `0 0 0 2px rgba(10,10,10,0.9)`,
                                       }}
                                     />
                                   );
                                 })}
                               </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.375 }}>
+                                <Typography sx={{ fontSize: 8.5, color: 'rgba(255,255,255,0.28)', fontVariantNumeric: 'tabular-nums' }}>{barMin.toFixed(0)}</Typography>
+                                <Typography sx={{ fontSize: 8.5, color: 'rgba(255,255,255,0.28)', fontVariantNumeric: 'tabular-nums' }}>{barMax.toFixed(0)} kg 1RM</Typography>
+                              </Box>
                             </Box>
-                          </Box>
-                        )}
-                      </Box>
-                      <Box sx={{ 
-                        display: 'table', 
-                        width: '100%',
-                        borderCollapse: 'collapse'
-                      }}>
+                          )}
+                        </Box>
+
                         {exerciseSets.map((set, index) => (
-                          <Box 
-                            key={set.id} 
-                            sx={{ 
-                              display: 'table-row',
-                              '&:hover': { 
-                                bgcolor: 'background.paper'
-                              },
-                              transition: 'all 0.2s ease'
+                          <Box
+                            key={set.id}
+                            sx={{
+                              display: 'flex', alignItems: 'center', gap: 1,
+                              py: 0.5, px: 0.75, mx: -0.75, borderRadius: 1.5,
+                              transition: 'background-color .18s ease',
+                              '&:hover': { backgroundColor: 'rgba(255,255,255,0.03)' },
                             }}
                           >
-                            <Box sx={{
-                              display: 'table-cell',
-                              py: 0.25,
-                              px: 1,
-                              verticalAlign: 'middle'
-                            }}>
-                              <Typography
-                                variant="body2"
-                                color="text.primary"
-                                sx={{
-                                  fontSize: 13,
-                                  fontWeight: 500
-                                }}
-                              >
-                                {set.duration_seconds != null
-                                  ? `Hold ${formatDuration(set.duration_seconds)}`
-                                  : (set.weight == null && set.reps == null)
-                                    ? 'Completed ✓'
-                                    : `${set.reps} reps @ ${set.weight} kg`}
-                              </Typography>
-                            </Box>
-                            <Box sx={{
-                              display: 'table-cell',
-                              py: 0.25,
-                              px: 1,
-                              verticalAlign: 'middle',
-                              textAlign: 'right',
-                              width: '40px'
-                            }}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveSet(set.id)}
-                                color="error"
-                                sx={{ p: 0.5 }}
-                              >
-                                <DeleteIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Box>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.25)', width: 14, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                              {index + 1}
+                            </Typography>
+                            <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                              {set.duration_seconds != null
+                                ? `Hold ${formatDuration(set.duration_seconds)}`
+                                : (set.weight == null && set.reps == null)
+                                  ? 'Completed'
+                                  : `${set.weight} kg × ${set.reps}`}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => { handleRemoveSet(set.id); haptic(); }}
+                              sx={{ p: 0.375, color: 'rgba(255,255,255,0.22)', flexShrink: 0, '&:hover': { color: '#F09595' } }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 15 }} />
+                            </IconButton>
                           </Box>
                         ))}
                       </Box>
-                    </Box>
-                  );
+                    );
                   });
                 })()}
-              </Box>
+              </Panel>
             )}
 
-            {/* Strength Curve Chart */}
+            {/* ── Strength curve ─────────────────────────────────────────── */}
             {selectedExercise && !isMobility && (recentSets.length > 0 || currentExerciseSets.length > 0) && (
-              <Box sx={{ ...sectionSx, px: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-                  <Typography sx={sectionTitleSx}>Strength Curve</Typography>
-                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 16, height: 2, backgroundColor: '#00d4aa', borderRadius: 1 }} />
-                      <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>median</Typography>
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 14, height: 2, backgroundColor: TEAL, borderRadius: 1 }} />
+                        <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)' }}>median</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: TEAL }} />
+                        <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)' }}>today</Typography>
+                      </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00d4aa' }} />
-                      <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>today</Typography>
-                    </Box>
-                  </Box>
-                </Box>
+                  }
+                >
+                  Strength curve
+                </PanelLabel>
                 <StrengthCurveChart historicalSets={recentSets} currentSets={currentExerciseSets} />
-              </Box>
+              </Panel>
             )}
 
-            {/* Recent Best Sets */}
+            {/* ── Recent history ─────────────────────────────────────────── */}
             {selectedExercise && (
-              <Box sx={{ ...sectionSx, px: 0 }}>
-                <Typography sx={sectionTitleSx}>
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)' }}>tap to fill</Typography>
+                  }
+                >
                   Last 10 workouts
-                </Typography>
+                </PanelLabel>
 
                 {loadingData ? (
                   <Box display="flex" justifyContent="center" py={2}>
-                    <CircularProgress size={24} />
+                    <CircularProgress size={20} />
                   </Box>
-                ) : (
+                ) : recentBestSets.length > 0 ? (
                   <Box>
-                    {recentBestSets.length > 0 ? (
-                      <Box sx={{ display: 'table', width: '100%', borderCollapse: 'collapse' }}>
-                        {recentBestSets.map((set, index) => (
-                          <Box
-                            key={`${set.date}-${index}`}
-                            onClick={() => { setWeight(set.weight.toString()); setReps(set.reps.toString()); haptic(); }}
-                            sx={{
-                              display: 'table-row',
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
-                              cursor: 'pointer',
-                              '&:hover': { backgroundColor: 'background.paper' },
-                            }}
-                          >
-                            <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {set.date}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {set.weight} kg × {set.reps}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        ))}
-                        {bestSetPastYear && (
-                          <Box
-                            sx={{
-                              display: 'table-row',
-                              borderTop: '2px solid',
-                              borderColor: 'divider',
-                              backgroundColor: 'background.default',
-                            }}
-                          >
-                            <Box sx={{ display: 'table-cell', py: 1, px: 2 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {bestSetPastYear.label}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'table-cell', py: 1, px: 2, textAlign: 'right' }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                                {bestSetPastYear.weight} kg × {bestSetPastYear.reps}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        )}
+                    {recentBestSets.map((set, index) => (
+                      <Box
+                        key={`${set.date}-${index}`}
+                        onClick={() => { setWeight(set.weight.toString()); setReps(set.reps.toString()); haptic(); }}
+                        sx={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+                          py: 0.75, px: 0.75, mx: -0.75, borderRadius: 1.5, cursor: 'pointer',
+                          transition: 'background-color .18s ease',
+                          '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
+                        }}
+                      >
+                        <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{set.date}</Typography>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                          {set.weight} kg × {set.reps}
+                        </Typography>
                       </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-                        No recent sets found
-                      </Typography>
+                    ))}
+                    {bestSetPastYear && (
+                      <Box
+                        sx={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+                          mt: 0.75, pt: 1, borderTop: '1px solid rgba(255,255,255,0.07)',
+                        }}
+                      >
+                        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
+                          {bestSetPastYear.label}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: '#facc15', fontVariantNumeric: 'tabular-nums' }}>
+                          {bestSetPastYear.weight} kg × {bestSetPastYear.reps}
+                        </Typography>
+                      </Box>
                     )}
                   </Box>
+                ) : (
+                  <Typography sx={{ fontSize: 11.5, color: 'rgba(255,255,255,0.35)' }}>
+                    No recent sets found
+                  </Typography>
                 )}
+              </Panel>
+            )}
+
+            {/* ── Sticky save bar ────────────────────────────────────────── */}
+            {sets.length > 0 && (
+              <Box sx={{ position: 'sticky', bottom: 12, zIndex: 5, mt: 0.5 }}>
+                <Button
+                  onClick={() => setSaveConfirmOpen(true)}
+                  disabled={saving}
+                  fullWidth
+                  sx={{
+                    height: 50,
+                    borderRadius: 3,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    textTransform: 'none',
+                    color: '#06140F',
+                    background: `linear-gradient(135deg, ${TEAL} 0%, #00b894 100%)`,
+                    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06)',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': { background: `linear-gradient(135deg, ${TEAL} 0%, ${TEAL} 100%)` },
+                    '&.Mui-disabled': { color: 'rgba(6,20,15,0.5)', background: 'rgba(0,212,170,0.4)' },
+                    '&:active': { transform: 'scale(0.99)' },
+                    transition: 'transform .12s ease',
+                  }}
+                >
+                  {saving ? 'Saving…' : `Save workout · ${sets.length} set${sets.length === 1 ? '' : 's'}`}
+                </Button>
               </Box>
             )}
-            </Box>
-          </>
+
+            <Dialog
+              open={saveConfirmOpen}
+              onClose={() => setSaveConfirmOpen(false)}
+              PaperProps={{ sx: { borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)' } }}
+            >
+              <DialogTitle sx={{ fontSize: 15, fontWeight: 700 }}>Save workout?</DialogTitle>
+              <DialogContent>
+                <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                  This will log {sets.length} set{sets.length !== 1 ? 's' : ''} to your history.
+                </Typography>
+              </DialogContent>
+              <DialogActions sx={{ px: 2.5, pb: 2 }}>
+                <Button onClick={() => setSaveConfirmOpen(false)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveSets}
+                  disabled={saving}
+                  sx={{
+                    fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2,
+                    color: '#06140F', backgroundColor: TEAL, '&:hover': { backgroundColor: '#00b894' },
+                  }}
+                >
+                  Yes, save
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+          </Box>
         )}
       </Box>
     </LocalizationProvider>
