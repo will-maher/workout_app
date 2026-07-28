@@ -1917,7 +1917,16 @@ const WorkoutEntry = ({ onStatusMessage }) => {
 
             {/* ── Sticky save bar ────────────────────────────────────────── */}
             {sets.length > 0 && (
-              <Box sx={{ position: 'sticky', bottom: 12, zIndex: 5, mt: 0.5 }}>
+              <Box
+                sx={{
+                  position: 'sticky',
+                  // Clear the fixed bottom navigation (56px + safe area), or the
+                  // bar pins itself underneath it and can't be tapped.
+                  bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 12px)',
+                  zIndex: 5,
+                  mt: 0.5,
+                }}
+              >
                 <Button
                   onClick={() => setSaveConfirmOpen(true)}
                   disabled={saving}

@@ -12,8 +12,11 @@ const globalStyles = `
     box-sizing: border-box;
   }
   
+  /* 'clip' rather than 'hidden': hidden would force overflow-y to compute as
+     'auto', turning these into scroll containers and silently disabling every
+     position: sticky descendant. 'clip' still prevents horizontal scrolling. */
   html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
     width: 100%;
     max-width: 100vw;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -23,8 +26,11 @@ const globalStyles = `
     color: #ffffff;
   }
   
+  /* No overflow-x here: 'overflow-x: hidden' forces overflow-y to compute as
+     'auto', which would make #root the nearest scrollport for its descendants.
+     #root never scrolls (the document does), so any position: sticky inside it
+     would silently never activate. html/body below still clip horizontally. */
   #root {
-    overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
