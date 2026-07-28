@@ -145,6 +145,147 @@ const RepStrip = ({ value, onChange, accent, max = 30 }) => (
   </Box>
 );
 
+// ── Weight wheel ────────────────────────────────────────────────────────────
+const WEIGHT_STEP = 2.5;
+const WEIGHT_MAX = 300;
+const WHEEL_ITEM_H = 34;
+const WHEEL_VISIBLE = 5;
+const WHEEL_PAD = ((WHEEL_VISIBLE - 1) / 2) * WHEEL_ITEM_H;
+const WEIGHT_OPTIONS = Array.from({ length: WEIGHT_MAX / WEIGHT_STEP + 1 }, (_, i) => i * WEIGHT_STEP);
+
+// Reps this load is worth at a given 1RM — inverse Brzycki, the exact mirror of
+// calculateWeightForReps so the two directions always agree.
+const repsAtWeight = (w, oneRm) => {
+  if (!oneRm || oneRm <= 0 || !w || w <= 0) return null;
+  return (1.0278 - w / oneRm) / 0.0278;
+};
+
+// iOS-timer-style scroll wheel. Native scroll + snap points keeps the momentum
+// physics and accessibility of a real scroller rather than emulating drag.
+const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
+  const ref = useRef(null);
+  const scrolling = useRef(false);
+  const endTimer = useRef(null);
+  const frame = useRef(null);
+  const programmatic = useRef(false);
+  const progTimer = useRef(null);
+  const progTarget = useRef(0);
+  const settled = useRef(false); // first positioning jumps instantly
+
+  const numericValue = parseFloat(value);
+  const activeIndex = Number.isFinite(numericValue) ? Math.round(numericValue / WEIGHT_STEP) : -1;
+  // With no weight chosen yet, park the wheel on the suggested working load so
+  // the first scroll starts somewhere useful. Visual only — nothing is set
+  // until the user actually moves it.
+  const restIndex = activeIndex >= 0
+    ? activeIndex
+    : (parkAt > 0 ? Math.round(parkAt / WEIGHT_STEP) : 0);
+
+  // Follow the value when it is changed from outside the wheel (typing, a
+  // suggestion tap, prefill from history) — but never while the user scrolls.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || scrolling.current) return;
+    const target = restIndex * WHEEL_ITEM_H;
+    if (Math.abs(el.scrollTop - target) > 1) {
+      // Moving the wheel ourselves must never commit a value — otherwise
+      // parking on a suggestion would silently fill in a weight the user
+      // never chose, which could then be logged by accident. The guard is
+      // released on arrival (a long smooth scroll outlasts any fixed timer),
+      // with a timeout only as a backstop.
+      programmatic.current = true;
+      progTarget.current = target;
+      clearTimeout(progTimer.current);
+      el.scrollTo({ top: target, behavior: settled.current ? 'smooth' : 'auto' });
+      settled.current = true;
+      progTimer.current = setTimeout(() => { programmatic.current = false; }, 1200);
+    }
+  }, [restIndex]);
+
+  const handleScroll = () => {
+    if (programmatic.current) {
+      const el = ref.current;
+      if (el && Math.abs(el.scrollTop - progTarget.current) <= 1) {
+        programmatic.current = false;
+        clearTimeout(progTimer.current);
+      }
+      return;
+    }
+    scrolling.current = true;
+    clearTimeout(endTimer.current);
+    endTimer.current = setTimeout(() => { scrolling.current = false; }, 140);
+
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      const idx = Math.max(0, Math.min(WEIGHT_OPTIONS.length - 1, Math.round(el.scrollTop / WHEEL_ITEM_H)));
+      const next = WEIGHT_OPTIONS[idx];
+      if (parseFloat(value) !== next) {
+        try { navigator.vibrate?.(4); } catch {}
+        onChange(next % 1 === 0 ? String(next) : next.toFixed(1));
+      }
+    });
+  };
+
+  useEffect(() => () => {
+    clearTimeout(endTimer.current);
+    clearTimeout(progTimer.current);
+    if (frame.current) cancelAnimationFrame(frame.current);
+  }, []);
+
+  return (
+    <Box sx={{ position: 'relative', height: WHEEL_ITEM_H * WHEEL_VISIBLE }}>
+      {/* selection band */}
+      <Box
+        sx={{
+          position: 'absolute', left: 0, right: 0, top: '50%', height: WHEEL_ITEM_H,
+          transform: 'translateY(-50%)', borderRadius: 1.5, pointerEvents: 'none',
+          border: '1px solid', borderColor: `${accent}44`, backgroundColor: `${accent}12`,
+        }}
+      />
+      <Box
+        ref={ref}
+        onScroll={handleScroll}
+        sx={{
+          height: '100%',
+          overflowY: 'auto',
+          scrollSnapType: 'y mandatory',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          py: `${WHEEL_PAD}px`,
+          maskImage: 'linear-gradient(to bottom, transparent 0%, #000 26%, #000 74%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 26%, #000 74%, transparent 100%)',
+          ...hideScrollbarSx,
+        }}
+      >
+        {WEIGHT_OPTIONS.map((w, i) => {
+          const active = i === activeIndex;
+          return (
+            <Box
+              key={w}
+              sx={{
+                height: WHEEL_ITEM_H,
+                scrollSnapAlign: 'center',
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: active ? 19 : 15,
+                fontWeight: active ? 700 : 500,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.02em',
+                color: active ? 'text.primary' : 'rgba(255,255,255,0.34)',
+                transition: 'font-size .12s ease, color .12s ease',
+              }}
+            >
+              {w % 1 === 0 ? w : w.toFixed(1)}
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
 // Big borderless numeric field used for the weight / reps readout. The unit
 // sits in a fixed-width gutter so both halves stay optically balanced
 // regardless of how wide the unit label is.
@@ -340,11 +481,6 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   useEffect(() => {
     try { localStorage.setItem('planned_exercises_expanded', String(showPlannedExercises)); } catch {}
   }, [showPlannedExercises]);
-  const adjustWeight = (delta) => {
-    const next = Math.max(0, (parseFloat(weight) || 0) + delta);
-    const rounded = Math.round(next * 10) / 10;
-    setWeight(rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1));
-  };
 
   const inputSurface = 'rgba(255,255,255,0.03)';
 
@@ -724,6 +860,29 @@ const WorkoutEntry = ({ onStatusMessage }) => {
     if (!estimatedOneRepMax || estimatedOneRepMax <= 0) return 0;
     return roundToNearest2_5(calculateWeightForReps(previewReps, estimatedOneRepMax));
   }, [estimatedOneRepMax, previewReps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live read of what the wheel's current load is worth, so scrolling the
+  // weight immediately answers "how many reps should this be?".
+  const weightEquivalent = useMemo(() => {
+    const w = parseFloat(weight);
+    if (!estimatedOneRepMax || estimatedOneRepMax <= 0 || !Number.isFinite(w) || w <= 0) return null;
+    const raw = repsAtWeight(w, estimatedOneRepMax);
+    if (raw == null || !Number.isFinite(raw)) return null;
+    const pct = Math.round((w / estimatedOneRepMax) * 100);
+    // Past your estimated max the rep count stops meaning anything, so lead
+    // with the percentage instead of an unhelpful "<1 reps".
+    if (raw < 1) return { label: `${pct}%`, unit: 'of 1RM', sub: null, hint: 'above your estimated max', pct, reps: null };
+    if (raw > 30) return { label: '30+', unit: 'reps', sub: `${pct}% of 1RM`, hint: 'warm-up / light', pct, reps: null };
+    const rounded = Math.round(raw);
+    return {
+      label: String(rounded),
+      unit: 'reps',
+      sub: `${pct}% of 1RM`,
+      hint: rounded <= 3 ? 'max strength' : rounded <= 6 ? 'strength range' : rounded <= 12 ? 'hypertrophy range' : 'endurance range',
+      pct,
+      reps: rounded,
+    };
+  }, [weight, estimatedOneRepMax]);
 
   const applySuggestion = () => {
     if (!suggestedWeight) return;
@@ -1388,12 +1547,71 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         <MetricInput value={reps} onChange={setReps} placeholder="0" accent={accent} suffix="reps" />
                       </Box>
 
-                      <Box sx={{ display: 'flex', gap: 0.75, mt: 1.5 }}>
-                        {[-5, -2.5, 2.5, 5].map((d) => (
-                          <Button key={d} onClick={() => { adjustWeight(d); haptic(); }} sx={nudgeSx}>
-                            {d > 0 ? `+${d}` : `−${Math.abs(d)}`}
-                          </Button>
-                        ))}
+                      {/* Weight wheel + live equivalent-reps readout */}
+                      <Box sx={{ display: 'flex', gap: 1.25, mt: 1.25, alignItems: 'stretch' }}>
+                        <Box sx={{ flex: '0 0 42%' }}>
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
+                            Weight · kg
+                          </Typography>
+                          <WeightWheel value={weight} onChange={setWeight} accent={accent} parkAt={suggestedWeight} />
+                        </Box>
+
+                        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
+                            Worth about
+                          </Typography>
+
+                          <Box
+                            sx={{
+                              flex: 1, borderRadius: 2, px: 1.25, py: 1,
+                              border: '1px solid rgba(255,255,255,0.07)',
+                              backgroundColor: 'rgba(255,255,255,0.02)',
+                              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                            }}
+                          >
+                            {weightEquivalent ? (
+                              <>
+                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                                  <Typography sx={{ fontSize: 30, fontWeight: 700, color: accent, lineHeight: 1, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+                                    {weightEquivalent.label}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
+                                    {weightEquivalent.unit}
+                                  </Typography>
+                                </Box>
+                                {weightEquivalent.sub && (
+                                  <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.42)', mt: 0.375 }}>
+                                    {weightEquivalent.sub}
+                                  </Typography>
+                                )}
+                                <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', mt: 0.125 }}>
+                                  {weightEquivalent.hint}
+                                </Typography>
+                                {weightEquivalent.reps != null && weightEquivalent.reps !== previewReps && (
+                                  <Box
+                                    onClick={() => { setReps(String(weightEquivalent.reps)); setSliderReps(weightEquivalent.reps); haptic(); }}
+                                    sx={{
+                                      mt: 0.875, alignSelf: 'flex-start', cursor: 'pointer',
+                                      fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em',
+                                      color: accent, border: '1px solid', borderColor: `${accent}55`,
+                                      borderRadius: 1, px: 0.75, py: 0.25,
+                                      transition: 'background-color .2s ease',
+                                      '&:hover': { backgroundColor: `${accent}1a` },
+                                    }}
+                                  >
+                                    SET REPS
+                                  </Box>
+                                )}
+                              </>
+                            ) : (
+                              <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
+                                {estimatedOneRepMax > 0
+                                  ? 'Scroll the wheel to see what a load is worth.'
+                                  : 'Log a few sets to unlock rep targets for this lift.'}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
                       </Box>
 
                       <Box sx={{ mt: 1.5 }}>
