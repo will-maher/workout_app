@@ -109,10 +109,13 @@ const ProgressRing = ({ value, total, accent, size = 40 }) => {
 
 // Horizontal rep selector — replaces the old 1-20 slider with a tactile strip
 // that keeps the chosen value visible and one tap away.
-const RepStrip = ({ value, onChange, accent, max = 30 }) => (
+// `committed` distinguishes a rep count the user actually chose from the one
+// merely being previewed for the weight suggestion — only a real choice is
+// highlighted, so the strip never implies a selection that hasn't been made.
+const RepStrip = ({ value, onChange, accent, max = 30, committed = true }) => (
   <Box sx={{ display: 'flex', gap: 0.5, overflowX: 'auto', py: 0.25, ...hideScrollbarSx }}>
     {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
-      const active = value === r;
+      const active = committed && value === r;
       return (
         <Box
           key={r}
@@ -241,7 +244,12 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
         sx={{
           position: 'absolute', left: 0, right: 0, top: '50%', height: WHEEL_ITEM_H,
           transform: 'translateY(-50%)', borderRadius: 1.5, pointerEvents: 'none',
-          border: '1px solid', borderColor: `${accent}44`, backgroundColor: `${accent}12`,
+          border: '1px solid',
+          // Neutral until a weight is actually chosen, so a parked value never
+          // reads as a selection the user made.
+          borderColor: activeIndex >= 0 ? `${accent}44` : 'rgba(255,255,255,0.1)',
+          backgroundColor: activeIndex >= 0 ? `${accent}12` : 'rgba(255,255,255,0.03)',
+          transition: 'border-color .2s ease, background-color .2s ease',
         }}
       />
       <Box
@@ -852,7 +860,8 @@ const WorkoutEntry = ({ onStatusMessage }) => {
   );
 
   // Reps currently being previewed: whatever is typed, else the last strip pick.
-  const previewReps = reps && parseInt(reps, 10) > 0 ? parseInt(reps, 10) : sliderReps;
+  const hasReps = Boolean(reps) && parseInt(reps, 10) > 0;
+  const previewReps = hasReps ? parseInt(reps, 10) : sliderReps;
 
   // Suggested working weight for the previewed rep count, from the LOESS 1RM.
   // Replaces the old slider + "Use" pairing with an inline, tappable hint.
@@ -1620,6 +1629,7 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                         </Typography>
                         <RepStrip
                           value={previewReps}
+                          committed={hasReps}
                           onChange={(r) => { setReps(String(r)); setSliderReps(r); haptic(); }}
                           accent={accent}
                         />
