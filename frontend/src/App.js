@@ -10,6 +10,7 @@ import {
   BottomNavigationAction,
   Paper,
   Alert,
+  Button,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -67,6 +68,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  // Primary action for the current page, surfaced in the app bar. Pages
+  // register one via the onHeaderAction prop and clear it on unmount.
+  const [headerAction, setHeaderAction] = useState(null);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -197,7 +201,7 @@ function App() {
               onClose={() => setStatusMessage('')}
               sx={{
                 py: 0,
-                maxWidth: { xs: '55vw', sm: 360 },
+                maxWidth: headerAction ? { xs: '38vw', sm: 240 } : { xs: '55vw', sm: 360 },
                 fontSize: 12,
                 backgroundColor: 'transparent',
                 border: 'none',
@@ -218,6 +222,29 @@ function App() {
             >
               {statusMessage}
             </Alert>
+          ) : null}
+          {headerAction ? (
+            <Button
+              onClick={headerAction.onClick}
+              disabled={headerAction.disabled}
+              size="small"
+              sx={{
+                flexShrink: 0,
+                height: 28,
+                px: 1.5,
+                borderRadius: 2,
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+                color: '#06140F',
+                backgroundColor: 'primary.main',
+                '&:hover': { backgroundColor: '#00e6b8' },
+                '&.Mui-disabled': { color: 'rgba(6,20,15,0.5)', backgroundColor: 'rgba(0,212,170,0.45)' },
+              }}
+            >
+              {headerAction.label}
+            </Button>
           ) : null}
         </Toolbar>
       </AppBar>
@@ -240,8 +267,8 @@ function App() {
           }}
         >
           <Routes>
-            <Route path="/" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
-            <Route path="/add" element={<WorkoutEntry onStatusMessage={setStatusMessage} />} />
+            <Route path="/" element={<WorkoutEntry onStatusMessage={setStatusMessage} onHeaderAction={setHeaderAction} />} />
+            <Route path="/add" element={<WorkoutEntry onStatusMessage={setStatusMessage} onHeaderAction={setHeaderAction} />} />
             <Route path="/history" element={<WorkoutHistory />} />
             <Route path="/library" element={<ExerciseLibrary />} />
             <Route path="/performance" element={<Performance />} />

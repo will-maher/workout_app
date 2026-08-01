@@ -451,7 +451,7 @@ const StrengthCurveChart = React.memo(({ historicalSets, currentSets }) => {
   );
 });
 
-const WorkoutEntry = ({ onStatusMessage }) => {
+const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   const setMessage = onStatusMessage ?? (() => {});
   const [exercises, setExercises] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState('');
@@ -484,6 +484,25 @@ const WorkoutEntry = ({ onStatusMessage }) => {
 
   // Target reps from a planned row, carried across the exercise-change reset.
   const pendingRepsRef = useRef(null);
+
+  // Surface "save workout" in the app bar rather than as a bar over the page,
+  // so it is always reachable without covering content.
+  useEffect(() => {
+    if (!onHeaderAction) return undefined;
+    onHeaderAction(
+      sets.length > 0
+        ? {
+            label: saving ? 'Saving…' : `Save · ${sets.length}`,
+            disabled: saving,
+            onClick: () => setSaveConfirmOpen(true),
+          }
+        : null
+    );
+    return undefined;
+  }, [sets.length, saving, onHeaderAction]);
+
+  // Clear it when leaving the tab so the button doesn't linger on other pages.
+  useEffect(() => () => { onHeaderAction?.(null); }, [onHeaderAction]);
 
   // Remember whether the planned exercise list is collapsed between visits.
   useEffect(() => {
@@ -1923,43 +1942,6 @@ const WorkoutEntry = ({ onStatusMessage }) => {
                   </Typography>
                 )}
               </Panel>
-            )}
-
-            {/* ── Sticky save bar ────────────────────────────────────────── */}
-            {sets.length > 0 && (
-              <Box
-                sx={{
-                  position: 'sticky',
-                  // Clear the fixed bottom navigation (56px + safe area), or the
-                  // bar pins itself underneath it and can't be tapped.
-                  bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 12px)',
-                  zIndex: 5,
-                  mt: 0.5,
-                }}
-              >
-                <Button
-                  onClick={() => setSaveConfirmOpen(true)}
-                  disabled={saving}
-                  fullWidth
-                  sx={{
-                    height: 46,
-                    borderRadius: 3,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    textTransform: 'none',
-                    color: '#06140F',
-                    background: `linear-gradient(135deg, ${TEAL} 0%, #00b894 100%)`,
-                    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06)',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': { background: `linear-gradient(135deg, ${TEAL} 0%, ${TEAL} 100%)` },
-                    '&.Mui-disabled': { color: 'rgba(6,20,15,0.5)', background: 'rgba(0,212,170,0.4)' },
-                    '&:active': { transform: 'scale(0.99)' },
-                    transition: 'transform .12s ease',
-                  }}
-                >
-                  {saving ? 'Saving…' : `Save workout · ${sets.length} set${sets.length === 1 ? '' : 's'}`}
-                </Button>
-              </Box>
             )}
 
             <Dialog
