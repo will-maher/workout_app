@@ -1,15 +1,9 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" fill="#0e1216"/>
-  <g transform="rotate(-28 256 256)" fill="#ffffff">
-    <!-- left outer plate -->
-    <rect x="105.2" y="196.2" width="33.8" height="119.6" rx="16.9"/>
-    <!-- left inner plate -->
-    <rect x="144.2" y="170.2" width="41.6" height="171.6" rx="20.8"/>
-    <!-- bar -->
-    <rect x="178" y="236.5" width="156" height="39" rx="19.5"/>
-    <!-- right inner plate -->
-    <rect x="326.2" y="170.2" width="41.6" height="171.6" rx="20.8"/>
-    <!-- right outer plate -->
-    <rect x="373" y="196.2" width="33.8" height="119.6" rx="16.9"/>
+  <!-- Dumbbell drawn from ellipses and a pill bar: fully curved, no corners. -->
+  <g transform="rotate(-30 256 256)" fill="#ffffff">
+    <rect x="166" y="236" width="180" height="40" rx="20"/>
+    <ellipse cx="166" cy="256" rx="42" ry="88"/>
+    <ellipse cx="346" cy="256" rx="42" ry="88"/>
   </g>
 </svg>
