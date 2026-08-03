@@ -183,12 +183,17 @@ function App() {
       <AppBar 
         position="fixed" 
         elevation={0}
-        sx={{ 
-          top: 0, 
-          left: 0, 
-          right: 0, 
+        sx={{
+          top: 0,
+          left: 0,
+          right: 0,
           zIndex: 1100,
-          borderRadius: 0
+          borderRadius: 0,
+          // Installed on iOS the status bar is translucent (see the
+          // apple-mobile-web-app-status-bar-style meta), so the web view runs
+          // underneath the clock and Dynamic Island. Pad the bar by the inset
+          // so its contents clear them; the bar's own background fills the gap.
+          pt: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <Toolbar variant="dense" sx={{ minHeight: 48, px: 2, gap: 1, py: 0 }}>
@@ -252,7 +257,8 @@ function App() {
 
 
       <Box sx={{ 
-        pt: 6, // fixed AppBar (~48px)
+        // Fixed AppBar (48px) plus whatever the status bar overlays on iOS.
+        pt: 'calc(48px + env(safe-area-inset-top, 0px))',
         pb: 7, // Account for BottomNavigation (~56px)
         minHeight: '100vh',
         backgroundColor: 'background.default'
