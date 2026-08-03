@@ -32,13 +32,14 @@ function Register({ onRegister, switchToLogin }) {
   return (
     <Box 
       maxWidth={400} 
-      mx="auto" 
-      mt={6} 
+      mx="auto"
       p={3} 
       borderRadius={2} 
       boxShadow={2} 
       bgcolor="background.paper"
       sx={{
+        // No AppBar on this screen, so clear the translucent iOS status bar.
+        mt: 'calc(48px + env(safe-area-inset-top, 0px))',
         border: '1px solid',
         borderColor: 'divider'
       }}
