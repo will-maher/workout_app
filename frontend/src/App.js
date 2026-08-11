@@ -87,7 +87,14 @@ function App() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ username: payload.username });
+        // Check expiry here, otherwise an expired token renders the whole app
+        // and the user is bounced back to login by the first failed request.
+        if (payload.exp && payload.exp * 1000 <= Date.now()) {
+          localStorage.removeItem('token');
+          setUser(null);
+        } else {
+          setUser({ username: payload.username });
+        }
       } catch {
         setUser(null);
         localStorage.removeItem('token');
