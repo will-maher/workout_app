@@ -149,12 +149,18 @@ const RepStrip = ({ value, onChange, accent, max = 30, committed = true }) => (
 );
 
 // ── Weight wheel ────────────────────────────────────────────────────────────
-const WEIGHT_STEP = 2.5;
+const WEIGHT_STEPS = [2.5, 1];
+const DEFAULT_WEIGHT_STEP = 2.5;
 const WEIGHT_MAX = 300;
 const WHEEL_ITEM_H = 34;
 const WHEEL_VISIBLE = 5;
 const WHEEL_PAD = ((WHEEL_VISIBLE - 1) / 2) * WHEEL_ITEM_H;
-const WEIGHT_OPTIONS = Array.from({ length: WEIGHT_MAX / WEIGHT_STEP + 1 }, (_, i) => i * WEIGHT_STEP);
+
+// Snap a weight onto a given increment, so switching steps keeps the wheel and
+// the typed value in agreement (97.5 -> 98 at 1kg, 98 -> 97.5 at 2.5kg).
+const snapToStep = (w, step) => Math.round(w / step) * step;
+
+const formatWeight = (w) => (w % 1 === 0 ? String(w) : w.toFixed(1));
 
 // Reps this load is worth at a given 1RM — inverse Brzycki, the exact mirror of
 // calculateWeightForReps so the two directions always agree.
@@ -165,7 +171,7 @@ const repsAtWeight = (w, oneRm) => {
 
 // iOS-timer-style scroll wheel. Native scroll + snap points keeps the momentum
 // physics and accessibility of a real scroller rather than emulating drag.
-const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
+const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGHT_STEP }) => {
   const ref = useRef(null);
   const scrolling = useRef(false);
   const endTimer = useRef(null);
@@ -175,14 +181,28 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
   const progTarget = useRef(0);
   const settled = useRef(false); // first positioning jumps instantly
 
+  const options = useMemo(
+    () => Array.from({ length: Math.round(WEIGHT_MAX / step) + 1 }, (_, i) => Math.round(i * step * 10) / 10),
+    [step]
+  );
+
+  // Changing increment remaps every index, so reposition instantly rather than
+  // animating across hundreds of rows.
+  useEffect(() => { settled.current = false; }, [step]);
+
   const numericValue = parseFloat(value);
-  const activeIndex = Number.isFinite(numericValue) ? Math.round(numericValue / WEIGHT_STEP) : -1;
+  const hasValue = Number.isFinite(numericValue) && numericValue >= 0;
+  // Only claim a row when the value actually sits on this increment. A weight
+  // typed by hand or pulled from history (say 97.5 while on 1 kg steps) has no
+  // matching row, and highlighting the nearest one would misreport it.
+  const onGrid = hasValue && Math.abs(numericValue / step - Math.round(numericValue / step)) < 1e-6;
+  const activeIndex = onGrid ? Math.round(numericValue / step) : -1;
   // With no weight chosen yet, park the wheel on the suggested working load so
   // the first scroll starts somewhere useful. Visual only — nothing is set
   // until the user actually moves it.
-  const restIndex = activeIndex >= 0
-    ? activeIndex
-    : (parkAt > 0 ? Math.round(parkAt / WEIGHT_STEP) : 0);
+  const restIndex = hasValue
+    ? Math.round(numericValue / step)
+    : (parkAt > 0 ? Math.round(parkAt / step) : 0);
 
   // Follow the value when it is changed from outside the wheel (typing, a
   // suggestion tap, prefill from history) — but never while the user scrolls.
@@ -222,11 +242,11 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
     frame.current = requestAnimationFrame(() => {
       const el = ref.current;
       if (!el) return;
-      const idx = Math.max(0, Math.min(WEIGHT_OPTIONS.length - 1, Math.round(el.scrollTop / WHEEL_ITEM_H)));
-      const next = WEIGHT_OPTIONS[idx];
+      const idx = Math.max(0, Math.min(options.length - 1, Math.round(el.scrollTop / WHEEL_ITEM_H)));
+      const next = options[idx];
       if (parseFloat(value) !== next) {
         try { navigator.vibrate?.(4); } catch {}
-        onChange(next % 1 === 0 ? String(next) : next.toFixed(1));
+        onChange(formatWeight(next));
       }
     });
   };
@@ -267,7 +287,7 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
           ...hideScrollbarSx,
         }}
       >
-        {WEIGHT_OPTIONS.map((w, i) => {
+        {options.map((w, i) => {
           const active = i === activeIndex;
           return (
             <Box
@@ -285,7 +305,7 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0 }) => {
                 transition: 'font-size .12s ease, color .12s ease',
               }}
             >
-              {w % 1 === 0 ? w : w.toFixed(1)}
+              {formatWeight(w)}
             </Box>
           );
         })}
@@ -473,6 +493,12 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
       return v === null ? true : v === 'true';
     } catch { return true; }
   });
+  const [weightStep, setWeightStep] = useState(() => {
+    try {
+      const v = parseFloat(localStorage.getItem('weight_step'));
+      return WEIGHT_STEPS.includes(v) ? v : DEFAULT_WEIGHT_STEP;
+    } catch { return DEFAULT_WEIGHT_STEP; }
+  });
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [oneRmRanges, setOneRmRanges] = useState({});
   const [goals, setGoals] = useState([]);
@@ -508,6 +534,19 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   useEffect(() => {
     try { localStorage.setItem('planned_exercises_expanded', String(showPlannedExercises)); } catch {}
   }, [showPlannedExercises]);
+
+  const changeWeightStep = (next) => {
+    if (next === weightStep) return;
+    setWeightStep(next);
+    try { localStorage.setItem('weight_step', String(next)); } catch {}
+    // Re-snap an entered weight onto the new increment, so the row the wheel
+    // highlights always matches the number shown above it.
+    const current = parseFloat(weight);
+    if (Number.isFinite(current) && current > 0) {
+      setWeight(formatWeight(snapToStep(current, next)));
+    }
+    haptic();
+  };
 
   const inputSurface = 'rgba(255,255,255,0.03)';
 
@@ -886,8 +925,10 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   // Replaces the old slider + "Use" pairing with an inline, tappable hint.
   const suggestedWeight = useMemo(() => {
     if (!estimatedOneRepMax || estimatedOneRepMax <= 0) return 0;
-    return roundToNearest2_5(calculateWeightForReps(previewReps, estimatedOneRepMax));
-  }, [estimatedOneRepMax, previewReps]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Snap to the increment in use, so tapping USE always lands on a row the
+    // wheel can actually highlight.
+    return snapToStep(calculateWeightForReps(previewReps, estimatedOneRepMax), weightStep);
+  }, [estimatedOneRepMax, previewReps, weightStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Live read of what the wheel's current load is worth, so scrolling the
   // weight immediately answers "how many reps should this be?".
@@ -1578,10 +1619,55 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                       {/* Weight wheel + live equivalent-reps readout */}
                       <Box sx={{ display: 'flex', gap: 1.25, mt: 1.25, alignItems: 'stretch' }}>
                         <Box sx={{ flex: '0 0 42%' }}>
-                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
-                            Weight · kg
-                          </Typography>
-                          <WeightWheel value={weight} onChange={setWeight} accent={accent} parkAt={suggestedWeight} />
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, mb: 0.5 }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+                              Weight
+                            </Typography>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                p: '2px',
+                                borderRadius: 1.25,
+                                backgroundColor: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                              }}
+                            >
+                              {WEIGHT_STEPS.map((s) => {
+                                const on = weightStep === s;
+                                return (
+                                  <Box
+                                    key={s}
+                                    onClick={() => changeWeightStep(s)}
+                                    aria-label={`${s} kg increments`}
+                                    sx={{
+                                      px: 0.75,
+                                      py: '1px',
+                                      borderRadius: 1,
+                                      cursor: on ? 'default' : 'pointer',
+                                      userSelect: 'none',
+                                      fontSize: 9.5,
+                                      fontWeight: 800,
+                                      lineHeight: 1.5,
+                                      fontVariantNumeric: 'tabular-nums',
+                                      color: on ? '#06140F' : 'rgba(255,255,255,0.45)',
+                                      backgroundColor: on ? accent : 'transparent',
+                                      transition: 'background-color .18s ease, color .18s ease',
+                                      '&:hover': on ? {} : { color: 'rgba(255,255,255,0.8)' },
+                                    }}
+                                  >
+                                    {s}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                          <WeightWheel
+                            value={weight}
+                            onChange={setWeight}
+                            accent={accent}
+                            parkAt={suggestedWeight}
+                            step={weightStep}
+                          />
                         </Box>
 
                         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
