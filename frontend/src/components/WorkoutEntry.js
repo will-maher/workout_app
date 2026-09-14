@@ -107,52 +107,14 @@ const ProgressRing = ({ value, total, accent, size = 40 }) => {
   );
 };
 
-// Horizontal rep selector — replaces the old 1-20 slider with a tactile strip
-// that keeps the chosen value visible and one tap away.
-// `committed` distinguishes a rep count the user actually chose from the one
-// merely being previewed for the weight suggestion — only a real choice is
-// highlighted, so the strip never implies a selection that hasn't been made.
-const RepStrip = ({ value, onChange, accent, max = 30, committed = true }) => (
-  <Box sx={{ display: 'flex', gap: 0.5, overflowX: 'auto', py: 0.25, ...hideScrollbarSx }}>
-    {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
-      const active = committed && value === r;
-      return (
-        <Box
-          key={r}
-          onClick={() => onChange(r)}
-          sx={{
-            flex: '0 0 auto',
-            minWidth: 32,
-            height: 32,
-            px: 0.5,
-            borderRadius: 2,
-            display: 'grid',
-            placeItems: 'center',
-            cursor: 'pointer',
-            userSelect: 'none',
-            border: '1px solid',
-            borderColor: active ? accent : 'rgba(255,255,255,0.09)',
-            backgroundColor: active ? accent : 'transparent',
-            color: active ? '#06140F' : 'rgba(255,255,255,0.62)',
-            fontWeight: active ? 800 : 500,
-            fontSize: 13,
-            fontVariantNumeric: 'tabular-nums',
-            transition: 'all .18s cubic-bezier(.4,0,.2,1)',
-            '&:active': { transform: 'scale(0.92)' },
-          }}
-        >
-          {r}
-        </Box>
-      );
-    })}
-  </Box>
-);
-
-// ── Weight wheel ────────────────────────────────────────────────────────────
+// ── Scroll wheels ───────────────────────────────────────────────────────────
 const WEIGHT_STEPS = [2.5, 1];
 const DEFAULT_WEIGHT_STEP = 2.5;
 const WEIGHT_MAX = 300;
+const REPS_MIN = 1;
+const REPS_MAX = 30;
 const WHEEL_ITEM_H = 34;
+const WHEEL_LABEL_H = 22;
 const WHEEL_VISIBLE = 5;
 const WHEEL_PAD = ((WHEEL_VISIBLE - 1) / 2) * WHEEL_ITEM_H;
 
@@ -171,7 +133,16 @@ const repsAtWeight = (w, oneRm) => {
 
 // iOS-timer-style scroll wheel. Native scroll + snap points keeps the momentum
 // physics and accessibility of a real scroller rather than emulating drag.
-const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGHT_STEP }) => {
+const NumberWheel = ({
+  value,
+  onChange,
+  accent,
+  parkAt = 0,
+  min = 0,
+  max,
+  step,
+  format = String,
+}) => {
   const ref = useRef(null);
   const scrolling = useRef(false);
   const endTimer = useRef(null);
@@ -182,27 +153,33 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGH
   const settled = useRef(false); // first positioning jumps instantly
 
   const options = useMemo(
-    () => Array.from({ length: Math.round(WEIGHT_MAX / step) + 1 }, (_, i) => Math.round(i * step * 10) / 10),
-    [step]
+    () => Array.from(
+      { length: Math.round((max - min) / step) + 1 },
+      (_, i) => Math.round((min + i * step) * 10) / 10
+    ),
+    [min, max, step]
   );
 
   // Changing increment remaps every index, so reposition instantly rather than
   // animating across hundreds of rows.
-  useEffect(() => { settled.current = false; }, [step]);
+  useEffect(() => { settled.current = false; }, [step, min, max]);
+
+  const clampIndex = (i) => Math.max(0, Math.min(options.length - 1, i));
 
   const numericValue = parseFloat(value);
-  const hasValue = Number.isFinite(numericValue) && numericValue >= 0;
+  const hasValue = Number.isFinite(numericValue) && numericValue >= min;
+  const rawIndex = (numericValue - min) / step;
   // Only claim a row when the value actually sits on this increment. A weight
   // typed by hand or pulled from history (say 97.5 while on 1 kg steps) has no
   // matching row, and highlighting the nearest one would misreport it.
-  const onGrid = hasValue && Math.abs(numericValue / step - Math.round(numericValue / step)) < 1e-6;
-  const activeIndex = onGrid ? Math.round(numericValue / step) : -1;
-  // With no weight chosen yet, park the wheel on the suggested working load so
-  // the first scroll starts somewhere useful. Visual only — nothing is set
-  // until the user actually moves it.
+  const onGrid = hasValue && Math.abs(rawIndex - Math.round(rawIndex)) < 1e-6;
+  const activeIndex = onGrid ? clampIndex(Math.round(rawIndex)) : -1;
+  // With nothing chosen yet, park on the suggested value so the first scroll
+  // starts somewhere useful. Visual only — nothing is set until the user
+  // actually moves it.
   const restIndex = hasValue
-    ? Math.round(numericValue / step)
-    : (parkAt > 0 ? Math.round(parkAt / step) : 0);
+    ? clampIndex(Math.round(rawIndex))
+    : (parkAt > min ? clampIndex(Math.round((parkAt - min) / step)) : 0);
 
   // Follow the value when it is changed from outside the wheel (typing, a
   // suggestion tap, prefill from history) — but never while the user scrolls.
@@ -242,11 +219,11 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGH
     frame.current = requestAnimationFrame(() => {
       const el = ref.current;
       if (!el) return;
-      const idx = Math.max(0, Math.min(options.length - 1, Math.round(el.scrollTop / WHEEL_ITEM_H)));
+      const idx = clampIndex(Math.round(el.scrollTop / WHEEL_ITEM_H));
       const next = options[idx];
       if (parseFloat(value) !== next) {
         try { navigator.vibrate?.(4); } catch {}
-        onChange(formatWeight(next));
+        onChange(next);
       }
     });
   };
@@ -287,11 +264,11 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGH
           ...hideScrollbarSx,
         }}
       >
-        {options.map((w, i) => {
+        {options.map((opt, i) => {
           const active = i === activeIndex;
           return (
             <Box
-              key={w}
+              key={opt}
               sx={{
                 height: WHEEL_ITEM_H,
                 scrollSnapAlign: 'center',
@@ -305,7 +282,7 @@ const WeightWheel = ({ value, onChange, accent, parkAt = 0, step = DEFAULT_WEIGH
                 transition: 'font-size .12s ease, color .12s ease',
               }}
             >
-              {formatWeight(w)}
+              {format(opt)}
             </Box>
           );
         })}
@@ -1616,10 +1593,12 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                         <MetricInput value={reps} onChange={setReps} placeholder="0" accent={accent} suffix="reps" />
                       </Box>
 
-                      {/* Weight wheel + live equivalent-reps readout */}
-                      <Box sx={{ display: 'flex', gap: 1.25, mt: 1.25, alignItems: 'stretch' }}>
-                        <Box sx={{ flex: '0 0 42%' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, mb: 0.5 }}>
+                      {/* Weight and reps wheels, side by side */}
+                      <Box sx={{ display: 'flex', gap: 1.25, mt: 1.25 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          {/* Fixed height on both label rows so the step toggle
+                              doesn't push this wheel out of line with the reps one. */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5, height: WHEEL_LABEL_H }}>
                             <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
                               Weight
                             </Typography>
@@ -1640,7 +1619,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                                     onClick={() => changeWeightStep(s)}
                                     aria-label={`${s} kg increments`}
                                     sx={{
-                                      px: 0.75,
+                                      px: 0.625,
                                       py: '1px',
                                       borderRadius: 1,
                                       cursor: on ? 'default' : 'pointer',
@@ -1661,85 +1640,37 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                               })}
                             </Box>
                           </Box>
-                          <WeightWheel
+                          <NumberWheel
                             value={weight}
-                            onChange={setWeight}
+                            onChange={(v) => setWeight(formatWeight(v))}
                             accent={accent}
                             parkAt={suggestedWeight}
+                            min={0}
+                            max={WEIGHT_MAX}
                             step={weightStep}
+                            format={formatWeight}
                           />
                         </Box>
 
-                        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.5 }}>
-                            Worth about
-                          </Typography>
-
-                          <Box
-                            sx={{
-                              flex: 1, borderRadius: 2, px: 1.25, py: 1,
-                              border: '1px solid rgba(255,255,255,0.07)',
-                              backgroundColor: 'rgba(255,255,255,0.02)',
-                              display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                            }}
-                          >
-                            {weightEquivalent ? (
-                              <>
-                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                                  <Typography sx={{ fontSize: 30, fontWeight: 700, color: accent, lineHeight: 1, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
-                                    {weightEquivalent.label}
-                                  </Typography>
-                                  <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                                    {weightEquivalent.unit}
-                                  </Typography>
-                                </Box>
-                                {weightEquivalent.sub && (
-                                  <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.42)', mt: 0.375 }}>
-                                    {weightEquivalent.sub}
-                                  </Typography>
-                                )}
-                                <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', mt: 0.125 }}>
-                                  {weightEquivalent.hint}
-                                </Typography>
-                                {weightEquivalent.reps != null && weightEquivalent.reps !== previewReps && (
-                                  <Box
-                                    onClick={() => { setReps(String(weightEquivalent.reps)); setSliderReps(weightEquivalent.reps); haptic(); }}
-                                    sx={{
-                                      mt: 0.875, alignSelf: 'flex-start', cursor: 'pointer',
-                                      fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em',
-                                      color: accent, border: '1px solid', borderColor: `${accent}55`,
-                                      borderRadius: 1, px: 0.75, py: 0.25,
-                                      transition: 'background-color .2s ease',
-                                      '&:hover': { backgroundColor: `${accent}1a` },
-                                    }}
-                                  >
-                                    SET REPS
-                                  </Box>
-                                )}
-                              </>
-                            ) : (
-                              <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
-                                {estimatedOneRepMax > 0
-                                  ? 'Scroll the wheel to see what a load is worth.'
-                                  : 'Log a few sets to unlock rep targets for this lift.'}
-                              </Typography>
-                            )}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, height: WHEEL_LABEL_H }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+                              Reps
+                            </Typography>
                           </Box>
+                          <NumberWheel
+                            value={reps}
+                            onChange={(v) => { setReps(String(v)); setSliderReps(v); }}
+                            accent={accent}
+                            parkAt={previewReps}
+                            min={REPS_MIN}
+                            max={REPS_MAX}
+                            step={1}
+                          />
                         </Box>
                       </Box>
 
-                      <Box sx={{ mt: 1.5 }}>
-                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', mb: 0.75 }}>
-                          Quick reps
-                        </Typography>
-                        <RepStrip
-                          value={previewReps}
-                          committed={hasReps}
-                          onChange={(r) => { setReps(String(r)); setSliderReps(r); haptic(); }}
-                          accent={accent}
-                        />
-                      </Box>
-
+                      {/* Suggested working weight for the chosen reps */}
                       {estimatedOneRepMax > 0 && suggestedWeight > 0 && (
                         <Box
                           onClick={applySuggestion}
@@ -1772,6 +1703,47 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                           </Box>
                         </Box>
                       )}
+
+                      {/* What the load on the wheel is actually worth */}
+                      {weightEquivalent ? (
+                        <Box
+                          sx={{
+                            mt: 1, px: 1.25, py: 0.75, borderRadius: 2,
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                          }}
+                        >
+                          <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', minWidth: 0 }}>
+                            Worth about{' '}
+                            <Box component="span" sx={{ color: accent, fontWeight: 800, fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+                              {weightEquivalent.label}
+                            </Box>
+                            <Box component="span" sx={{ fontWeight: 600 }}> {weightEquivalent.unit}</Box>
+                            {weightEquivalent.sub ? ` · ${weightEquivalent.sub}` : ''} · {weightEquivalent.hint}
+                          </Typography>
+                          {weightEquivalent.reps != null && weightEquivalent.reps !== previewReps && (
+                            <Box
+                              onClick={() => { setReps(String(weightEquivalent.reps)); setSliderReps(weightEquivalent.reps); haptic(); }}
+                              sx={{
+                                flexShrink: 0, cursor: 'pointer', whiteSpace: 'nowrap',
+                                fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em',
+                                color: accent, border: '1px solid', borderColor: `${accent}55`,
+                                borderRadius: 1, px: 0.75, py: 0.25,
+                                transition: 'background-color .2s ease',
+                                '&:hover': { backgroundColor: `${accent}1a` },
+                              }}
+                            >
+                              SET {weightEquivalent.reps}
+                            </Box>
+                          )}
+                        </Box>
+                      ) : estimatedOneRepMax <= 0 ? (
+                        <Typography sx={{ mt: 1.25, fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+                          Log a few sets to unlock rep targets for this lift.
+                        </Typography>
+                      ) : null}
+
 
                       <Button onClick={handleAddSet} fullWidth startIcon={<AddIcon />} sx={primaryActionSx}>
                         Add set
