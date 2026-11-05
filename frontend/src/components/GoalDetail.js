@@ -271,6 +271,9 @@ const GoalDetail = () => {
         type: 'area',
         color: '#00d4aa',
         lineWidth: 2.5,
+        // See Performance.js: area series default to threshold 0, which pins the
+        // y-axis to zero and flattens the 1RM range.
+        threshold: null,
         fillColor: {
           linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
           stops: [[0, 'rgba(0, 212, 170, 0.14)'], [1, 'rgba(0, 212, 170, 0)']],

@@ -133,6 +133,11 @@ const WorkoutPlanner = ({ user }) => {
   const [exercises, setExercises] = useState([]);
   const [exerciseMap, setExerciseMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [usingCachedPlan, setUsingCachedPlan] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   
   // Dialog state
@@ -180,31 +185,37 @@ const WorkoutPlanner = ({ user }) => {
 
         if (res.data && Object.keys(res.data).length > 0) {
           setProgram(normalizePlan(res.data));
+          try { localStorage.setItem('cachedPlan', JSON.stringify(res.data)); } catch {}
         } else {
+          // Server answered and genuinely has no plan for this user yet, so the
+          // starter template is a safe place to begin.
           setProgram(initialProgram);
         }
+        setLoadFailed(false);
+        setUsingCachedPlan(false);
       } catch (error) {
         console.error('Error loading plan:', error);
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          // Authentication error - fall back to locally cached plan if present
-          const cachedPlan = localStorage.getItem('cachedPlan');
-          if (cachedPlan) {
-            try {
-              setProgram(normalizePlan(JSON.parse(cachedPlan)));
-            } catch {
-              setProgram(initialProgram);
-            }
-          } else {
-            setProgram(initialProgram);
+        // A failed load must never produce a saveable plan that isn't the
+        // user's. Falling back to the starter template here meant a cold start
+        // or a dropped request showed a stranger's program as theirs, which the
+        // next save then wrote over their real plan.
+        const cachedPlan = localStorage.getItem('cachedPlan');
+        if (cachedPlan) {
+          try {
+            setProgram(normalizePlan(JSON.parse(cachedPlan)));
+            setLoadFailed(false);
+            setUsingCachedPlan(true);
+            return;
+          } catch {
+            // corrupt cache — fall through to the error state
           }
-        } else {
-          // No plan yet (404) or other error - start from the initial program
-          setProgram(initialProgram);
         }
+        setProgram(null);
+        setLoadFailed(true);
       }
     };
     fetchPlan();
-  }, [user]);
+  }, [user, reloadKey]);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -300,6 +311,9 @@ const WorkoutPlanner = ({ user }) => {
   };
 
   const handleSave = async () => {
+    if (!program || loadFailed) return;
+    setSaving(true);
+    setSaveError('');
     try {
       await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
 
@@ -313,9 +327,15 @@ const WorkoutPlanner = ({ user }) => {
         localStorage.setItem('cachedPlan', JSON.stringify(refreshRes.data));
       }
 
+      setUsingCachedPlan(false);
       setSnackbarOpen(true);
     } catch (error) {
       console.error('Error saving plan:', error);
+      // Previously this only logged, so a failed save looked exactly like a
+      // successful one — no toast, no error, edits silently unsaved.
+      setSaveError(error.response?.data?.error || "Couldn't save your plan. Check your connection and try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -383,11 +403,35 @@ const WorkoutPlanner = ({ user }) => {
         <Typography variant="h4" fontWeight={700} sx={{ fontSize: 13 }}>
           Workout Planner
         </Typography>
-        <Button variant="contained" onClick={handleSave}>
-          Save Plan
+        <Button variant="contained" onClick={handleSave} disabled={saving || loadFailed || !program}>
+          {saving ? 'Saving…' : 'Save Plan'}
         </Button>
       </Box>
-      {loading || !program ? (
+
+      {usingCachedPlan && (
+        <MuiAlert severity="warning" sx={{ mb: 2, fontSize: 12 }}>
+          Showing your last saved plan — couldn't reach the server.
+        </MuiAlert>
+      )}
+      {saveError && (
+        <MuiAlert severity="error" sx={{ mb: 2, fontSize: 12 }} onClose={() => setSaveError('')}>
+          {saveError}
+        </MuiAlert>
+      )}
+
+      {loadFailed ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+            Couldn't load your plan.
+          </Typography>
+          <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 2.5 }}>
+            Not showing a default plan here on purpose — saving one would overwrite your real plan.
+          </Typography>
+          <Button variant="outlined" size="small" onClick={() => setReloadKey((k) => k + 1)}>
+            Retry
+          </Button>
+        </Box>
+      ) : loading || !program ? (
         <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>
       ) : (
         <Stack spacing={2}>
