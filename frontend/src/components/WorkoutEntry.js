@@ -24,6 +24,7 @@ import { format, subMonths, differenceInCalendarDays, parseISO } from 'date-fns'
 import axios from 'axios';
 import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import ScrollablePicker from './ScrollablePicker';
+import { migratePlan, groupExercises } from '../lib/plan';
 
 // Format a hold duration for display, e.g. 45 -> "45s", 90 -> "1:30".
 const formatDuration = (secs) => {
@@ -635,39 +636,29 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
     return Math.round(weight / 2.5) * 2.5;
   };
 
-  // Get planned workout options
-  const getPlannedWorkoutOptions = () => {
-    if (!userPlan) return [];
-    const dayOrder = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-    ];
-    return Object.keys(userPlan)
-      .sort((a, b) => {
-        // Extract day part (e.g., 'Monday' from 'Monday AM')
-        const dayA = dayOrder.findIndex(day => a.startsWith(day));
-        const dayB = dayOrder.findIndex(day => b.startsWith(day));
-        // If both found, sort by day order, else fallback to string compare
-        if (dayA !== -1 && dayB !== -1) return dayA - dayB;
-        if (dayA !== -1) return -1;
-        if (dayB !== -1) return 1;
-        return a.localeCompare(b);
-      })
-      .map(day => ({
-        id: day,
-        name: day
-      }));
-  };
+  // Plans are a named, ordered list of workouts now (see lib/plan.js), not a
+  // map keyed by day of week.
+  const getPlannedWorkoutOptions = () =>
+    (userPlan?.workouts || []).map((w) => ({ id: w.id, name: w.name }));
 
-  // Get exercises for selected planned workout
-  const getSelectedWorkoutExercises = () => {
-    if (!userPlan || !selectedPlannedWorkout) return [];
-    return userPlan[selectedPlannedWorkout] || [];
-  };
+  // A saved selection can be stale: it used to be a day name, and workout ids
+  // disappear when a workout is deleted. Fall back to the first workout.
+  useEffect(() => {
+    if (!userPlan?.workouts?.length) return;
+    if (!userPlan.workouts.some((w) => w.id === selectedPlannedWorkout)) {
+      setSelectedPlannedWorkout(userPlan.workouts[0].id);
+    }
+  }, [userPlan]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedWorkout = useMemo(
+    () => (userPlan?.workouts || []).find((w) => w.id === selectedPlannedWorkout) || null,
+    [userPlan, selectedPlannedWorkout]
+  );
+
+  const getSelectedWorkoutExercises = () => selectedWorkout?.exercises || [];
 
   const plannedWorkoutStats = useMemo(() => {
-    const plannedExercises = userPlan && selectedPlannedWorkout
-      ? (userPlan[selectedPlannedWorkout] || [])
-      : [];
+    const plannedExercises = selectedWorkout?.exercises || [];
     if (!plannedExercises.length) {
       return { total: 0, completed: 0 };
     }
@@ -694,7 +685,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
     }, 0);
 
     return { total, completed };
-  }, [sets, userPlan, selectedPlannedWorkout]);
+  }, [sets, selectedWorkout]);
 
   // Group exercises by muscle group
   const groupedExercises = useMemo(() => {
@@ -797,17 +788,9 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   const fetchUserPlan = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/plan`);
-      if (response.data) {
-        // Migrate 'Wed AM' to 'Wednesday AM' if present
-        let plan = { ...response.data };
-        if (plan['Wed AM']) {
-          plan['Wednesday AM'] = plan['Wed AM'];
-          delete plan['Wed AM'];
-        }
-        setUserPlan(plan);
-      } else {
-        setUserPlan(null);
-      }
+      // migratePlan accepts both the legacy day-keyed shape and the current
+      // named-workout one, so an un-migrated plan still loads here.
+      setUserPlan(response.data ? migratePlan(response.data) : null);
     } catch (error) {
       console.error('Error loading user plan:', error);
       setUserPlan(null);
@@ -953,7 +936,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
     if (!selectedExercise || !selectedPlannedWorkout || !userPlan) return;
     const exercise = exercises.find(ex => ex.id === parseInt(selectedExercise, 10));
     if (!exercise) return;
-    const planExercises = userPlan[selectedPlannedWorkout] || [];
+    const planExercises = (userPlan.workouts || []).find(w => w.id === selectedPlannedWorkout)?.exercises || [];
     const isInPlan = planExercises.some(pe => pe.exercise === exercise.name);
     if (!isInPlan) {
       setTemporaryExercises(prev =>
@@ -1290,7 +1273,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
       };
 
   const plannedOptions = getPlannedWorkoutOptions();
-  const hasPlan = userPlan && Object.keys(userPlan).length > 0;
+  const hasPlan = (userPlan?.workouts?.length || 0) > 0;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -1366,7 +1349,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                     </Box>
                   }
                 >
-                  {selectedPlannedWorkout}
+                  {selectedWorkout?.name || 'Planned workout'}
                 </PanelLabel>
 
                 {plannedWorkoutStats.total > 0 && (
@@ -1393,7 +1376,25 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
 
                 {showPlannedExercises && (
                   <Box>
-                    {getSelectedWorkoutExercises().map((exercise, index) => {
+                    {groupExercises(getSelectedWorkoutExercises()).map((group) => {
+                    const isSuperset = group.items.length > 1;
+                    return (
+                    <Box
+                      key={`g-${group.items[0].index}`}
+                      sx={{
+                        position: 'relative',
+                        pl: isSuperset ? 1.1 : 0,
+                        ml: isSuperset ? 0.25 : 0,
+                        borderLeft: isSuperset ? '2px solid' : 'none',
+                        borderColor: `${TEAL}55`,
+                      }}
+                    >
+                    {isSuperset && (
+                      <Typography sx={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.12em', color: `${TEAL}bb`, mt: 0.5 }}>
+                        SUPERSET
+                      </Typography>
+                    )}
+                    {group.items.map(({ exercise, index }) => {
                       const exerciseData = exercises.find((ex) => ex.name === exercise.exercise);
                       const isMobilityRow = exerciseData?.category === 'mobility';
                       const isRowSelected = exerciseData && selectedExercise === exerciseData.id;
@@ -1454,6 +1455,9 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                           </Typography>
                         </Box>
                       );
+                    })}
+                    </Box>
+                    );
                     })}
 
                     {temporaryExercises.map((exercise) => {

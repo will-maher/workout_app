@@ -1,25 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
+  Button,
   IconButton,
   TextField,
-  MenuItem,
-  Button,
-  FormControl,
   CircularProgress,
-  Stack,
-  useMediaQuery,
-  useTheme,
   Snackbar,
   Alert as MuiAlert,
   Dialog,
@@ -27,190 +13,110 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-import ScrollablePicker from './ScrollablePicker';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import LinkIcon from '@mui/icons-material/Link';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
+import ScrollablePicker from './ScrollablePicker';
+import {
+  migratePlan,
+  emptyPlan,
+  makeWorkout,
+  makeExercise,
+  makeId,
+  groupExercises,
+  dropOrphanSupersets,
+  totalSets,
+  musclesForWorkout,
+  OPTIMAL_RANGES,
+} from '../lib/plan';
 
+// Re-exported so existing importers keep working; the data itself now lives in
+// the plan module rather than in a view.
+export { OPTIMAL_RANGES };
 
-const defaultDays = ['Monday AM', 'Tuesday AM', 'Wednesday AM', 'Thursday AM', 'Friday AM', 'Saturday AM', 'Sunday AM'];
+const TEAL = '#00d4aa';
 
+const Panel = ({ children, sx = {}, ...rest }) => (
+  <Box
+    sx={{
+      borderRadius: 3,
+      border: '1px solid rgba(255,255,255,0.07)',
+      background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.012) 100%)',
+      p: 1.5,
+      ...sx,
+    }}
+    {...rest}
+  >
+    {children}
+  </Box>
+);
 
-
-const initialProgram = {
-  'Monday AM': [
-    { exercise: 'Barbell bench press', sets: 3, targetReps: 8 },
-    { exercise: 'Dumbell shoulder press', sets: 3, targetReps: 8 },
-    { exercise: 'Dips', sets: 3, targetReps: 8 },
-    { exercise: 'Cable flies', sets: 3, targetReps: 12 },
-    { exercise: 'Ez bar curl', sets: 3, targetReps: 10 },
-    { exercise: 'Dumbell lateral raise', sets: 3, targetReps: 12 },
-  ],
-  'Tuesday AM': [
-    { exercise: 'Low bar squat', sets: 3, targetReps: 5 },
-    { exercise: 'Hack squat', sets: 3, targetReps: 8 },
-    { exercise: 'Leg press calf raise', sets: 3, targetReps: 15 },
-    { exercise: 'Lunges', sets: 3, targetReps: 10 },
-    { exercise: 'Leg extension', sets: 3, targetReps: 12 },
-  ],
-  'Wednesday AM': [
-    { exercise: 'Pull ups', sets: 3, targetReps: 8 },
-    { exercise: 'Barbell row', sets: 3, targetReps: 8 },
-    { exercise: 'Seated cable row', sets: 3, targetReps: 10 },
-    { exercise: 'Stiff legged deadlift', sets: 3, targetReps: 8 },
-    { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
-  ],
-  'Thursday AM': [
-    { exercise: 'Incline barbell bench press', sets: 3, targetReps: 8 },
-    { exercise: 'Machine preacher', sets: 3, targetReps: 10 },
-    { exercise: 'Overhead tricep extension rope', sets: 3, targetReps: 12 },
-    { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
-    { exercise: 'Dips', sets: 3, targetReps: 8 },
-    { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
-  ],
-  'Friday AM': [
-    { exercise: 'High bar squat', sets: 3, targetReps: 5 },
-    { exercise: 'Leg press', sets: 3, targetReps: 8 },
-    { exercise: 'Leg press calf raise', sets: 3, targetReps: 15 },
-    { exercise: 'Hanging leg raise', sets: 3, targetReps: 12 },
-  ],
-  'Saturday AM': [
-    { exercise: 'Dumbell shoulder press', sets: 3, targetReps: 8 },
-    { exercise: 'Dumbell lateral raise', sets: 3, targetReps: 12 },
-    { exercise: 'Rear delt cable fly', sets: 3, targetReps: 12 },
-    { exercise: 'Incline dumbell curl', sets: 3, targetReps: 10 },
-  ],
-  'Sunday AM': [
-    { exercise: 'Deadlift', sets: 3, targetReps: 5 },
-    { exercise: 'Pull ups', sets: 3, targetReps: 8 },
-    { exercise: 'Hex bar shrugs', sets: 3, targetReps: 12 },
-    { exercise: 'Cable lat pulldown', sets: 3, targetReps: 10 },
-    { exercise: 'Ab cable crunch', sets: 3, targetReps: 15 },
-  ],
-};
-
-function getWeeklyVolumeAndFrequency(program, exerciseMap) {
-  if (!program) return { volume: {}, freqDays: {} };
-  
-  const volume = {};
-  const freqDays = {};
-  for (const day of defaultDays) {
-    const musclesToday = new Set();
-    for (const ex of (program && Array.isArray(program[day]) ? program[day] : [])) {
-      if (!ex || !ex.exercise) continue;
-      const muscle = exerciseMap[ex.exercise]?.muscle_group;
-      if (!muscle) continue;
-      volume[muscle] = (volume[muscle] || 0) + (parseInt(ex.sets) || 0);
-      musclesToday.add(muscle);
-    }
-    for (const m of musclesToday) {
-      freqDays[m] = (freqDays[m] || 0) + 1;
-    }
-  }
-  return { volume, freqDays };
-}
-
-// Add this lookup table for optimal values
-export const OPTIMAL_RANGES = {
-  'Chest': { sets: '12-20', freq: '1.5-3x' },
-  'Anterior deltoid': { sets: '6-8', freq: '2-4x' },
-  'Triceps': { sets: '10-14', freq: '2-4x' },
-  'Bicep': { sets: '14-20', freq: '2-6x' },
-  'Lateral deltoid': { sets: '16-22', freq: '2-6x' },
-  'Quad': { sets: '12-18', freq: '1.5-3x' },
-  'Calf': { sets: '12-16', freq: '2-6x' },
-  'Glutes': { sets: '4-12', freq: '2-3x' },
-  'Back': { sets: '14-22', freq: '2-6x' },
-  'Hamstring': { sets: '10-16', freq: '2-3x' },
-  'Trapezius': { sets: '12-20', freq: '2-4x' },
-  'Abs': { sets: '10-14', freq: '2-4x' },
-  'Posterior deltoid': { sets: '16-22', freq: '2-6x' },
-};
+const PanelLabel = ({ children, right, sx = {} }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1, ...sx }}>
+    <Typography sx={{ fontWeight: 700, fontSize: 10, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)' }}>
+      {children}
+    </Typography>
+    {right}
+  </Box>
+);
 
 const WorkoutPlanner = ({ user }) => {
-  const [program, setProgram] = useState(null); // Start with null to indicate loading
+  const [plan, setPlan] = useState(null);
+  const [selectedId, setSelectedId] = useState('');
   const [exercises, setExercises] = useState([]);
   const [exerciseMap, setExerciseMap] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [usingCachedPlan, setUsingCachedPlan] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  
-  // Dialog state
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingExercise, setEditingExercise] = useState(null);
-  const [editForm, setEditForm] = useState({
-    exercise: '',
-    sets: 3,
-    targetReps: 8
-  });
 
+  // dialogs
+  const [exerciseDialog, setExerciseDialog] = useState(null); // { index, form }
+  const [workoutDialog, setWorkoutDialog] = useState(null);   // { mode, name }
+  const [confirm, setConfirm] = useState(null);               // { title, body, onConfirm }
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const sectionSx = {
-    borderBottom: '1px solid',
-    borderColor: 'divider',
-    borderRadius: 0,
-    boxShadow: 'none',
-    bgcolor: 'transparent',
-  };
-
-  // Migrate legacy 'Wed AM' key to 'Wednesday AM' and ensure every day exists
-  const normalizePlan = (plan) => {
-    const normalized = { ...plan };
-    if (normalized['Wed AM']) {
-      normalized['Wednesday AM'] = normalized['Wed AM'];
-      delete normalized['Wed AM'];
-    }
-    defaultDays.forEach(day => {
-      if (!Array.isArray(normalized[day])) {
-        normalized[day] = [];
-      }
-    });
-    return normalized;
-  };
-
-  // Load from backend when user is available
+  // ── loading ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-
     const fetchPlan = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}/api/plan`);
-
-        if (res.data && Object.keys(res.data).length > 0) {
-          setProgram(normalizePlan(res.data));
-          try { localStorage.setItem('cachedPlan', JSON.stringify(res.data)); } catch {}
-        } else {
-          // Server answered and genuinely has no plan for this user yet, so the
-          // starter template is a safe place to begin.
-          setProgram(initialProgram);
-        }
+        const migrated = migratePlan(res.data);
+        setPlan(migrated);
+        try { localStorage.setItem('cachedPlan', JSON.stringify(migrated)); } catch {}
         setLoadFailed(false);
         setUsingCachedPlan(false);
       } catch (error) {
         console.error('Error loading plan:', error);
         // A failed load must never produce a saveable plan that isn't the
-        // user's. Falling back to the starter template here meant a cold start
-        // or a dropped request showed a stranger's program as theirs, which the
-        // next save then wrote over their real plan.
-        const cachedPlan = localStorage.getItem('cachedPlan');
-        if (cachedPlan) {
+        // user's, so there is no fallback to sample data here.
+        const cached = localStorage.getItem('cachedPlan');
+        if (cached) {
           try {
-            setProgram(normalizePlan(JSON.parse(cachedPlan)));
+            setPlan(migratePlan(JSON.parse(cached)));
             setLoadFailed(false);
             setUsingCachedPlan(true);
             return;
-          } catch {
-            // corrupt cache — fall through to the error state
-          }
+          } catch { /* corrupt cache — fall through */ }
         }
-        setProgram(null);
+        // A 404 means the user simply has no plan yet: start an empty one.
+        if (error.response?.status === 404) {
+          setPlan(emptyPlan());
+          setLoadFailed(false);
+          return;
+        }
+        setPlan(null);
         setLoadFailed(true);
       }
     };
@@ -222,11 +128,10 @@ const WorkoutPlanner = ({ user }) => {
       setLoading(true);
       try {
         const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-        // Ensure exercises is always an array
-        const exercisesData = Array.isArray(res.data) ? res.data : [];
-        setExercises(exercisesData);
+        const list = Array.isArray(res.data) ? res.data : [];
+        setExercises(list);
         const map = {};
-        exercisesData.forEach(ex => { map[ex.name] = ex; });
+        list.forEach((ex) => { map[ex.name] = ex; });
         setExerciseMap(map);
       } catch (error) {
         console.error('Error loading exercises:', error);
@@ -239,625 +144,574 @@ const WorkoutPlanner = ({ user }) => {
     fetchExercises();
   }, []);
 
+  // Keep a valid selection as workouts are added, renamed or removed.
+  useEffect(() => {
+    if (!plan) return;
+    if (!plan.workouts.some((w) => w.id === selectedId)) {
+      setSelectedId(plan.workouts[0]?.id || '');
+    }
+  }, [plan, selectedId]);
 
+  const selected = plan?.workouts.find((w) => w.id === selectedId) || null;
 
-  // Group exercises by muscle group for dropdown
-  const groupedExercises = React.useMemo(() => {
-    if (!Array.isArray(exercises) || exercises.length === 0) return [];
-    const grouped = exercises.reduce((acc, exercise) => {
-      const muscleGroup = exercise.muscle_group || 'Other';
-      if (!acc[muscleGroup]) acc[muscleGroup] = [];
-      acc[muscleGroup].push(exercise);
+  const groupedExercises = useMemo(() => {
+    if (!exercises.length) return [];
+    const grouped = exercises.reduce((acc, ex) => {
+      const mg = ex.muscle_group || 'Other';
+      if (!acc[mg]) acc[mg] = [];
+      acc[mg].push(ex);
       return acc;
     }, {});
-    // Sort muscle groups and exercises alphabetically
-    return Object.keys(grouped)
-      .sort()
-      .map(muscleGroup => ({
-        label: muscleGroup,
-        items: grouped[muscleGroup].sort((a, b) => a.name.localeCompare(b.name))
-      }));
+    return Object.keys(grouped).sort().map((mg) => ({
+      label: mg,
+      items: grouped[mg].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
   }, [exercises]);
 
-
-
-  const handleAddExercise = (day) => {
-    setProgram(prev => ({
+  // ── mutations ─────────────────────────────────────────────────────────────
+  const updateSelected = (fn) => {
+    setPlan((prev) => ({
       ...prev,
-      [day]: [...prev[day], { exercise: '', sets: 3, targetReps: 8 }],
+      workouts: prev.workouts.map((w) =>
+        w.id === selectedId ? { ...w, exercises: dropOrphanSupersets(fn(w.exercises)) } : w
+      ),
     }));
   };
 
-  const handleRemoveExercise = (day, idx) => {
-    setProgram(prev => {
-      const updated = { ...prev };
-      updated[day] = updated[day].filter((_, i) => i !== idx);
-      return updated;
+  const moveExercise = (index, delta) => {
+    const target = index + delta;
+    updateSelected((list) => {
+      if (target < 0 || target >= list.length) return list;
+      const next = [...list];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
     });
   };
 
-  const handleEditExercise = (day, idx, exercise) => {
-    setEditingExercise({ day, idx });
-    setEditForm({
-      exercise: exercise.exercise || '',
-      sets: exercise.sets || 3,
-      targetReps: exercise.targetReps || 8
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleSaveExercise = () => {
-    if (!editForm.exercise.trim()) return;
-    
-    setProgram(prev => {
-      const updated = { ...prev };
-      if (editingExercise) {
-        updated[editingExercise.day] = updated[editingExercise.day].map((ex, i) =>
-          i === editingExercise.idx ? editForm : ex
-        );
+  // Linking joins an exercise to the one above it; both end up with the same
+  // supersetId, which is what makes them render as one bracketed group.
+  const toggleSuperset = (index) => {
+    updateSelected((list) => {
+      if (index <= 0) return list;
+      const next = [...list];
+      const prev = next[index - 1];
+      if (next[index].supersetId && next[index].supersetId === prev.supersetId) {
+        next[index] = { ...next[index], supersetId: null };
+      } else {
+        const id = prev.supersetId || makeId('ss');
+        next[index - 1] = { ...prev, supersetId: id };
+        next[index] = { ...next[index], supersetId: id };
       }
-      return updated;
+      return next;
     });
-    
-    setEditDialogOpen(false);
-    setEditingExercise(null);
-    setEditForm({ exercise: '', sets: 3, targetReps: 8 });
   };
 
-  const handleCancelEdit = () => {
-    setEditDialogOpen(false);
-    setEditingExercise(null);
-    setEditForm({ exercise: '', sets: 3, targetReps: 8 });
+  const addWorkout = (name) => {
+    const workout = makeWorkout(name);
+    setPlan((prev) => ({ ...prev, workouts: [...prev.workouts, workout] }));
+    setSelectedId(workout.id);
   };
 
+  const renameWorkout = (name) => {
+    setPlan((prev) => ({
+      ...prev,
+      workouts: prev.workouts.map((w) => (w.id === selectedId ? { ...w, name } : w)),
+    }));
+  };
+
+  const moveWorkout = (delta) => {
+    setPlan((prev) => {
+      const i = prev.workouts.findIndex((w) => w.id === selectedId);
+      const target = i + delta;
+      if (i < 0 || target < 0 || target >= prev.workouts.length) return prev;
+      const workouts = [...prev.workouts];
+      [workouts[i], workouts[target]] = [workouts[target], workouts[i]];
+      return { ...prev, workouts };
+    });
+  };
+
+  const deleteWorkout = () => {
+    setPlan((prev) => ({ ...prev, workouts: prev.workouts.filter((w) => w.id !== selectedId) }));
+  };
+
+  // ── saving ────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!program || loadFailed) return;
+    if (!plan || loadFailed) return;
     setSaving(true);
     setSaveError('');
     try {
-      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: program });
-
-      // Cache the plan locally for offline/error recovery
-      localStorage.setItem('cachedPlan', JSON.stringify(program));
-
-      // Refresh from the database to confirm what was persisted
-      const refreshRes = await axios.get(`${API_BASE_URL}/api/plan`);
-      if (refreshRes.data && Object.keys(refreshRes.data).length > 0) {
-        setProgram(normalizePlan(refreshRes.data));
-        localStorage.setItem('cachedPlan', JSON.stringify(refreshRes.data));
-      }
-
+      await axios.post(`${API_BASE_URL}/api/plan`, { plan_json: plan });
+      localStorage.setItem('cachedPlan', JSON.stringify(plan));
+      const refresh = await axios.get(`${API_BASE_URL}/api/plan`);
+      const migrated = migratePlan(refresh.data);
+      setPlan(migrated);
+      localStorage.setItem('cachedPlan', JSON.stringify(migrated));
       setUsingCachedPlan(false);
       setSnackbarOpen(true);
     } catch (error) {
       console.error('Error saving plan:', error);
-      // Previously this only logged, so a failed save looked exactly like a
-      // successful one — no toast, no error, edits silently unsaved.
       setSaveError(error.response?.data?.error || "Couldn't save your plan. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
   };
 
+  // ── render ────────────────────────────────────────────────────────────────
+  const muscleRows = selected ? musclesForWorkout(selected, exerciseMap) : [];
 
-
-  const { volume: weeklyVolume, freqDays: weeklyFreq } = program ? getWeeklyVolumeAndFrequency(program, exerciseMap) : { volume: {}, freqDays: {} };
-
-  // Function to get fortnight frequency data
-  const getFortnightFrequencyData = (program, exerciseMap) => {
-    if (!program) return { muscleGroups: [], fortnightData: {} };
-    
-    const muscleGroups = new Set();
-    const fortnightData = {};
-    
-    // Get all unique muscle groups from the program
-    for (const day of defaultDays) {
-      for (const ex of (program && Array.isArray(program[day]) ? program[day] : [])) {
-        if (!ex || !ex.exercise) continue;
-        const muscle = exerciseMap[ex.exercise]?.muscle_group;
-        if (muscle) {
-          muscleGroups.add(muscle);
-        }
-      }
-    }
-
-    // Initialize fortnight data for each muscle group
-    for (const muscle of muscleGroups) {
-      fortnightData[muscle] = {};
-      // Create 14 days (2 weeks)
-      for (let week = 1; week <= 2; week++) {
-        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-          const dayName = defaultDays[dayIndex];
-          const dayKey = `Week${week}_${dayName}`;
-          fortnightData[muscle][dayKey] = false;
-        }
-      }
-    }
-
-    // Fill in the data based on the program
-    for (let week = 1; week <= 2; week++) {
-      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        const dayName = defaultDays[dayIndex];
-        const dayKey = `Week${week}_${dayName}`;
-        
-        // Check if this day has exercises in the program
-        const dayExercises = program && Array.isArray(program[dayName]) ? program[dayName] : [];
-        for (const ex of dayExercises) {
-          if (!ex || !ex.exercise) continue;
-          const muscle = exerciseMap[ex.exercise]?.muscle_group;
-          if (muscle) {
-            fortnightData[muscle][dayKey] = true;
-          }
-        }
-      }
-    }
-
-    return { muscleGroups: Array.from(muscleGroups).sort(), fortnightData };
+  const openExerciseDialog = (index) => {
+    const ex = selected.exercises[index];
+    setExerciseDialog({
+      index,
+      form: { exercise: ex.exercise, sets: ex.sets, targetReps: ex.targetReps ?? '' },
+    });
   };
 
-  const { muscleGroups, fortnightData } = program ? getFortnightFrequencyData(program, exerciseMap) : { muscleGroups: [], fortnightData: {} };
+  const commitExerciseDialog = () => {
+    const { index, form } = exerciseDialog;
+    updateSelected((list) =>
+      list.map((ex, i) =>
+        i === index
+          ? {
+              ...ex,
+              exercise: form.exercise,
+              sets: parseInt(form.sets, 10) || 1,
+              targetReps: form.targetReps === '' ? null : (parseInt(form.targetReps, 10) || null),
+            }
+          : ex
+      )
+    );
+    setExerciseDialog(null);
+  };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 }, '& .MuiTypography-root': { fontSize: 13 } }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" fontWeight={700} sx={{ fontSize: 13 }}>
-          Workout Planner
+    <Box sx={{ maxWidth: 540, mx: 'auto', pt: 1.5, pb: 2, px: { xs: 1.5, sm: 0 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
+        <Typography sx={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.025em' }}>
+          Workout Plan
         </Typography>
-        <Button variant="contained" onClick={handleSave} disabled={saving || loadFailed || !program}>
-          {saving ? 'Saving…' : 'Save Plan'}
+        <Button
+          onClick={handleSave}
+          disabled={saving || loadFailed || !plan}
+          sx={{
+            height: 32, px: 1.75, borderRadius: 2, fontSize: 12.5, fontWeight: 700,
+            textTransform: 'none', color: '#06140F', backgroundColor: TEAL,
+            '&:hover': { backgroundColor: '#00e6b8' },
+            '&.Mui-disabled': { color: 'rgba(6,20,15,0.45)', backgroundColor: 'rgba(0,212,170,0.28)' },
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </Box>
 
       {usingCachedPlan && (
-        <MuiAlert severity="warning" sx={{ mb: 2, fontSize: 12 }}>
+        <MuiAlert severity="warning" sx={{ mb: 1.5, fontSize: 12, borderRadius: 2 }}>
           Showing your last saved plan — couldn't reach the server.
         </MuiAlert>
       )}
       {saveError && (
-        <MuiAlert severity="error" sx={{ mb: 2, fontSize: 12 }} onClose={() => setSaveError('')}>
+        <MuiAlert severity="error" sx={{ mb: 1.5, fontSize: 12, borderRadius: 2 }} onClose={() => setSaveError('')}>
           {saveError}
         </MuiAlert>
       )}
 
       {loadFailed ? (
         <Box sx={{ textAlign: 'center', py: 6 }}>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
-            Couldn't load your plan.
-          </Typography>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 2.5 }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>Couldn't load your plan.</Typography>
+          <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', mb: 2.5 }}>
             Not showing a default plan here on purpose — saving one would overwrite your real plan.
           </Typography>
-          <Button variant="outlined" size="small" onClick={() => setReloadKey((k) => k + 1)}>
+          <Button variant="outlined" size="small" onClick={() => setReloadKey((k) => k + 1)} sx={{ fontSize: 12.5, textTransform: 'none' }}>
             Retry
           </Button>
         </Box>
-      ) : loading || !program ? (
-        <Box display="flex" justifyContent="center" py={4}><CircularProgress size={isMobile ? 20 : 28} /></Box>
+      ) : loading || !plan ? (
+        <Box display="flex" justifyContent="center" py={6}><CircularProgress size={22} /></Box>
       ) : (
-        <Stack spacing={2}>
-          {defaultDays.map(day => {
-        
-            return (
-              <Card key={day} sx={{ ...sectionSx, mb: 1 }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                    <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: 13 }}>{day}</Typography>
-                    <Button 
-                      startIcon={<AddIcon />} 
-                      onClick={() => handleAddExercise(day)} 
-                      variant="outlined"
-                      size="small"
-                      sx={{ 
-                        py: 0.5, 
-                        px: 1.5, 
-                        fontSize: 13,
-                        minHeight: '32px'
-                      }}
-                    >
-                      Add Exercise
-                    </Button>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+
+          {/* Workout switcher */}
+          <Panel sx={{ p: 1.25 }}>
+            <Box sx={{ display: 'flex', gap: 0.625, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}>
+              {plan.workouts.map((w) => {
+                const on = w.id === selectedId;
+                return (
+                  <Box
+                    key={w.id}
+                    onClick={() => setSelectedId(w.id)}
+                    sx={{
+                      flex: '0 0 auto', px: 1.5, height: 34, borderRadius: 2,
+                      display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none',
+                      border: '1px solid', borderColor: on ? TEAL : 'rgba(255,255,255,0.09)',
+                      backgroundColor: on ? TEAL : 'transparent',
+                      color: on ? '#06140F' : 'rgba(255,255,255,0.62)',
+                      fontWeight: on ? 800 : 500, fontSize: 12.5, whiteSpace: 'nowrap',
+                      transition: 'all .18s ease',
+                    }}
+                  >
+                    {w.name}
                   </Box>
-                  <Box>
-                    {(program && Array.isArray(program[day]) ? program[day] : []).length === 0 && (
-                      <Typography sx={{ fontSize: 12, color: 'text.secondary', fontStyle: 'italic', py: 1 }}>
-                        Rest day — no exercises planned
+                );
+              })}
+              <Box
+                onClick={() => setWorkoutDialog({ mode: 'new', name: '' })}
+                aria-label="Add workout"
+                sx={{
+                  flex: '0 0 auto', width: 34, height: 34, borderRadius: 2, cursor: 'pointer',
+                  display: 'grid', placeItems: 'center',
+                  border: '1px dashed rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.5)',
+                  '&:hover': { borderColor: TEAL, color: TEAL },
+                }}
+              >
+                <AddIcon sx={{ fontSize: 17 }} />
+              </Box>
+            </Box>
+          </Panel>
+
+          {!selected ? (
+            <Panel sx={{ py: 5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 0.5 }}>No workouts yet</Typography>
+              <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', mb: 2 }}>
+                Name them however you train — “Push A”, “Legs”, “Upper”.
+              </Typography>
+              <Button
+                variant="outlined" size="small"
+                onClick={() => setWorkoutDialog({ mode: 'new', name: '' })}
+                sx={{ fontSize: 12.5, textTransform: 'none' }}
+              >
+                Add a workout
+              </Button>
+            </Panel>
+          ) : (
+            <>
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>
+                        {selected.exercises.length} exercises · {totalSets(selected)} sets
                       </Typography>
-                    )}
-                    {(program && Array.isArray(program[day]) ? program[day] : []).map((ex, idx) => (
+                      <IconButton
+                        size="small"
+                        aria-label="Workout options"
+                        onClick={() => setWorkoutDialog({ mode: 'edit', name: selected.name })}
+                        sx={{ p: 0.5, color: 'rgba(255,255,255,0.45)' }}
+                      >
+                        <MoreHorizIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Box>
+                  }
+                >
+                  {selected.name}
+                </PanelLabel>
+
+                {selected.exercises.length === 0 ? (
+                  <Typography sx={{ fontSize: 11.5, color: 'rgba(255,255,255,0.3)', py: 2, textAlign: 'center' }}>
+                    No exercises yet.
+                  </Typography>
+                ) : (
+                  groupExercises(selected.exercises).map((group, gi) => {
+                    const isSuperset = group.items.length > 1;
+                    return (
                       <Box
-                        key={idx}
-                        onClick={() => handleEditExercise(day, idx, ex)}
+                        key={group.items[0].index}
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 1,
-                          py: 1,
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                          cursor: 'pointer',
-                          '&:last-of-type': { borderBottom: 'none' },
-                          '&:active': { backgroundColor: 'rgba(255,255,255,0.03)' },
+                          position: 'relative',
+                          mt: gi === 0 ? 0 : 0.5,
+                          pl: isSuperset ? 1.25 : 0,
+                          borderLeft: isSuperset ? '2px solid' : 'none',
+                          borderColor: `${TEAL}66`,
+                          borderRadius: isSuperset ? '0 0 0 4px' : 0,
                         }}
                       >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography
+                        {isSuperset && (
+                          <Typography sx={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.12em', color: `${TEAL}cc`, mb: 0.25 }}>
+                            SUPERSET
+                          </Typography>
+                        )}
+                        {group.items.map(({ exercise: ex, index }) => (
+                          <Box
+                            key={index}
+                            onClick={() => openExerciseDialog(index)}
                             sx={{
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: ex.exercise ? 'text.primary' : 'text.secondary',
-                              fontStyle: ex.exercise ? 'normal' : 'italic',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              display: 'flex', alignItems: 'center', gap: 1,
+                              minHeight: 44, px: 1, mx: -0.5, borderRadius: 1.5, cursor: 'pointer',
+                              '&:hover': { backgroundColor: 'rgba(255,255,255,0.03)' },
                             }}
                           >
-                            {ex.exercise || 'Tap to choose exercise'}
-                          </Typography>
-                          {exerciseMap[ex.exercise]?.muscle_group && (
-                            <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                              {exerciseMap[ex.exercise].muscle_group}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
-                          {ex.exercise && (
-                            <Box
-                              sx={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: 'primary.main',
-                                border: '1px solid',
-                                borderColor: 'rgba(0, 212, 170, 0.35)',
-                                borderRadius: 10,
-                                px: 1,
-                                py: 0.25,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {ex.sets || 3} × {ex.targetReps || 8}
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography noWrap sx={{ fontSize: 13, fontWeight: 500, color: ex.exercise ? 'text.primary' : 'rgba(255,255,255,0.3)' }}>
+                                {ex.exercise || 'Tap to choose an exercise'}
+                              </Typography>
+                              {exerciseMap[ex.exercise]?.muscle_group && (
+                                <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)' }}>
+                                  {exerciseMap[ex.exercise].muscle_group}
+                                </Typography>
+                              )}
                             </Box>
-                          )}
-                          <IconButton onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveExercise(day, idx);
-                          }} size="small" color="error" sx={{ p: 0.5, opacity: 0.7 }}>
-                            <DeleteIcon sx={{ fontSize: '1rem' }} />
-                          </IconButton>
-                        </Box>
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.55)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                              {ex.sets} × {ex.targetReps ?? '?'}
+                            </Typography>
+                            <ChevronRightIcon sx={{ fontSize: 17, color: 'rgba(255,255,255,0.22)', flexShrink: 0 }} />
+                          </Box>
+                        ))}
                       </Box>
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </Stack>
-      )}
-      <Card sx={{ ...sectionSx, mt: 3 }}>
-        <CardContent sx={{ p: 2 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2, fontSize: 13 }}>
-            Weekly Volume Analysis
-          </Typography>
-          {Object.keys(weeklyVolume).length === 0 ? (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', textAlign: 'center', py: 2 }}>
-              No data
-            </Typography>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-              {Object.entries(weeklyVolume)
-                .sort((a, b) => b[1] - a[1])
-                .map(([mg, sets]) => {
-                  const optimal = OPTIMAL_RANGES[mg];
-                  let minOpt = 0, maxOpt = 0;
-                  const match = optimal?.sets?.match(/(\d+)[^\d]+(\d+)/);
-                  if (match) {
-                    minOpt = parseInt(match[1], 10);
-                    maxOpt = parseInt(match[2], 10);
-                  }
-                  const scaleMax = Math.max(sets, maxOpt) * 1.15 || 1;
-                  const inRange = !maxOpt || (sets >= minOpt && sets <= maxOpt);
-                  const barColor = inRange ? 'primary.main' : sets > maxOpt ? '#F09595' : '#FAC775';
-                  return (
-                    <Box key={mg}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{mg}</Typography>
-                        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                          {sets} sets{maxOpt ? ` / ${minOpt}–${maxOpt}` : ''} · {weeklyFreq[mg]}×wk{optimal?.freq ? ` / ${optimal.freq}` : ''}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ position: 'relative', height: 14, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                        {maxOpt > 0 && (
-                          <Box
-                            sx={{
-                              position: 'absolute',
-                              left: `${(minOpt / scaleMax) * 100}%`,
-                              width: `${((maxOpt - minOpt) / scaleMax) * 100}%`,
-                              top: 0,
-                              bottom: 0,
-                              backgroundColor: 'rgba(0, 212, 170, 0.14)',
-                            }}
-                          />
+                    );
+                  })
+                )}
+
+                <Button
+                  onClick={() => {
+                    updateSelected((list) => [...list, makeExercise()]);
+                    setTimeout(() => setExerciseDialog({ index: selected.exercises.length, form: { exercise: '', sets: 3, targetReps: 8 } }), 0);
+                  }}
+                  startIcon={<AddIcon />}
+                  fullWidth
+                  sx={{
+                    mt: 1, height: 38, borderRadius: 2, fontSize: 12.5, fontWeight: 700, textTransform: 'none',
+                    color: TEAL, border: '1px dashed', borderColor: 'rgba(255,255,255,0.14)',
+                    '&:hover': { borderColor: TEAL, backgroundColor: `${TEAL}0f` },
+                  }}
+                >
+                  Add exercise
+                </Button>
+              </Panel>
+
+              {muscleRows.length > 0 && (
+                <Panel>
+                  <PanelLabel>This workout</PanelLabel>
+                  {muscleRows.map(([muscle, sets]) => (
+                    <Box key={muscle} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.5 }}>
+                      <Typography sx={{ fontSize: 12.5 }}>{muscle}</Typography>
+                      <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontVariantNumeric: 'tabular-nums' }}>
+                        {sets} sets
+                        {OPTIMAL_RANGES[muscle] && (
+                          <Box component="span" sx={{ color: 'rgba(255,255,255,0.28)', ml: 0.75 }}>
+                            {OPTIMAL_RANGES[muscle].sets}/wk
+                          </Box>
                         )}
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 4,
-                            height: 6,
-                            width: `${(sets / scaleMax) * 100}%`,
-                            borderRadius: 3,
-                            backgroundColor: barColor,
-                          }}
-                        />
-                      </Box>
+                      </Typography>
                     </Box>
-                  );
-                })}
-              <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: 0.5 }}>
-                Shaded band = optimal weekly sets · amber = below range, red = above range
-              </Typography>
+                  ))}
+                  <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', mt: 0.75 }}>
+                    Sets in this workout, with the suggested weekly total alongside.
+                  </Typography>
+                </Panel>
+              )}
+            </>
+          )}
+        </Box>
+      )}
+
+      {/* ── Exercise dialog ──────────────────────────────────────────────── */}
+      <Dialog
+        open={!!exerciseDialog}
+        onClose={() => setExerciseDialog(null)}
+        fullWidth maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)' } }}
+      >
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>Exercise</DialogTitle>
+        <DialogContent>
+          {exerciseDialog && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, mt: 0.5 }}>
+              <ScrollablePicker
+                items={groupedExercises}
+                value={exerciseDialog.form.exercise}
+                onChange={(val) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, exercise: val } }))}
+                label="Select exercise…"
+                grouped
+                getItemLabel={(i) => i.name}
+                getItemValue={(i) => i.name}
+                searchEnabled
+                searchPlaceholder="Search exercises…"
+                buttonHeight={44}
+              />
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <TextField
+                  label="Sets" type="number" size="small" sx={{ flex: 1 }}
+                  value={exerciseDialog.form.sets}
+                  onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, sets: e.target.value } }))}
+                  inputProps={{ min: 1, inputMode: 'numeric' }}
+                />
+                <TextField
+                  label="Target reps" type="number" size="small" sx={{ flex: 1 }}
+                  value={exerciseDialog.form.targetReps}
+                  onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, targetReps: e.target.value } }))}
+                  inputProps={{ min: 1, inputMode: 'numeric' }}
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  onClick={() => { moveExercise(exerciseDialog.index, -1); setExerciseDialog(null); }}
+                  disabled={exerciseDialog.index === 0}
+                  startIcon={<ArrowUpwardIcon sx={{ fontSize: 16 }} />}
+                  sx={{ flex: 1, fontSize: 11.5, textTransform: 'none', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}
+                >
+                  Up
+                </Button>
+                <Button
+                  onClick={() => { moveExercise(exerciseDialog.index, 1); setExerciseDialog(null); }}
+                  disabled={!selected || exerciseDialog.index >= selected.exercises.length - 1}
+                  startIcon={<ArrowDownwardIcon sx={{ fontSize: 16 }} />}
+                  sx={{ flex: 1, fontSize: 11.5, textTransform: 'none', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}
+                >
+                  Down
+                </Button>
+              </Box>
+
+              {(() => {
+                const idx = exerciseDialog.index;
+                if (!selected || idx <= 0) return null;
+                const cur = selected.exercises[idx];
+                const prev = selected.exercises[idx - 1];
+                const linked = cur?.supersetId && cur.supersetId === prev?.supersetId;
+                return (
+                  <Button
+                    onClick={() => { toggleSuperset(idx); setExerciseDialog(null); }}
+                    startIcon={linked ? <LinkOffIcon sx={{ fontSize: 16 }} /> : <LinkIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      fontSize: 11.5, textTransform: 'none', borderRadius: 2,
+                      color: linked ? 'rgba(255,255,255,0.7)' : TEAL,
+                      border: '1px solid', borderColor: linked ? 'rgba(255,255,255,0.1)' : `${TEAL}55`,
+                    }}
+                  >
+                    {linked ? 'Remove from superset' : 'Superset with exercise above'}
+                  </Button>
+                );
+              })()}
+
+              <Button
+                onClick={() => {
+                  const idx = exerciseDialog.index;
+                  setExerciseDialog(null);
+                  setConfirm({
+                    title: 'Remove exercise?',
+                    body: 'It will be removed from this workout.',
+                    onConfirm: () => updateSelected((list) => list.filter((_, i) => i !== idx)),
+                  });
+                }}
+                startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                sx={{ fontSize: 11.5, textTransform: 'none', color: '#F09595', borderRadius: 2, border: '1px solid rgba(240,149,149,0.3)' }}
+              >
+                Remove from workout
+              </Button>
             </Box>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Fortnight Frequency Visual */}
-      <Card sx={{ ...sectionSx, mt: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3 }}>
-            Muscle Group Frequency Over 2 Weeks
-          </Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <TableContainer component={Paper} sx={{ boxShadow: 'none', bgcolor: 'transparent', minWidth: isMobile ? 400 : 500 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: isMobile ? 11 : 13, fontWeight: 600, minWidth: 80 }}>Muscle Group</TableCell>
-                                         {/* Week 1 Headers */}
-                     {defaultDays.map((day, index) => (
-                       <TableCell 
-                         key={`week1_${index}`} 
-                         align="center" 
-                         sx={{ 
-                           fontSize: isMobile ? 11 : 13, 
-                           fontWeight: 600, 
-                           bgcolor: 'background.default',
-                           minWidth: isMobile ? 25 : 30,
-                           maxWidth: isMobile ? 25 : 30,
-                           width: isMobile ? 25 : 30,
-                           borderRight: index === 6 ? '2px solid' : '1px solid',
-                           borderColor: 'divider',
-                           px: 0
-                         }}
-                       >
-                         {day.charAt(0)}
-                       </TableCell>
-                     ))}
-                     {/* Week 2 Headers */}
-                     {defaultDays.map((day, index) => (
-                       <TableCell 
-                         key={`week2_${index}`} 
-                         align="center" 
-                         sx={{ 
-                           fontSize: isMobile ? 11 : 13, 
-                           fontWeight: 600, 
-                           bgcolor: 'background.default',
-                           minWidth: isMobile ? 25 : 30,
-                           maxWidth: isMobile ? 25 : 30,
-                           width: isMobile ? 25 : 30,
-                           borderRight: index === 6 ? '2px solid' : '1px solid',
-                           borderColor: 'divider',
-                           px: 0
-                         }}
-                       >
-                         {day.charAt(0)}
-                       </TableCell>
-                     ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {muscleGroups.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={15} align="center" color="text.secondary" sx={{ fontSize: isMobile ? 12 : 13 }}>
-                        No muscle groups found in program
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    muscleGroups.map((muscleGroup) => (
-                      <TableRow key={muscleGroup}>
-                        <TableCell 
-                          sx={{ 
-                            fontSize: isMobile ? 11 : 13, 
-                            fontWeight: 600,
-                            borderRight: '2px solid',
-                            borderColor: 'divider',
-                            height: isMobile ? 35 : 40,
-                            py: 1
-                          }}
-                        >
-                          {muscleGroup}
-                        </TableCell>
-                        {/* Week 1 cells */}
-                        {defaultDays.map((day, index) => {
-                          const dayKey = `Week1_${day}`;
-                          const isActive = fortnightData[muscleGroup]?.[dayKey] || false;
-                          return (
-                            <TableCell 
-                              key={`week1_${muscleGroup}_${index}`}
-                              align="center"
-                              sx={{
-                                fontSize: isMobile ? 11 : 13,
-                                bgcolor: isActive ? 'primary.main' : 'background.default',
-                                color: isActive ? 'primary.contrastText' : 'text.secondary',
-                                fontWeight: isActive ? 600 : 400,
-                                borderRight: index === 6 ? '2px solid' : '1px solid',
-                                borderColor: 'divider',
-                                borderBottom: '1px solid',
-                                borderBottomColor: 'divider',
-                                minWidth: isMobile ? 25 : 30,
-                                maxWidth: isMobile ? 25 : 30,
-                                width: isMobile ? 25 : 30,
-                                height: isMobile ? 35 : 40,
-                                px: 0,
-                                py: 1,
-                                '&:hover': {
-                                  bgcolor: isActive ? 'primary.dark' : 'background.paper'
-                                }
-                              }}
-                            >
-                            </TableCell>
-                          );
-                        })}
-                        {/* Week 2 cells */}
-                        {defaultDays.map((day, index) => {
-                          const dayKey = `Week2_${day}`;
-                          const isActive = fortnightData[muscleGroup]?.[dayKey] || false;
-                          return (
-                            <TableCell 
-                              key={`week2_${muscleGroup}_${index}`}
-                              align="center"
-                              sx={{
-                                fontSize: isMobile ? 11 : 13,
-                                bgcolor: isActive ? 'primary.main' : 'background.default',
-                                color: isActive ? 'primary.contrastText' : 'text.secondary',
-                                fontWeight: isActive ? 600 : 400,
-                                borderRight: index === 6 ? '2px solid' : '1px solid',
-                                borderColor: 'divider',
-                                borderBottom: '1px solid',
-                                borderBottomColor: 'divider',
-                                minWidth: isMobile ? 25 : 30,
-                                maxWidth: isMobile ? 25 : 30,
-                                width: isMobile ? 25 : 30,
-                                height: isMobile ? 35 : 40,
-                                px: 0,
-                                py: 1,
-                                '&:hover': {
-                                  bgcolor: isActive ? 'primary.dark' : 'background.paper'
-                                }
-                              }}
-                            >
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            Teal cells indicate when each muscle group is trained.
-          </Typography>
-        </CardContent>
-      </Card>
-
-
-
-      {/* Edit Exercise Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={handleCancelEdit}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            bgcolor: 'background.paper'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          pb: 1,
-          fontSize: 13,
-          fontWeight: 600
-        }}>
-          Edit Exercise
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ mb: 3 }}>
-            <ScrollablePicker
-              items={groupedExercises}
-              value={editForm.exercise}
-              onChange={(val) => setEditForm(prev => ({ ...prev, exercise: val }))}
-              label="Select exercise..."
-              grouped={true}
-              getItemLabel={(item) => item.name}
-              getItemValue={(item) => item.name}
-              searchEnabled={true}
-              searchPlaceholder="Search exercises..."
-              buttonHeight={44}
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <FormControl fullWidth size="small" sx={{ flex: 1 }}>
-              <TextField
-                select
-                label="Sets"
-                value={editForm.sets}
-                onChange={(e) => setEditForm(prev => ({ ...prev, sets: parseInt(e.target.value) || 3 }))}
-              >
-                {Array.from({ length: 10 }, (_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </FormControl>
-            <FormControl fullWidth size="small" sx={{ flex: 1 }}>
-              <TextField
-                select
-                label="Target Reps"
-                value={editForm.targetReps}
-                onChange={(e) => setEditForm(prev => ({ ...prev, targetReps: parseInt(e.target.value) || 8 }))}
-              >
-                {Array.from({ length: 30 }, (_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </FormControl>
-          </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 2 }}>
-          <Button 
-            onClick={handleCancelEdit}
-            variant="outlined"
-            sx={{ 
-              minWidth: '100px',
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600
-            }}
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setExerciseDialog(null)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+          <Button
+            onClick={commitExerciseDialog}
+            disabled={!exerciseDialog?.form.exercise}
+            sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#06140F', backgroundColor: TEAL, '&:hover': { backgroundColor: '#00e6b8' }, '&.Mui-disabled': { backgroundColor: 'rgba(0,212,170,0.28)', color: 'rgba(6,20,15,0.45)' } }}
           >
-            Cancel
+            Done
           </Button>
-          <Button 
-            onClick={handleSaveExercise}
-            variant="contained"
-            disabled={!editForm.exercise.trim()}
-            sx={{ 
-              minWidth: '100px',
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Workout dialog ───────────────────────────────────────────────── */}
+      <Dialog
+        open={!!workoutDialog}
+        onClose={() => setWorkoutDialog(null)}
+        fullWidth maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)' } }}
+      >
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>
+          {workoutDialog?.mode === 'new' ? 'New workout' : 'Workout'}
+        </DialogTitle>
+        <DialogContent>
+          {workoutDialog && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, mt: 0.5 }}>
+              <TextField
+                label="Name" size="small" fullWidth autoFocus
+                placeholder="Push A"
+                value={workoutDialog.name}
+                onChange={(e) => setWorkoutDialog((d) => ({ ...d, name: e.target.value }))}
+              />
+              {workoutDialog.mode === 'edit' && (
+                <>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      onClick={() => { moveWorkout(-1); setWorkoutDialog(null); }}
+                      disabled={plan?.workouts.findIndex((w) => w.id === selectedId) === 0}
+                      sx={{ flex: 1, fontSize: 11.5, textTransform: 'none', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}
+                    >
+                      Move earlier
+                    </Button>
+                    <Button
+                      onClick={() => { moveWorkout(1); setWorkoutDialog(null); }}
+                      disabled={plan && plan.workouts.findIndex((w) => w.id === selectedId) >= plan.workouts.length - 1}
+                      sx={{ flex: 1, fontSize: 11.5, textTransform: 'none', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}
+                    >
+                      Move later
+                    </Button>
+                  </Box>
+                  <Button
+                    onClick={() => {
+                      setWorkoutDialog(null);
+                      setConfirm({
+                        title: `Delete “${selected?.name}”?`,
+                        body: 'The workout and its exercises will be removed from your plan.',
+                        onConfirm: deleteWorkout,
+                      });
+                    }}
+                    startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                    sx={{ fontSize: 11.5, textTransform: 'none', color: '#F09595', borderRadius: 2, border: '1px solid rgba(240,149,149,0.3)' }}
+                  >
+                    Delete workout
+                  </Button>
+                </>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setWorkoutDialog(null)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+          <Button
+            onClick={() => {
+              const name = workoutDialog.name.trim();
+              if (!name) return;
+              if (workoutDialog.mode === 'new') addWorkout(name); else renameWorkout(name);
+              setWorkoutDialog(null);
             }}
+            disabled={!workoutDialog?.name.trim()}
+            sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#06140F', backgroundColor: TEAL, '&:hover': { backgroundColor: '#00e6b8' }, '&.Mui-disabled': { backgroundColor: 'rgba(0,212,170,0.28)', color: 'rgba(6,20,15,0.45)' } }}
           >
-            Save
+            {workoutDialog?.mode === 'new' ? 'Create' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Confirm ──────────────────────────────────────────────────────── */}
+      <Dialog
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        PaperProps={{ sx: { borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)' } }}
+      >
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>{confirm?.title}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{confirm?.body}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setConfirm(null)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+          <Button
+            onClick={() => { confirm.onConfirm(); setConfirm(null); }}
+            sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#fff', backgroundColor: '#b33030', '&:hover': { backgroundColor: '#c73c3c' } }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
 
       <Snackbar open={snackbarOpen} autoHideDuration={2000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <MuiAlert onClose={() => setSnackbarOpen(false)} severity="success" sx={{ width: '100%' }}>
-          Plan saved!
+          Plan saved
         </MuiAlert>
       </Snackbar>
     </Box>
   );
 };
 
-export default WorkoutPlanner; 
+export default WorkoutPlanner;
