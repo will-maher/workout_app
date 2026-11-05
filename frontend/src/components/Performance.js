@@ -359,6 +359,10 @@ const Performance = () => {
         type: 'area',
         color: '#00d4aa',
         lineWidth: 2.5,
+        // Area series default to threshold 0, which forces the y-axis to include
+        // zero and squashes the actual 1RM range into a sliver at the top. null
+        // fills to the axis minimum instead, letting softMin above do its job.
+        threshold: null,
         fillColor: {
           linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
           stops: [
