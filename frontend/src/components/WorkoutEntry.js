@@ -25,6 +25,7 @@ import axios from 'axios';
 import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 import { migratePlan, groupExercises } from '../lib/plan';
+import { Panel, PanelLabel, TEAL, hideScrollbarSx, dialogPaperProps } from './ui';
 
 // Format a hold duration for display, e.g. 45 -> "45s", 90 -> "1:30".
 const formatDuration = (secs) => {
@@ -34,48 +35,6 @@ const formatDuration = (secs) => {
   const s = secs % 60;
   return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2, '0')}`;
 };
-
-const TEAL = '#00d4aa';
-
-const hideScrollbarSx = {
-  '&::-webkit-scrollbar': { display: 'none' },
-  msOverflowStyle: 'none',
-  scrollbarWidth: 'none',
-};
-
-// Frosted surface used for every block on the tab, so the screen reads as one
-// system rather than a stack of unrelated sections.
-const Panel = ({ children, sx = {}, ...rest }) => (
-  <Box
-    sx={{
-      borderRadius: 3,
-      border: '1px solid rgba(255,255,255,0.07)',
-      background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.012) 100%)',
-      p: 1.5,
-      ...sx,
-    }}
-    {...rest}
-  >
-    {children}
-  </Box>
-);
-
-const PanelLabel = ({ children, right, sx = {} }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1, ...sx }}>
-    <Typography
-      sx={{
-        fontWeight: 700,
-        fontSize: 10,
-        letterSpacing: '0.11em',
-        textTransform: 'uppercase',
-        color: 'rgba(255,255,255,0.42)',
-      }}
-    >
-      {children}
-    </Typography>
-    {right}
-  </Box>
-);
 
 // Compact completion ring for the planned-workout progress.
 const ProgressRing = ({ value, total, accent, size = 40 }) => {
@@ -948,6 +907,20 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
 
+  // In a superset you alternate exercises set by set, so logging one moves
+  // straight to its partner (wrapping round) with that exercise's target reps.
+  const advanceWithinSuperset = (exerciseName) => {
+    const group = groupExercises(selectedWorkout?.exercises || [])
+      .find((g) => g.items.length > 1 && g.items.some((it) => it.exercise.exercise === exerciseName));
+    if (!group) return;
+    const pos = group.items.findIndex((it) => it.exercise.exercise === exerciseName);
+    const next = group.items[(pos + 1) % group.items.length].exercise;
+    const nextData = exercises.find((ex) => ex.name === next.exercise);
+    if (!nextData || nextData.id === parseInt(selectedExercise, 10)) return;
+    pendingRepsRef.current = next.targetReps ? parseInt(next.targetReps, 10) : null;
+    setSelectedExercise(nextData.id);
+  };
+
   const handleAddSet = () => {
     if (!selectedExercise) {
       setMessage('Please select an exercise');
@@ -977,6 +950,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
       }
       haptic();
       setMessage('');
+      advanceWithinSuperset(exercise.name);
       return;
     }
 
@@ -997,6 +971,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
     haptic();
     setMessage('');
     setReps('');
+    advanceWithinSuperset(exercise.name);
   };
 
   const handleRemoveSet = (setId) => {
@@ -2009,7 +1984,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
             <Dialog
               open={saveConfirmOpen}
               onClose={() => setSaveConfirmOpen(false)}
-              PaperProps={{ sx: { borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)' } }}
+              PaperProps={dialogPaperProps}
             >
               <DialogTitle sx={{ fontSize: 15, fontWeight: 700 }}>Save workout?</DialogTitle>
               <DialogContent>

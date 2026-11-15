@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
   Button,
-  ButtonGroup,
-  Alert,
   Skeleton,
   Chip,
 } from '@mui/material';
@@ -13,10 +11,13 @@ import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
 import { format, parseISO, startOfISOWeek, subMonths, subYears, differenceInCalendarDays } from 'date-fns';
-import { OPTIMAL_RANGES } from './WorkoutPlanner';
+import { OPTIMAL_RANGES } from '../lib/plan';
 import { API_BASE_URL } from '../App';
+import { Panel, PanelLabel, StatCard, pageSx, TEAL, DANGER } from './ui';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const LAST_EXERCISE_KEY = 'performance_last_exercise';
+const SETS_PREVIEW = 12;
 
 const chartText = '#8b949e';
 const gridColor = 'rgba(255, 255, 255, 0.06)';
@@ -79,20 +80,6 @@ function isoWeekToDate(weekStr) {
   return weekStart;
 }
 
-const StatCard = ({ label, value, unit, accent }) => (
-  <Box sx={{ backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 3, p: 1.5 }}>
-    <Typography sx={{ fontSize: 10, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
-      {label}
-    </Typography>
-    <Typography sx={{ fontSize: 18, fontWeight: 700, color: accent || 'text.primary', lineHeight: 1.1 }}>
-      {value}
-      {unit && (
-        <Box component="span" sx={{ fontSize: 11, fontWeight: 500, color: 'text.secondary', ml: 0.5 }}>{unit}</Box>
-      )}
-    </Typography>
-  </Box>
-);
-
 const Performance = () => {
   const [exercises, setExercises] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState('');
@@ -104,6 +91,7 @@ const Performance = () => {
   const [timeRange, setTimeRange] = useState('6m');
   const [goals, setGoals] = useState([]);
   const [showAllSets, setShowAllSets] = useState(false);
+  const latestExercise = useRef('');
 
   useEffect(() => {
     fetchExercises();
@@ -114,7 +102,9 @@ const Performance = () => {
 
   useEffect(() => {
     setShowAllSets(false);
+    latestExercise.current = selectedExercise;
     if (selectedExercise) {
+      try { localStorage.setItem(LAST_EXERCISE_KEY, String(selectedExercise)); } catch {}
       fetchPerformanceData(selectedExercise);
     } else {
       setAllSets([]);
@@ -150,33 +140,47 @@ const Performance = () => {
 
   const fetchExercises = async () => {
     try {
-      setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-      const list = Array.isArray(res.data) ? res.data : [];
+      // Mobility work has no weight or reps, so there is no 1RM to chart.
+      const list = (Array.isArray(res.data) ? res.data : []).filter(e => e.category !== 'mobility');
       setExercises(list);
-      const bench = list.find(e => e.name.toLowerCase().includes('barbell bench press'));
-      if (bench) setSelectedExercise(bench.id);
+      const remembered = parseInt(localStorage.getItem(LAST_EXERCISE_KEY), 10);
+      const start = list.find(e => e.id === remembered)
+        || list.find(e => e.name.toLowerCase().includes('barbell bench press'));
+      if (start) setSelectedExercise(start.id);
     } catch (err) {
       console.error('Error loading exercises:', err);
-      setError('Failed to load exercises');
+      setError('Couldn’t load exercises');
       setExercises([]);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Show the cached sets for this exercise straight away and refresh behind
+  // them, so switching exercise (or opening the tab with no signal) doesn't
+  // blank the whole screen to skeletons.
   const fetchPerformanceData = async (exerciseId) => {
+    const cacheKey = `perf_sets_${exerciseId}`;
+    let hadCache = false;
     try {
-      setLoading(true);
-      setError('');
+      const cached = JSON.parse(localStorage.getItem(cacheKey));
+      if (Array.isArray(cached)) { setAllSets(cached); hadCache = true; }
+    } catch { /* ignore a corrupt cache */ }
+    if (!hadCache) setAllSets([]);
+    setLoading(!hadCache);
+    setError('');
+    try {
       const res = await axios.get(`${API_BASE_URL}/api/stats/performance/sets?exercise_id=${exerciseId}`);
-      setAllSets(res.data);
+      const data = Array.isArray(res.data) ? res.data : [];
+      // Ignore a response for an exercise the user has already moved off.
+      if (latestExercise.current !== exerciseId) return;
+      setAllSets(data);
+      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
     } catch (err) {
       console.error('Error fetching performance data:', err);
-      setError('Failed to load performance data');
-      setAllSets([]);
+      if (latestExercise.current !== exerciseId) return;
+      if (!hadCache) setError('Couldn’t load this exercise');
     } finally {
-      setLoading(false);
+      if (latestExercise.current === exerciseId) setLoading(false);
     }
   };
 
@@ -302,7 +306,7 @@ const Performance = () => {
       zoomType: 'xy',
       backgroundColor: 'transparent',
       style: { fontFamily: 'inherit' },
-      height: 320,
+      height: 280,
       spacing: [8, 4, 8, 4],
     },
     title: { text: '' },
@@ -472,7 +476,7 @@ const Performance = () => {
   );
 
   const groupedSets = useMemo(() => {
-    const setsToShow = showAllSets ? sortedSets : sortedSets.slice(0, 30);
+    const setsToShow = showAllSets ? sortedSets : sortedSets.slice(0, SETS_PREVIEW);
     const groups = {};
     setsToShow.forEach(set => {
       const key = set.date.slice(0, 10);
@@ -482,131 +486,162 @@ const Performance = () => {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [sortedSets, showAllSets]);
 
-  const sectionTitleSx = {
-    fontWeight: 700,
-    fontSize: 11,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: 'text.secondary',
-    mb: 1,
-  };
-
   const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', 'all': 'all time' }[timeRange];
 
   return (
-    <Box maxWidth={600} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
-      <Box sx={{ mb: 2 }}>
-        <ScrollablePicker
-          items={exerciseGroups}
-          value={selectedExercise}
-          onChange={setSelectedExercise}
-          label="Select Exercise"
-          grouped
-          getGroupLabel={(g) => g.label}
-          searchEnabled
-          searchPlaceholder="Search exercises..."
-        />
-      </Box>
-
-      <Box sx={{ mb: 2 }}>
-        <ButtonGroup size="small" variant="outlined" fullWidth>
-          {[['3m', '3 mo'], ['6m', '6 mo'], ['1y', '1 yr'], ['all', 'All']].map(([key, label]) => (
-            <Button
-              key={key}
-              variant={timeRange === key ? 'contained' : 'outlined'}
-              onClick={() => setTimeRange(key)}
-              sx={{ flex: 1, fontSize: 12 }}
-            >
-              {label}
-            </Button>
-          ))}
-        </ButtonGroup>
-      </Box>
-
-      {loading ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
-          </Box>
-          <Skeleton variant="rounded" height={300} />
-        </Box>
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
-      ) : !selectedExercise ? (
-        <Typography color="text.secondary" align="center" py={6} sx={{ fontSize: 13 }}>
-          Pick an exercise to see your progress
-        </Typography>
-      ) : filteredDailyMaxPoints.length === 0 ? (
-        <Typography color="text.secondary" align="center" py={6} sx={{ fontSize: 13 }}>
-          No data for this exercise in the last {rangeLabel}
-        </Typography>
-      ) : (
-        <>
-          {headline && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, mb: 2 }}>
-              <StatCard label="Est. 1RM" value={headline.current.toFixed(1)} unit="kg" accent="primary.main" />
-              <StatCard label="All-time best" value={headline.best.toFixed(1)} unit="kg" />
-              <StatCard
-                label="30d change"
-                value={headline.change30 == null ? '—' : `${headline.change30 >= 0 ? '+' : ''}${headline.change30.toFixed(1)}`}
-                unit={headline.change30 == null ? '' : 'kg'}
-                accent={headline.change30 == null ? 'text.secondary' : headline.change30 >= 0 ? 'primary.main' : '#F09595'}
-              />
-              <StatCard label="Sessions" value={sessionsCount} unit={rangeLabel} />
-            </Box>
-          )}
-
-          {activeGoal && (
-            <Box sx={{ mb: 1.5, p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'text.secondary' }}>
-                  Goal · {Math.max(0, differenceInCalendarDays(parseISO(activeGoal.target_date), new Date()))}d left
-                </Typography>
-                <Chip
-                  label={activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind'}
-                  size="small"
+    <Box sx={pageSx}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+        <Panel sx={{ p: 1.25 }}>
+          <ScrollablePicker
+            items={exerciseGroups}
+            value={selectedExercise}
+            onChange={setSelectedExercise}
+            label="Select an exercise"
+            grouped
+            getGroupLabel={(g) => g.label}
+            searchEnabled
+            searchPlaceholder="Search exercises..."
+            inputBackground="rgba(255,255,255,0.03)"
+            buttonHeight={42}
+          />
+          <Box
+            role="tablist"
+            sx={{ display: 'flex', mt: 1, p: '3px', borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            {[['3m', '3 mo'], ['6m', '6 mo'], ['1y', '1 yr'], ['all', 'All']].map(([key, label]) => {
+              const on = timeRange === key;
+              return (
+                <Box
+                  key={key}
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setTimeRange(key)}
                   sx={{
-                    fontSize: 10,
-                    height: 18,
-                    fontWeight: 600,
-                    color: '#04342C',
-                    backgroundColor: activeGoal.achieved ? '#9FE1CB' : activeGoal.on_track ? '#5DCAA5' : '#FAC775',
+                    flex: 1, textAlign: 'center', py: 0.875, borderRadius: 1.5, cursor: 'pointer', userSelect: 'none',
+                    fontSize: 12, fontWeight: 700,
+                    color: on ? '#06140F' : 'rgba(255,255,255,0.55)',
+                    backgroundColor: on ? TEAL : 'transparent',
+                    transition: 'background-color .18s ease, color .18s ease',
                   }}
+                >
+                  {label}
+                </Box>
+              );
+            })}
+          </Box>
+        </Panel>
+
+        {loading ? (
+          <>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+              {[0, 1, 2, 3].map((i) => <Skeleton key={i} variant="rounded" height={58} sx={{ borderRadius: 3 }} />)}
+            </Box>
+            <Skeleton variant="rounded" height={300} sx={{ borderRadius: 3 }} />
+          </>
+        ) : error ? (
+          <Panel sx={{ py: 4, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>{error}</Typography>
+            <Button
+              variant="outlined" size="small" sx={{ fontSize: 12.5, textTransform: 'none' }}
+              onClick={() => (selectedExercise ? fetchPerformanceData(selectedExercise) : fetchExercises())}
+            >
+              Retry
+            </Button>
+          </Panel>
+        ) : !selectedExercise ? (
+          <Panel sx={{ py: 5, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>Pick an exercise to see your progress</Typography>
+          </Panel>
+        ) : filteredDailyMaxPoints.length === 0 ? (
+          <Panel sx={{ py: 5, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              {allSets.length === 0 ? 'No sets logged for this exercise yet' : `Nothing logged in the last ${rangeLabel}`}
+            </Typography>
+          </Panel>
+        ) : (
+          <>
+            {headline && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+                <StatCard label="Est. 1RM" value={headline.current.toFixed(1)} unit="kg" accent={TEAL} />
+                <StatCard label="All-time best" value={headline.best.toFixed(1)} unit="kg" />
+                <StatCard
+                  label="30 day change"
+                  value={headline.change30 == null ? '—' : `${headline.change30 >= 0 ? '+' : ''}${headline.change30.toFixed(1)}`}
+                  unit={headline.change30 == null ? '' : 'kg'}
+                  accent={headline.change30 == null ? undefined : headline.change30 >= 0 ? TEAL : DANGER}
                 />
+                <StatCard label="Sessions" value={sessionsCount} unit={`in ${rangeLabel}`} />
               </Box>
-              <Box sx={{ height: 4, borderRadius: 2, backgroundColor: 'divider', mb: 1 }}>
-                <Box sx={{ height: '100%', borderRadius: 2, width: `${activeGoal.progress * 100}%`, backgroundColor: 'primary.main', transition: 'width 0.4s ease' }} />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                  <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>{activeGoal.current_one_rm} kg</Box>
-                  {' → '}
-                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{activeGoal.target_one_rm} kg</Box>
-                </Typography>
-                <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                  by {format(parseISO(activeGoal.target_date), 'd MMM yyyy')}
-                </Typography>
-              </Box>
-            </Box>
-          )}
+            )}
 
-          <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            {activeGoal && (
+              <Panel>
+                <PanelLabel
+                  right={
+                    <Chip
+                      label={activeGoal.achieved ? 'achieved' : activeGoal.on_track ? 'on track' : 'behind'}
+                      size="small"
+                      sx={{
+                        fontSize: 9.5, height: 19, fontWeight: 700, letterSpacing: '0.03em', color: '#04342C',
+                        backgroundColor: activeGoal.achieved ? '#9FE1CB' : activeGoal.on_track ? '#5DCAA5' : '#FAC775',
+                      }}
+                    />
+                  }
+                >
+                  Goal · {Math.max(0, differenceInCalendarDays(parseISO(activeGoal.target_date), new Date()))}d left
+                </PanelLabel>
+                <Box sx={{ height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', mb: 1 }}>
+                  <Box sx={{ height: '100%', borderRadius: 3, width: `${Math.min(100, activeGoal.progress * 100)}%`, background: `linear-gradient(90deg, ${TEAL}99 0%, ${TEAL} 100%)`, transition: 'width 0.4s ease' }} />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontVariantNumeric: 'tabular-nums' }}>
+                  <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                    <Box component="span" sx={{ color: TEAL, fontWeight: 700 }}>{activeGoal.current_one_rm} kg</Box>
+                    {' → '}
+                    <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{activeGoal.target_one_rm} kg</Box>
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                    by {format(parseISO(activeGoal.target_date), 'd MMM yyyy')}
+                  </Typography>
+                </Box>
+              </Panel>
+            )}
 
-          {weeklySetsChartOptions && (
-            <Box mt={3}>
-              <Typography sx={sectionTitleSx}>
-                Weekly sets — {muscleGroup}
-              </Typography>
-              <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
-            </Box>
-          )}
+            <Panel sx={{ pb: 0.5 }}>
+              <PanelLabel
+                right={
+                  <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 14, height: 2, backgroundColor: TEAL, borderRadius: 1 }} />
+                      <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)' }}>trend</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 7, height: 7, backgroundColor: '#facc15', transform: 'rotate(45deg)' }} />
+                      <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)' }}>best</Typography>
+                    </Box>
+                    {activeGoal && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 14, height: 0, borderTop: '2px dashed rgba(255,255,255,0.45)' }} />
+                        <Typography sx={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)' }}>goal</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                }
+              >
+                Estimated 1RM
+              </PanelLabel>
+              <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            </Panel>
 
-          {volumeData.length > 1 && (
-            <Box mt={3}>
-              <Typography sx={sectionTitleSx}>Session volume</Typography>
+            {weeklySetsChartOptions && (
+              <Panel sx={{ pb: 0.5 }}>
+                <PanelLabel>Weekly sets · {muscleGroup}</PanelLabel>
+                <HighchartsReact highcharts={Highcharts} options={weeklySetsChartOptions} />
+              </Panel>
+            )}
+
+            {volumeData.length > 1 && (
+              <Panel sx={{ pb: 0.5 }}>
+                <PanelLabel>Session volume</PanelLabel>
               <HighchartsReact highcharts={Highcharts} options={{
                 chart: {
                   type: 'column',
@@ -645,53 +680,51 @@ const Performance = () => {
                 series: [{
                   name: 'Volume',
                   data: volumeData,
-                  color: 'rgba(99, 102, 241, 0.75)',
+                  color: 'rgba(0, 212, 170, 0.45)',
                 }],
                 credits: { enabled: false },
                 legend: { enabled: false },
               }} />
-            </Box>
-          )}
+              </Panel>
+            )}
 
-          <Box mt={3}>
-            <Typography sx={sectionTitleSx}>
-              Logged sets
-            </Typography>
-            <Box>
+            <Panel>
+              <PanelLabel
+                right={<Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>{sortedSets.length} sets</Typography>}
+              >
+                Logged sets
+              </PanelLabel>
               {groupedSets.map(([date, dateSets]) => (
-                <Box key={date}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-                    {format(parseISO(date), 'd MMM yyyy')}
+                <Box key={date} sx={{ mb: 0.75 }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.4)', mb: 0.25 }}>
+                    {format(parseISO(date), 'EEE d MMM yyyy')}
                   </Typography>
                   {dateSets.map((row, idx) => (
                     <Box
                       key={`${row.set_number}-${idx}`}
-                      sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}
+                      sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.375, fontVariantNumeric: 'tabular-nums' }}
                     >
-                      <Typography sx={{ fontSize: 13 }}>
-                        {row.weight} kg × {row.reps}
-                      </Typography>
-                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: 13 }}>{row.weight} kg × {row.reps}</Typography>
+                      <Typography sx={{ fontSize: 11.5, color: 'rgba(255,255,255,0.4)' }}>
                         {calc1RM(row.weight, row.reps).toFixed(1)} kg 1RM
                       </Typography>
                     </Box>
                   ))}
                 </Box>
               ))}
-            </Box>
-            {sortedSets.length > 30 && (
-              <Button
-                size="small"
-                onClick={() => setShowAllSets(v => !v)}
-                sx={{ mt: 1, fontSize: 12, color: 'text.secondary' }}
-                fullWidth
-              >
-                {showAllSets ? 'Show less' : `Show all ${sortedSets.length} sets`}
-              </Button>
-            )}
-          </Box>
-        </>
-      )}
+              {sortedSets.length > SETS_PREVIEW && (
+                <Button
+                  onClick={() => setShowAllSets(v => !v)}
+                  fullWidth
+                  sx={{ mt: 0.5, fontSize: 12, textTransform: 'none', color: 'rgba(255,255,255,0.55)' }}
+                >
+                  {showAllSets ? 'Show fewer' : `Show all ${sortedSets.length} sets`}
+                </Button>
+              )}
+            </Panel>
+          </>
+        )}
+      </Box>
     </Box>
   );
 };

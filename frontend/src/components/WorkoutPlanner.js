@@ -24,6 +24,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
+import { Panel, PanelLabel, TEAL } from './ui';
 import {
   migratePlan,
   emptyPlan,
@@ -40,32 +41,6 @@ import {
 // Re-exported so existing importers keep working; the data itself now lives in
 // the plan module rather than in a view.
 export { OPTIMAL_RANGES };
-
-const TEAL = '#00d4aa';
-
-const Panel = ({ children, sx = {}, ...rest }) => (
-  <Box
-    sx={{
-      borderRadius: 3,
-      border: '1px solid rgba(255,255,255,0.07)',
-      background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.012) 100%)',
-      p: 1.5,
-      ...sx,
-    }}
-    {...rest}
-  >
-    {children}
-  </Box>
-);
-
-const PanelLabel = ({ children, right, sx = {} }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1, ...sx }}>
-    <Typography sx={{ fontWeight: 700, fontSize: 10, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)' }}>
-      {children}
-    </Typography>
-    {right}
-  </Box>
-);
 
 const WorkoutPlanner = ({ user }) => {
   const [plan, setPlan] = useState(null);

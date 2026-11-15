@@ -7,7 +7,6 @@ import {
   IconButton,
   Skeleton,
   Chip,
-  Alert,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import Highcharts from 'highcharts';
@@ -15,6 +14,7 @@ import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
 import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { API_BASE_URL } from '../App';
+import { Panel, PanelLabel, PageHeader, StatCard, pageSx, TEAL } from './ui';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -80,23 +80,9 @@ function trendValueAt(line, targetTime) {
   return line[idx][1];
 }
 
-const StatCard = ({ label, value, unit, accent }) => (
-  <Box sx={{ backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 3, p: 1.5 }}>
-    <Typography sx={{ fontSize: 10, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
-      {label}
-    </Typography>
-    <Typography sx={{ fontSize: 18, fontWeight: 700, color: accent || 'text.primary', lineHeight: 1.1 }}>
-      {value}
-      {unit && (
-        <Box component="span" sx={{ fontSize: 11, fontWeight: 500, color: 'text.secondary', ml: 0.5 }}>{unit}</Box>
-      )}
-    </Typography>
-  </Box>
-);
-
 const ChangeRow = ({ label, delta }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{label}</Typography>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+    <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{label}</Typography>
     <Typography sx={{ fontSize: 13, fontWeight: 600, color: delta == null ? 'text.secondary' : delta >= 0 ? 'primary.main' : '#F09595' }}>
       {delta == null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} kg`}
     </Typography>
@@ -243,7 +229,7 @@ const GoalDetail = () => {
             color: 'rgba(250, 199, 117, 0.5)',
             dashStyle: 'Dash',
             width: 1.5,
-            label: { text: `Target ${goal.target_one_rm} kg`, align: 'right', style: { color: '#FAC775', fontSize: '10px' } },
+            label: { text: `Target ${goal.target_one_rm} kg`, align: 'left', x: 4, style: { color: '#FAC775', fontSize: '10px' } },
             zIndex: 3,
           }]
         : [],
@@ -297,117 +283,95 @@ const GoalDetail = () => {
     credits: { enabled: false },
   }), [scatterData, loessLine, prPoint, goalSeries, goal]);
 
-  const sectionTitleSx = {
-    fontWeight: 700,
-    fontSize: 11,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: 'text.secondary',
-    mb: 1,
-  };
-
   const status = goal ? (goal.achieved ? 'achieved' : goal.on_track ? 'on track' : 'behind') : '';
   const statusColor = goal ? (goal.achieved ? '#9FE1CB' : goal.on_track ? '#5DCAA5' : '#FAC775') : '#5DCAA5';
 
   return (
-    <Box maxWidth={600} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconButton size="small" onClick={() => navigate('/goals')} sx={{ ml: -0.5 }}>
-          <ArrowBackIcon sx={{ fontSize: 20 }} />
-        </IconButton>
-        <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' }}>
-          {goal ? goal.exercise_name : 'Goal'}
-        </Typography>
-      </Box>
+    <Box sx={pageSx}>
+      <PageHeader
+        title={goal ? goal.exercise_name : 'Goal'}
+        left={
+          <IconButton aria-label="Back to goals" onClick={() => navigate('/goals')} sx={{ ml: -1, p: 1, color: 'rgba(255,255,255,0.7)' }}>
+            <ArrowBackIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        }
+      />
 
       {loading ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Skeleton variant="rounded" height={72} />
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
-            <Skeleton variant="rounded" height={64} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+          <Skeleton variant="rounded" height={84} sx={{ borderRadius: 3 }} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} variant="rounded" height={58} sx={{ borderRadius: 3 }} />)}
           </Box>
-          <Skeleton variant="rounded" height={300} />
+          <Skeleton variant="rounded" height={300} sx={{ borderRadius: 3 }} />
         </Box>
       ) : error ? (
-        <Box sx={{ py: 4 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-          <Button variant="outlined" size="small" onClick={loadGoal} sx={{ fontSize: 13 }}>Retry</Button>
-        </Box>
+        <Panel sx={{ py: 4, textAlign: 'center' }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>{error}</Typography>
+          {/* A goal that no longer exists can't be retried into existence. */}
+          {error === 'Goal not found'
+            ? <Button variant="outlined" size="small" onClick={() => navigate('/goals')} sx={{ fontSize: 12.5, textTransform: 'none' }}>Back to goals</Button>
+            : <Button variant="outlined" size="small" onClick={loadGoal} sx={{ fontSize: 12.5, textTransform: 'none' }}>Retry</Button>}
+        </Panel>
       ) : goal ? (
-        <>
-          {/* Goal progress card */}
-          <Box sx={{ mb: 2, p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-              <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'text.secondary' }}>
-                {daysLeft}d left
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+          <Panel>
+            <PanelLabel
+              right={<Chip label={status} size="small" sx={{ fontSize: 9.5, height: 19, fontWeight: 700, letterSpacing: '0.03em', color: '#04342C', backgroundColor: statusColor }} />}
+            >
+              {daysLeft}d left · by {format(parseISO(goal.target_date), 'd MMM yyyy')}
+            </PanelLabel>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, mb: 1 }}>
+              <Typography sx={{ fontSize: 22, fontWeight: 700, color: TEAL, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                {goal.current_one_rm}
               </Typography>
-              <Chip
-                label={status}
-                size="small"
-                sx={{ fontSize: 10, height: 18, fontWeight: 600, color: '#04342C', backgroundColor: statusColor }}
-              />
+              <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>→ {goal.target_one_rm} kg</Typography>
             </Box>
-            <Box sx={{ height: 6, borderRadius: 3, backgroundColor: 'divider', mb: 1 }}>
-              <Box sx={{ height: '100%', borderRadius: 3, width: `${goal.progress * 100}%`, backgroundColor: 'primary.main', transition: 'width 0.4s ease' }} />
+            <Box sx={{ height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <Box sx={{ height: '100%', borderRadius: 3, width: `${Math.min(100, goal.progress * 100)}%`, background: `linear-gradient(90deg, ${TEAL}99 0%, ${TEAL} 100%)`, transition: 'width 0.4s ease' }} />
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>{goal.current_one_rm} kg</Box>
-                {' → '}
-                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{goal.target_one_rm} kg</Box>
-              </Typography>
-              <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                by {format(parseISO(goal.target_date), 'd MMM yyyy')}
-              </Typography>
-            </Box>
-          </Box>
+          </Panel>
 
-          {/* Headline stats */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, mb: 2 }}>
-            <StatCard label="Est. 1RM" value={goal.current_one_rm} unit="kg" accent="primary.main" />
-            <StatCard label="Target" value={goal.target_one_rm} unit="kg" />
+          {/* Current and target are already in the card above, so only the two
+              figures it doesn't show are repeated here. */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
             <StatCard label="All-time best" value={allTimeBest ? allTimeBest.value.toFixed(1) : '—'} unit={allTimeBest ? 'kg' : ''} />
             <StatCard
               label="Needed"
-              value={requiredRate == null ? '—' : requiredRate === 0 ? '0' : `+${requiredRate.toFixed(1)}`}
-              unit={requiredRate == null || requiredRate === 0 ? '' : 'kg/wk'}
-              accent={goal.achieved ? 'primary.main' : 'text.primary'}
+              value={requiredRate == null ? '—' : requiredRate === 0 ? 'Done' : `+${requiredRate.toFixed(1)}`}
+              unit={requiredRate == null || requiredRate === 0 ? '' : 'kg / week'}
+              accent={goal.achieved ? TEAL : undefined}
             />
           </Box>
 
-          {/* 1RM progression chart */}
           {scatterData.length === 0 ? (
-            <Typography color="text.secondary" align="center" py={6} sx={{ fontSize: 13 }}>
-              No logged sets for this exercise yet
-            </Typography>
+            <Panel sx={{ py: 5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>No logged sets for this exercise yet</Typography>
+            </Panel>
           ) : (
             <>
-              <Typography sx={sectionTitleSx}>Estimated 1RM over time</Typography>
-              <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+              <Panel sx={{ pb: 0.5 }}>
+                <PanelLabel>Estimated 1RM over time</PanelLabel>
+                <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+              </Panel>
 
-              {/* Historic performance changes */}
               {changes && (
-                <Box mt={3}>
-                  <Typography sx={sectionTitleSx}>Progress</Typography>
-                  <Box>
-                    <ChangeRow label="Last 30 days" delta={changes.d30} />
-                    <ChangeRow label="Last 90 days" delta={changes.d90} />
-                    <ChangeRow label={`Since goal start (${format(parseISO(goal.start_date), 'd MMM')})`} delta={changes.sinceStart} />
-                  </Box>
+                <Panel>
+                  <PanelLabel>Progress</PanelLabel>
+                  <ChangeRow label="Last 30 days" delta={changes.d30} />
+                  <ChangeRow label="Last 90 days" delta={changes.d90} />
+                  <ChangeRow label={`Since goal start (${format(parseISO(goal.start_date), 'd MMM')})`} delta={changes.sinceStart} />
                   {allTimeBest && (
-                    <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 1 }}>
+                    <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', mt: 1 }}>
                       All-time best of <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>{allTimeBest.value.toFixed(1)} kg</Box>
                       {' '}on {format(new Date(allTimeBest.date), 'd MMM yyyy')}
                     </Typography>
                   )}
-                </Box>
+                </Panel>
               )}
             </>
           )}
-        </>
+        </Box>
       ) : null}
     </Box>
   );

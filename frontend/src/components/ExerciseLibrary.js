@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
   Button,
   Dialog,
   DialogTitle,
@@ -15,24 +9,16 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
   Alert,
-  CircularProgress,
+  Skeleton,
   Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import IconButton from '@mui/material/IconButton';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axios from 'axios';
 import { API_BASE_URL, MOBILITY_PINK } from '../App';
-
-const TRACKING_LABELS = {
-  duration: 'Timed hold',
-  checkoff: 'Check off',
-  weight_reps: 'Weight & reps',
-};
+import { Panel, PanelLabel, PageHeader, pageSx, primaryButtonSx, dialogPaperProps, DANGER } from './ui';
 
 const muscleGroups = [
   'Chest',
@@ -50,393 +36,283 @@ const muscleGroups = [
   'Abs',
 ];
 
+const CACHE_KEY = 'exercise_library_cache';
+const emptyForm = { id: null, name: '', muscle_group: '', category: 'strength', tracking_type: 'duration', notes: '' };
+
 const ExerciseLibrary = () => {
-  const [exercises, setExercises] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [open, setOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newMuscle, setNewMuscle] = useState('');
-  const [newNotes, setNewNotes] = useState('');
-  const [newCategory, setNewCategory] = useState('strength');
-  const [newTracking, setNewTracking] = useState('duration');
-  const [addError, setAddError] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [exerciseToDelete, setExerciseToDelete] = useState(null);
-  
-  // Edit exercise state
-  const [editOpen, setEditOpen] = useState(false);
-  const [editingExercise, setEditingExercise] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editMuscle, setEditMuscle] = useState('');
-  const [editNotes, setEditNotes] = useState('');
-  const [editCategory, setEditCategory] = useState('strength');
-  const [editTracking, setEditTracking] = useState('weight_reps');
-  const [editError, setEditError] = useState('');
-  const [editing, setEditing] = useState(false);
-  const sectionSx = {
-    borderBottom: '1px solid',
-    borderColor: 'divider',
-    borderRadius: 0,
-    boxShadow: 'none',
-    bgcolor: 'transparent',
-  };
+  const [exercises, setExercises] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+      return Array.isArray(cached) ? cached : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchExercises();
-  }, []);
+  // One form for both adding and editing; `form.id` decides which.
+  const [form, setForm] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // Refreshes in place: the list stays on screen (and keeps its scroll
+  // position) instead of being swapped for a spinner on every change.
   const fetchExercises = async () => {
-    setLoading(true);
-    setError('');
     try {
       const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-      // Ensure exercises is always an array
-      setExercises(Array.isArray(res.data) ? res.data : []);
+      const list = Array.isArray(res.data) ? res.data : [];
+      setExercises(list);
+      setLoadError(false);
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch {}
     } catch (err) {
       console.error('Error loading exercises:', err);
-      setError('Failed to load exercises');
-      setExercises([]); // Set empty array on error
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAdd = async () => {
-    if (!newName.trim() || !newMuscle) {
-      setAddError('Name and muscle group are required');
+  useEffect(() => { fetchExercises(); }, []);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.muscle_group) {
+      setFormError('Name and muscle group are required');
       return;
     }
-    setAddError('');
-    setAdding(true);
+    setFormError('');
+    setBusy(true);
+    const body = {
+      name: form.name.trim(),
+      muscle_group: form.muscle_group,
+      category: form.category,
+      tracking_type: form.category === 'mobility' ? form.tracking_type : 'weight_reps',
+      notes: form.notes.trim(),
+    };
     try {
-      await axios.post(`${API_BASE_URL}/api/exercises`, {
-        name: newName.trim(),
-        muscle_group: newMuscle,
-        category: newCategory,
-        tracking_type: newCategory === 'mobility' ? newTracking : 'weight_reps',
-        notes: newNotes.trim(),
-      });
-      setOpen(false);
-      setNewName('');
-      setNewMuscle('');
-      setNewNotes('');
-      setNewCategory('strength');
-      setNewTracking('duration');
+      if (form.id) await axios.put(`${API_BASE_URL}/api/exercises/${form.id}`, body);
+      else await axios.post(`${API_BASE_URL}/api/exercises`, body);
+      setForm(null);
       fetchExercises();
     } catch (err) {
-      setAddError(err.response?.data?.error || 'Failed to add exercise');
+      setFormError(err.response?.data?.error || 'Couldn’t save the exercise');
     } finally {
-      setAdding(false);
+      setBusy(false);
     }
   };
 
-  const handleDeleteExercise = async () => {
-    if (!exerciseToDelete) return;
+  const handleDelete = async () => {
+    const target = confirmDelete;
+    setConfirmDelete(null);
     try {
-      await axios.delete(`${API_BASE_URL}/api/exercises/${exerciseToDelete.id}`);
+      await axios.delete(`${API_BASE_URL}/api/exercises/${target.id}`);
+      setForm(null);
       fetchExercises();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete exercise');
-    } finally {
-      setDeleteDialogOpen(false);
-      setExerciseToDelete(null);
+      // Shown as a dismissible notice. This used to replace the whole list
+      // with an error, which made a refused delete look like a broken page.
+      setNotice(err.response?.data?.error || 'Couldn’t delete the exercise');
     }
   };
 
-  const handleEdit = (exercise) => {
-    setEditingExercise(exercise);
-    setEditName(exercise.name);
-    setEditMuscle(exercise.muscle_group);
-    setEditNotes(exercise.notes || '');
-    setEditCategory(exercise.category || 'strength');
-    setEditTracking(exercise.tracking_type || (exercise.category === 'mobility' ? 'duration' : 'weight_reps'));
-    setEditError('');
-    setEditOpen(true);
-  };
+  const groups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? exercises.filter((ex) => ex.name.toLowerCase().includes(q) || (ex.muscle_group || '').toLowerCase().includes(q))
+      : exercises;
+    const grouped = filtered.reduce((acc, ex) => {
+      const mg = ex.muscle_group || 'Other';
+      if (!acc[mg]) acc[mg] = [];
+      acc[mg].push(ex);
+      return acc;
+    }, {});
+    const order = [
+      ...muscleGroups.filter((mg) => grouped[mg]),
+      ...Object.keys(grouped).filter((mg) => !muscleGroups.includes(mg)).sort(),
+    ];
+    return order.map((mg) => ({
+      label: mg,
+      items: grouped[mg].slice().sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, [exercises, search]);
 
-  const handleSaveEdit = async () => {
-    if (!editName.trim() || !editMuscle) {
-      setEditError('Name and muscle group are required');
-      return;
-    }
-    setEditError('');
-    setEditing(true);
-    try {
-      await axios.put(`${API_BASE_URL}/api/exercises/${editingExercise.id}`, {
-        name: editName.trim(),
-        muscle_group: editMuscle,
-        category: editCategory,
-        tracking_type: editCategory === 'mobility' ? editTracking : 'weight_reps',
-        notes: editNotes.trim(),
-      });
-      setEditOpen(false);
-      setEditingExercise(null);
-      setEditName('');
-      setEditMuscle('');
-      setEditNotes('');
-      fetchExercises();
-    } catch (err) {
-      setEditError(err.response?.data?.error || 'Failed to update exercise');
-    } finally {
-      setEditing(false);
-    }
-  };
-
-  // Group exercises by muscle group, using muscleGroups order
-  const grouped = exercises.reduce((acc, ex) => {
-    if (!acc[ex.muscle_group]) acc[ex.muscle_group] = [];
-    acc[ex.muscle_group].push(ex);
-    return acc;
-  }, {});
-  // Use muscleGroups order, then any extra groups alphabetically
-  const sortedGroups = [
-    ...muscleGroups.filter(mg => grouped[mg]),
-    ...Object.keys(grouped).filter(mg => !muscleGroups.includes(mg)).sort()
-  ];
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   return (
-    <Box maxWidth={480} mx="auto" mt={2} px={{ xs: 1.5, sm: 0 }} sx={{ '& .MuiTypography-root': { fontSize: 13 } }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" fontWeight={700} sx={{ fontSize: 13 }}>
-          Exercise Library
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{ fontWeight: 600 }}
-          onClick={() => setOpen(true)}
-        >
-          Add Exercise
-        </Button>
-      </Box>
-      {loading ? (
-        <Box display="flex" justifyContent="center" py={4}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
-      ) : (
-        <Card sx={sectionSx}>
-          <CardContent sx={{ p: 1 }}>
-            {Array.isArray(sortedGroups) && sortedGroups.map((mg, idx) => (
-              <Box key={mg} mb={1}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: idx !== 0 ? 2 : 0, mb: 0.5, color: 'primary.main', fontSize: 13 }}>
-                  {mg}
-                </Typography>
-                <List dense disablePadding>
-                  {Array.isArray(grouped[mg]) && grouped[mg]
-                    .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((ex, i) => (
-                      <React.Fragment key={ex.id}>
-                        <ListItem
-                          sx={{
-                            py: 0.5,
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'background.default' }
-                          }}
-                          onClick={() => handleEdit(ex)}
-                          secondaryAction={
-                            <IconButton
-                              edge="end"
-                              size="small"
-                              color="error"
-                              onClick={(e) => { e.stopPropagation(); setExerciseToDelete(ex); setDeleteDialogOpen(true); }}
-                              sx={{ p: 0.5, opacity: 0.6 }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          }
-                        >
-                          <ListItemText
-                            primary={
-                              <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                  <Typography fontWeight={600} sx={{ fontSize: 13 }}>
-                                    {ex.name}
-                                  </Typography>
-                                  {ex.category === 'mobility' && (
-                                    <Chip
-                                      label={TRACKING_LABELS[ex.tracking_type] === 'Check off' ? 'mobility · check' : 'mobility'}
-                                      size="small"
-                                      variant="outlined"
-                                      sx={{
-                                        height: 16,
-                                        fontSize: 9,
-                                        fontWeight: 700,
-                                        letterSpacing: '0.04em',
-                                        color: MOBILITY_PINK,
-                                        borderColor: MOBILITY_PINK,
-                                        backgroundColor: 'transparent',
-                                        '& .MuiChip-label': { px: 0.75 },
-                                      }}
-                                    />
-                                  )}
-                                </Box>
-                                {ex.notes && (
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{
-                                      fontSize: 11,
-                                      fontStyle: 'italic',
-                                      display: 'block',
-                                      mt: 0.5
-                                    }}
-                                  >
-                                    {ex.notes}
-                                  </Typography>
-                                )}
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {i < grouped[mg].length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                </List>
-              </Box>
-            ))}
-            {exercises.length === 0 && (
-              <Typography color="text.secondary" align="center" py={2} sx={{ fontSize: 13 }}>
-                No exercises found
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
+    <Box sx={pageSx}>
+      <PageHeader
+        title="Exercise Library"
+        right={
+          <Button startIcon={<AddIcon sx={{ fontSize: 16 }} />} onClick={() => { setFormError(''); setForm({ ...emptyForm }); }} sx={primaryButtonSx}>
+            Add
+          </Button>
+        }
+      />
+
+      {notice && (
+        <Alert severity="error" onClose={() => setNotice('')} sx={{ mb: 1.25, fontSize: 12, borderRadius: 2 }}>{notice}</Alert>
       )}
-      <Dialog open={open} onClose={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setNewCategory('strength'); setNewTracking('duration'); setAddError(''); }}>
-        <DialogTitle sx={{ fontSize: 13 }}>Add New Exercise</DialogTitle>
-        <DialogContent>
+      {loadError && exercises.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 1.25, fontSize: 12, borderRadius: 2 }} action={<Button color="inherit" size="small" onClick={fetchExercises}>Retry</Button>}>
+          Showing your last loaded list — couldn't reach the server.
+        </Alert>
+      )}
+
+      {loading && exercises.length === 0 ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} variant="rounded" height={120} sx={{ borderRadius: 3 }} />)}
+        </Box>
+      ) : loadError && exercises.length === 0 ? (
+        <Panel sx={{ py: 5, textAlign: 'center' }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>Couldn't load exercises</Typography>
+          <Button variant="outlined" size="small" onClick={() => { setLoading(true); fetchExercises(); }} sx={{ fontSize: 12.5, textTransform: 'none' }}>
+            Retry
+          </Button>
+        </Panel>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
           <TextField
-            label="Exercise Name"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${exercises.length} exercises`}
+            size="small"
             fullWidth
-            sx={{ mb: 2, mt: 0.5 }}
-            autoFocus
+            inputProps={{ 'aria-label': 'Search exercises' }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2, fontSize: 13, backgroundColor: 'rgba(255,255,255,0.03)',
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.09)' },
+              },
+            }}
           />
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Muscle Group</InputLabel>
-            <Select
-              value={newMuscle}
-              onChange={e => setNewMuscle(e.target.value)}
-              label="Muscle Group"
-            >
-              {Array.isArray(muscleGroups) && muscleGroups.map(mg => (
-                <MenuItem key={mg} value={mg}>{mg}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Type</InputLabel>
-            <Select value={newCategory} onChange={e => setNewCategory(e.target.value)} label="Type">
-              <MenuItem value="strength">Strength</MenuItem>
-              <MenuItem value="mobility">Mobility</MenuItem>
-            </Select>
-          </FormControl>
-          {newCategory === 'mobility' && (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>How to log it</InputLabel>
-              <Select value={newTracking} onChange={e => setNewTracking(e.target.value)} label="How to log it">
-                <MenuItem value="duration">Timed hold (seconds)</MenuItem>
-                <MenuItem value="checkoff">Just check off (done)</MenuItem>
-              </Select>
-            </FormControl>
+
+          {groups.length === 0 ? (
+            <Panel sx={{ py: 5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                {search ? `Nothing matches “${search}”` : 'No exercises yet'}
+              </Typography>
+            </Panel>
+          ) : (
+            groups.map((group) => (
+              <Panel key={group.label} sx={{ pb: 0.5 }}>
+                <PanelLabel
+                  sx={{ mb: 0.25 }}
+                  right={<Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.3)' }}>{group.items.length}</Typography>}
+                >
+                  {group.label}
+                </PanelLabel>
+                {group.items.map((ex) => (
+                  <Box
+                    key={ex.id}
+                    role="button"
+                    onClick={() => {
+                      setFormError('');
+                      setForm({
+                        id: ex.id,
+                        name: ex.name,
+                        muscle_group: ex.muscle_group,
+                        category: ex.category || 'strength',
+                        tracking_type: ex.category === 'mobility' ? (ex.tracking_type || 'duration') : 'duration',
+                        notes: ex.notes || '',
+                      });
+                    }}
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 1,
+                      minHeight: 44, px: 1, mx: -1, borderRadius: 1.5, cursor: 'pointer',
+                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.03)' },
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0, py: 0.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Typography noWrap sx={{ fontSize: 13, fontWeight: 500 }}>{ex.name}</Typography>
+                        {ex.category === 'mobility' && (
+                          <Chip
+                            label={ex.tracking_type === 'checkoff' ? 'mobility · check off' : 'mobility · timed'}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              height: 17, fontSize: 10, fontWeight: 700, flexShrink: 0,
+                              color: MOBILITY_PINK, borderColor: MOBILITY_PINK,
+                              '& .MuiChip-label': { px: 0.75 },
+                            }}
+                          />
+                        )}
+                      </Box>
+                      {ex.notes && (
+                        <Typography noWrap sx={{ fontSize: 11, fontStyle: 'italic', color: 'rgba(255,255,255,0.4)' }}>
+                          {ex.notes}
+                        </Typography>
+                      )}
+                    </Box>
+                    <ChevronRightIcon sx={{ fontSize: 17, color: 'rgba(255,255,255,0.22)', flexShrink: 0 }} />
+                  </Box>
+                ))}
+              </Panel>
+            ))
           )}
-          <TextField
-            label="Notes (optional)"
-            value={newNotes}
-            onChange={e => setNewNotes(e.target.value)}
-            fullWidth
-            multiline
-            rows={2}
-            placeholder="Form cues, variations, etc."
-            sx={{ mb: 2 }}
-          />
-          {addError && <Alert severity="error" sx={{ mb: 1 }}>{addError}</Alert>}
+        </Box>
+      )}
+
+      {/* Add / edit */}
+      <Dialog open={!!form} onClose={() => !busy && setForm(null)} fullWidth maxWidth="xs" PaperProps={dialogPaperProps}>
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>{form?.id ? 'Edit exercise' : 'New exercise'}</DialogTitle>
+        <DialogContent>
+          {form && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, mt: 0.5 }}>
+              <TextField label="Name" size="small" fullWidth autoFocus={!form.id} value={form.name} onChange={(e) => set({ name: e.target.value })} />
+              <TextField label="Muscle group" size="small" select fullWidth value={form.muscle_group} onChange={(e) => set({ muscle_group: e.target.value })}>
+                {muscleGroups.map((mg) => <MenuItem key={mg} value={mg}>{mg}</MenuItem>)}
+              </TextField>
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <TextField label="Type" size="small" select sx={{ flex: 1 }} value={form.category} onChange={(e) => set({ category: e.target.value })}>
+                  <MenuItem value="strength">Strength</MenuItem>
+                  <MenuItem value="mobility">Mobility</MenuItem>
+                </TextField>
+                {form.category === 'mobility' && (
+                  <TextField label="Logged as" size="small" select sx={{ flex: 1 }} value={form.tracking_type} onChange={(e) => set({ tracking_type: e.target.value })}>
+                    <MenuItem value="duration">Timed hold</MenuItem>
+                    <MenuItem value="checkoff">Check off</MenuItem>
+                  </TextField>
+                )}
+              </Box>
+              <TextField
+                label="Notes (optional)" size="small" fullWidth multiline rows={2}
+                placeholder="Form cues, variations…"
+                value={form.notes} onChange={(e) => set({ notes: e.target.value })}
+              />
+              {formError && <Alert severity="error" sx={{ fontSize: 12, borderRadius: 2 }}>{formError}</Alert>}
+              {form.id && (
+                <Button
+                  onClick={() => setConfirmDelete({ id: form.id, name: form.name })}
+                  startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                  sx={{ fontSize: 11.5, textTransform: 'none', color: DANGER, borderRadius: 2, border: '1px solid rgba(240,149,149,0.3)' }}
+                >
+                  Delete exercise
+                </Button>
+              )}
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setOpen(false); setNewName(''); setNewMuscle(''); setNewNotes(''); setNewCategory('strength'); setNewTracking('duration'); setAddError(''); }} disabled={adding}>Cancel</Button>
-          <Button onClick={handleAdd} variant="contained" disabled={adding}>
-            {adding ? 'Adding...' : 'Add'}
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setForm(null)} disabled={busy} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={busy} sx={primaryButtonSx}>
+            {busy ? 'Saving…' : form?.id ? 'Save' : 'Add exercise'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onClose={() => { setDeleteDialogOpen(false); setExerciseToDelete(null); }}>
-        <DialogTitle sx={{ fontSize: 13 }}>Delete exercise</DialogTitle>
+      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} PaperProps={dialogPaperProps}>
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>Delete “{confirmDelete?.name}”?</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13 }}>
-            Delete <strong>{exerciseToDelete?.name}</strong>? This cannot be undone.
+          <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+            Exercises with logged sets can't be deleted, so your history is safe.
           </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setDeleteDialogOpen(false); setExerciseToDelete(null); }} sx={{ fontSize: 13 }}>Cancel</Button>
-          <Button onClick={handleDeleteExercise} color="error" variant="contained" sx={{ fontSize: 13 }}>
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setConfirmDelete(null)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+          <Button onClick={handleDelete} sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#fff', backgroundColor: '#b33030', '&:hover': { backgroundColor: '#c73c3c' } }}>
             Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Edit Exercise Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontSize: 13 }}>Edit Exercise</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Exercise Name"
-            value={editName}
-            onChange={e => setEditName(e.target.value)}
-            fullWidth
-            sx={{ mb: 2 }}
-            autoFocus
-          />
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Muscle Group</InputLabel>
-            <Select
-              value={editMuscle}
-              onChange={e => setEditMuscle(e.target.value)}
-              label="Muscle Group"
-            >
-              {Array.isArray(muscleGroups) && muscleGroups.map(mg => (
-                <MenuItem key={mg} value={mg}>{mg}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Type</InputLabel>
-            <Select value={editCategory} onChange={e => setEditCategory(e.target.value)} label="Type">
-              <MenuItem value="strength">Strength</MenuItem>
-              <MenuItem value="mobility">Mobility</MenuItem>
-            </Select>
-          </FormControl>
-          {editCategory === 'mobility' && (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>How to log it</InputLabel>
-              <Select value={editTracking} onChange={e => setEditTracking(e.target.value)} label="How to log it">
-                <MenuItem value="duration">Timed hold (seconds)</MenuItem>
-                <MenuItem value="checkoff">Just check off (done)</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-          <TextField
-            label="Notes (optional)"
-            value={editNotes}
-            onChange={e => setEditNotes(e.target.value)}
-            fullWidth
-            multiline
-            rows={3}
-            placeholder="Add notes about variations, form cues, or specific instructions..."
-            sx={{ mb: 2 }}
-          />
-          {editError && <Alert severity="error" sx={{ mb: 1 }}>{editError}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditOpen(false)} disabled={editing}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained" disabled={editing}>
-            {editing ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -444,4 +320,4 @@ const ExerciseLibrary = () => {
   );
 };
 
-export default ExerciseLibrary; 
+export default ExerciseLibrary;
