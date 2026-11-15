@@ -21,6 +21,7 @@ import { format, addWeeks, differenceInCalendarDays, parseISO } from 'date-fns';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
 import ScrollablePicker from './ScrollablePicker';
+import { Panel, PageHeader, pageSx, primaryButtonSx, dialogPaperProps, TEAL, DANGER } from './ui';
 
 const Goals = () => {
   const navigate = useNavigate();
@@ -84,7 +85,7 @@ const Goals = () => {
 
   const groupedExercises = useMemo(() => {
     if (!exercises.length) return [];
-    const grouped = exercises.reduce((acc, ex) => {
+    const grouped = exercises.filter(ex => ex.category !== 'mobility').reduce((acc, ex) => {
       const mg = ex.muscle_group || 'Other';
       if (!acc[mg]) acc[mg] = [];
       acc[mg].push(ex);
@@ -160,132 +161,111 @@ const Goals = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ maxWidth: 520, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 } }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' }}>
-            Goals
-          </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => { resetForm(); setCreateOpen(true); }}
-            sx={{ fontSize: 13, py: 0.5, px: 1.5 }}
-          >
-            New goal
-          </Button>
-        </Box>
+      <Box sx={pageSx}>
+        <PageHeader
+          title="Goals"
+          right={
+            <Button startIcon={<AddIcon sx={{ fontSize: 16 }} />} onClick={() => { resetForm(); setCreateOpen(true); }} sx={primaryButtonSx}>
+              New goal
+            </Button>
+          }
+        />
 
         {loading && goals.length === 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Skeleton variant="rounded" height={96} />
-            <Skeleton variant="rounded" height={96} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            <Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} />
           </Box>
         ) : goals.length === 0 && fetchError ? (
-          <Box sx={{ py: 5, textAlign: 'center' }}>
-            <Typography color="text.secondary" sx={{ fontSize: 13, mb: 1.5 }}>
+          <Panel sx={{ py: 5, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
               Couldn't load goals
             </Typography>
-            <Button size="small" variant="outlined" onClick={fetchGoals} sx={{ fontSize: 13 }}>
+            <Button size="small" variant="outlined" onClick={fetchGoals} sx={{ fontSize: 12.5, textTransform: 'none' }}>
               Retry
             </Button>
-          </Box>
+          </Panel>
         ) : goals.length === 0 ? (
-          <Box sx={{ py: 5, textAlign: 'center' }}>
-            <Typography color="text.secondary" sx={{ fontSize: 13, mb: 1 }}>
+          <Panel sx={{ py: 5, px: 3, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 0.75 }}>
               No goals yet
             </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: 11 }}>
-              Set a target 1RM and a date, and your progress will show here, on the Performance chart, and while you log sets.
+            <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 }}>
+              Set a target 1RM and a date. Progress shows here, on the Performance chart, and while you log sets.
             </Typography>
-          </Box>
+          </Panel>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
             {goals.map(goal => {
               const expectedPct = goal.target_one_rm === goal.start_one_rm ? 100 :
                 Math.min(100, Math.max(0, ((goal.expected_one_rm - goal.start_one_rm) / (goal.target_one_rm - goal.start_one_rm)) * 100));
+              const status = goal.achieved ? 'achieved' : goal.on_track ? 'on track' : 'behind';
               return (
-                <Box
+                <Panel
                   key={goal.id}
+                  role="button"
                   onClick={() => navigate(`/goals/${goal.id}`)}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 3,
-                    p: 2,
-                    backgroundColor: 'background.paper',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.2s ease',
-                    '&:hover': { borderColor: 'primary.main' },
-                  }}
+                  sx={{ cursor: 'pointer', transition: 'border-color 0.2s ease', '&:hover': { borderColor: `${TEAL}66` } }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                    <Typography noWrap sx={{ fontSize: 14, fontWeight: 600, minWidth: 0 }}>
                       {goal.exercise_name}
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
                       <Chip
-                        label={goal.achieved ? 'achieved' : goal.on_track ? 'on track' : 'behind'}
+                        label={status}
                         size="small"
                         sx={{
-                          fontSize: 10,
-                          height: 20,
-                          fontWeight: 600,
-                          color: '#04342C',
+                          fontSize: 9.5, height: 19, fontWeight: 700, letterSpacing: '0.03em', color: '#04342C',
                           backgroundColor: goal.achieved ? '#9FE1CB' : goal.on_track ? '#5DCAA5' : '#FAC775',
                         }}
                       />
-                      <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setDeleteTarget(goal); }} sx={{ p: 0.5 }}>
+                      <IconButton
+                        aria-label={`Delete ${goal.exercise_name} goal`}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(goal); }}
+                        sx={{ p: 1, mr: -1, color: 'rgba(255,255,255,0.28)', '&:hover': { color: DANGER } }}
+                      >
                         <DeleteIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Box>
                   </Box>
-                  <Typography color="text.secondary" sx={{ fontSize: 11, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', mb: 1.5 }}>
                     {goalSubtitle(goal)}
                   </Typography>
-                  <Box sx={{ position: 'relative', height: 8, borderRadius: 4, backgroundColor: 'divider', mb: 0.75 }}>
+                  <Box sx={{ position: 'relative', height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', mb: 1 }}>
                     <Box
                       sx={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: `${goal.progress * 100}%`,
-                        borderRadius: 4,
-                        backgroundColor: 'primary.main',
+                        position: 'absolute', left: 0, top: 0, bottom: 0,
+                        width: `${Math.min(100, goal.progress * 100)}%`,
+                        borderRadius: 3,
+                        background: `linear-gradient(90deg, ${TEAL}99 0%, ${TEAL} 100%)`,
                         transition: 'width 0.4s ease',
                       }}
                     />
                     <Box
-                      sx={{
-                        position: 'absolute',
-                        left: `${expectedPct}%`,
-                        top: -3,
-                        width: 2,
-                        height: 14,
-                        backgroundColor: 'text.secondary',
-                      }}
+                      title="Where the plan says you should be today"
+                      sx={{ position: 'absolute', left: `${expectedPct}%`, top: -3, width: 2, height: 12, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.6)' }}
                     />
                   </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                      now: <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>{goal.current_one_rm} kg</Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontVariantNumeric: 'tabular-nums' }}>
+                    <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                      now <Box component="span" sx={{ color: TEAL, fontWeight: 700 }}>{goal.current_one_rm} kg</Box>
                     </Typography>
-                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                      plan: {goal.expected_one_rm} kg
+                    <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                      on pace {goal.expected_one_rm} kg
                     </Typography>
-                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                      target: {goal.target_one_rm} kg
+                    <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                      target {goal.target_one_rm} kg
                     </Typography>
                   </Box>
-                </Box>
+                </Panel>
               );
             })}
           </Box>
         )}
 
-        <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontSize: 13, fontWeight: 600 }}>New goal</DialogTitle>
+        <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm" PaperProps={dialogPaperProps}>
+          <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>New goal</DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
               <ScrollablePicker
@@ -333,29 +313,28 @@ const Goals = () => {
               )}
             </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCreateOpen(false)} sx={{ fontSize: 13 }}>Cancel</Button>
+          <DialogActions sx={{ px: 2.5, pb: 2 }}>
+            <Button onClick={() => setCreateOpen(false)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
             <Button
               onClick={handleCreate}
-              variant="contained"
               disabled={saving || !formExercise || !formTarget || !formDate || !currentOneRm}
-              sx={{ fontSize: 13 }}
+              sx={primaryButtonSx}
             >
               {saving ? 'Saving...' : 'Create goal'}
             </Button>
           </DialogActions>
         </Dialog>
 
-        <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
-          <DialogTitle sx={{ fontSize: 13 }}>Delete goal</DialogTitle>
+        <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} PaperProps={dialogPaperProps}>
+          <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>Delete goal?</DialogTitle>
           <DialogContent>
-            <Typography sx={{ fontSize: 13 }}>
+            <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
               Delete the {deleteTarget?.exercise_name} goal? Your logged sets are not affected.
             </Typography>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteTarget(null)} sx={{ fontSize: 13 }}>Cancel</Button>
-            <Button onClick={handleDelete} color="error" variant="contained" sx={{ fontSize: 13 }}>Delete</Button>
+          <DialogActions sx={{ px: 2.5, pb: 2 }}>
+            <Button onClick={() => setDeleteTarget(null)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+            <Button onClick={handleDelete} sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#fff', backgroundColor: '#b33030', '&:hover': { backgroundColor: '#c73c3c' } }}>Delete</Button>
           </DialogActions>
         </Dialog>
       </Box>

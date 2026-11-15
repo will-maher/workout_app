@@ -25,7 +25,7 @@ router.get('/', authenticateToken, async (req, res) => {
     // Fetch all sets for these workouts
     const workoutIds = workouts.map(w => w.id);
     const setsResult = await pool.query(
-      'SELECT ws.*, e.name as exercise_name, e.muscle_group FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id WHERE ws.workout_id = ANY($1::int[])',
+      'SELECT ws.*, e.name as exercise_name, e.muscle_group FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id WHERE ws.workout_id = ANY($1::int[]) ORDER BY ws.set_number, ws.id',
       [workoutIds]
     );
     const setsByWorkout = {};
@@ -56,7 +56,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
     const workout = workoutResult.rows[0];
     const setsResult = await pool.query(
-      'SELECT ws.*, e.name as exercise_name, e.muscle_group FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id WHERE ws.workout_id = $1',
+      'SELECT ws.*, e.name as exercise_name, e.muscle_group FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id WHERE ws.workout_id = $1 ORDER BY ws.set_number, ws.id',
       [id]
     );
     res.json({ ...workout, sets: setsResult.rows || [] });

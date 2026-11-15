@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Alert,
-  IconButton,
   Button,
   Collapse,
   Dialog,
@@ -15,7 +14,6 @@ import {
 import {
   Delete as DeleteIcon,
   ExpandMore as ExpandMoreIcon,
-  Search as SearchIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -32,20 +30,7 @@ import {
 } from 'date-fns';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
-
-const DOT_PALETTE = [
-  '#5DCAA5', '#F0997B', '#85B7EB', '#ED93B1', '#FAC775',
-  '#AFA9EC', '#97C459', '#F09595', '#9FE1CB', '#B4B2A9',
-];
-
-const muscleColor = (group) => {
-  if (!group) return '#888780';
-  let hash = 0;
-  for (let i = 0; i < group.length; i++) {
-    hash = (hash * 31 + group.charCodeAt(i)) >>> 0;
-  }
-  return DOT_PALETTE[hash % DOT_PALETTE.length];
-};
+import { Panel, PanelLabel, PageHeader, pageSx, dialogPaperProps, DANGER } from './ui';
 
 const relativeDate = (dateStr) => {
   const date = parseISO(dateStr);
@@ -97,30 +82,41 @@ const Heatmap = ({ workouts }) => {
     return `rgba(0, 212, 170, ${0.25 + intensity * 0.65})`;
   };
 
+  const [picked, setPicked] = useState(null);
+
   return (
-    <Box sx={{ mb: 2 }}>
+    <Panel>
+      <PanelLabel
+        right={
+          <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+            {picked
+              ? `${format(parseISO(picked.key), 'EEE d MMM')} · ${picked.count} set${picked.count === 1 ? '' : 's'}`
+              : 'tap a day'}
+          </Typography>
+        }
+      >
+        Last {HEATMAP_WEEKS} weeks
+      </PanelLabel>
       <Box sx={{ display: 'flex', gap: '3px', justifyContent: 'space-between' }}>
         {weeks.map((days, wi) => (
           <Box key={wi} sx={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
             {days.map((cell) => (
               <Box
                 key={cell.key}
-                title={`${cell.key}: ${cell.count} sets`}
+                onClick={() => !cell.future && setPicked(cell)}
                 sx={{
                   width: '100%',
                   aspectRatio: '1',
                   borderRadius: '2px',
                   backgroundColor: cellColor(cell),
+                  outline: picked?.key === cell.key ? '1px solid rgba(255,255,255,0.7)' : 'none',
                 }}
               />
             ))}
           </Box>
         ))}
       </Box>
-      <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: 0.75 }}>
-        Last {HEATMAP_WEEKS} weeks — darker means more sets
-      </Typography>
-    </Box>
+    </Panel>
   );
 };
 
@@ -130,7 +126,8 @@ const WorkoutCard = ({ workout, onDelete }) => {
     () => (Array.isArray(workout.sets) ? workout.sets : []),
     [workout.sets]
   );
-  const volume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+  // Mobility sets have no weight/reps, so they add nothing to volume.
+  const volume = sets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
   const groups = [...new Set(sets.map(s => s.muscle_group).filter(Boolean))];
 
   const byExercise = useMemo(() => {
@@ -143,55 +140,39 @@ const WorkoutCard = ({ workout, onDelete }) => {
   }, [sets]);
 
   return (
-    <Box
-      sx={{
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 3,
-        backgroundColor: 'background.paper',
-        overflow: 'hidden',
-      }}
-    >
+    <Panel sx={{ p: 0, overflow: 'hidden' }}>
       <Box
+        role="button"
+        aria-expanded={open}
         onClick={() => setOpen(o => !o)}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: 1.75,
-          py: 1.25,
+          gap: 1,
+          px: 1.5,
+          minHeight: 52,
           cursor: 'pointer',
           '&:active': { backgroundColor: 'rgba(255,255,255,0.03)' },
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary' }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
             {relativeDate(workout.date)}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {groups.slice(0, 5).map(g => (
-                <Box key={g} title={g} sx={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: muscleColor(g) }} />
-              ))}
-            </Box>
-            <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-              {sets.length} sets · {Math.round(volume).toLocaleString()} kg
-            </Typography>
-          </Box>
+          {/* Muscle groups by name: the old hash-coloured dots couldn't be read. */}
+          <Typography noWrap sx={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', mt: 0.125 }}>
+            {groups.slice(0, 3).join(' · ')}{groups.length > 3 ? ` +${groups.length - 3}` : ''}
+          </Typography>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          <IconButton
-            size="small"
-            color="error"
-            onClick={(e) => { e.stopPropagation(); onDelete(workout.id); }}
-            sx={{ p: 0.5, opacity: 0.7 }}
-          >
-            <DeleteIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            {sets.length} sets{volume > 0 ? ` · ${Math.round(volume).toLocaleString()} kg` : ''}
+          </Typography>
           <ExpandMoreIcon
             sx={{
               fontSize: 20,
-              color: 'text.secondary',
+              color: 'rgba(255,255,255,0.35)',
               transform: open ? 'rotate(180deg)' : 'none',
               transition: 'transform 0.2s ease',
             }}
@@ -199,14 +180,11 @@ const WorkoutCard = ({ workout, onDelete }) => {
         </Box>
       </Box>
       <Collapse in={open} timeout={200} unmountOnExit>
-        <Box sx={{ px: 1.75, pb: 1.5, borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
+        <Box sx={{ px: 1.5, pb: 1.25, borderTop: '1px solid rgba(255,255,255,0.06)', pt: 1 }}>
           {Object.entries(byExercise).map(([name, exSets]) => (
-            <Box key={name} sx={{ mb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: muscleColor(exSets[0].muscle_group) }} />
-                <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>{name}</Typography>
-              </Box>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary', ml: 1.6 }}>
+            <Box key={name} sx={{ mb: 0.875 }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>{name}</Typography>
+              <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums' }}>
                 {exSets.map(s =>
                   s.duration_seconds != null
                     ? formatSetDuration(s.duration_seconds)
@@ -218,13 +196,22 @@ const WorkoutCard = ({ workout, onDelete }) => {
             </Box>
           ))}
           {workout.notes && (
-            <Typography sx={{ fontSize: 11, color: 'text.secondary', fontStyle: 'italic', mt: 0.5 }}>
+            <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', fontStyle: 'italic', mt: 0.5 }}>
               {workout.notes}
             </Typography>
           )}
+          {/* Delete lives inside the expanded card: it used to sit on every row,
+              the most eye-catching thing in a list you scroll constantly. */}
+          <Button
+            onClick={() => onDelete(workout.id)}
+            startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
+            sx={{ mt: 0.5, ml: -0.75, fontSize: 11.5, textTransform: 'none', color: DANGER }}
+          >
+            Delete workout
+          </Button>
         </Box>
       </Collapse>
-    </Box>
+    </Panel>
   );
 };
 
@@ -279,7 +266,15 @@ const WorkoutHistory = () => {
     if (!workoutToDelete) return;
     try {
       await axios.delete(`${API_BASE_URL}/api/workouts/${workoutToDelete}`);
-      setWorkouts(ws => ws.filter(w => w.id !== workoutToDelete));
+      setWorkouts(ws => {
+        const next = ws.filter(w => w.id !== workoutToDelete);
+        // Keep the cache in step, or the deleted workout flashes back from it
+        // the next time this tab opens.
+        if (!searchDate) {
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch {}
+        }
+        return next;
+      });
     } catch (err) {
       console.error('Error deleting workout:', err);
       setError('Failed to delete workout');
@@ -310,62 +305,61 @@ const WorkoutHistory = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ maxWidth: 520, mx: 'auto', mt: 2, px: { xs: 1.5, sm: 0 } }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary', mb: 1.5 }}>
-          History
-        </Typography>
+      <Box sx={pageSx}>
+        <PageHeader title="History" />
 
         {retrying && !error && (
-          <Alert severity="info" sx={{ mb: 1.5, fontSize: 12 }}>
+          <Alert severity="info" sx={{ mb: 1.25, fontSize: 12, borderRadius: 2 }}>
             Server is waking up, retrying…
           </Alert>
         )}
 
         {error && (
-          <Alert severity="error" sx={{ mb: 1.5 }} action={<Button color="inherit" size="small" onClick={() => fetchWorkouts(searchDate)}>Retry</Button>}>
+          <Alert severity="error" sx={{ mb: 1.25, fontSize: 12, borderRadius: 2 }} action={<Button color="inherit" size="small" onClick={() => fetchWorkouts(searchDate)}>Retry</Button>}>
             {error}
           </Alert>
         )}
 
         {loading && workouts.length === 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Skeleton variant="rounded" height={92} />
-            <Skeleton variant="rounded" height={56} />
-            <Skeleton variant="rounded" height={56} />
-            <Skeleton variant="rounded" height={56} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            <Skeleton variant="rounded" height={120} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rounded" height={52} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rounded" height={52} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rounded" height={52} sx={{ borderRadius: 3 }} />
           </Box>
         ) : (
-          <>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
             {!searchDate && workouts.length > 0 && <Heatmap workouts={workouts} />}
 
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* Picking a date searches straight away; there used to be a
+                  separate, easily missed search button. */}
               <DatePicker
                 label="Jump to date"
                 value={searchDate}
-                onChange={setSearchDate}
-                slotProps={{ textField: { size: 'small', sx: { flex: 1, '& .MuiInputBase-root': { fontSize: 13 } } } }}
+                onChange={(d) => {
+                  setSearchDate(d);
+                  if (d && !Number.isNaN(d.getTime())) fetchWorkouts(d);
+                }}
+                disableFuture
+                slotProps={{ textField: { size: 'small', sx: { flex: 1, '& .MuiInputBase-root': { fontSize: 13, borderRadius: 2 } } } }}
               />
-              <IconButton size="small" onClick={() => fetchWorkouts(searchDate)} disabled={!searchDate} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                <SearchIcon sx={{ fontSize: 18 }} />
-              </IconButton>
               {searchDate && (
-                <Button size="small" onClick={() => { setSearchDate(null); fetchWorkouts(); }} sx={{ fontSize: 12 }}>
+                <Button size="small" onClick={() => { setSearchDate(null); fetchWorkouts(); }} sx={{ fontSize: 12, textTransform: 'none' }}>
                   Clear
                 </Button>
               )}
             </Box>
 
             {workouts.length === 0 ? (
-              <Typography color="text.secondary" align="center" sx={{ fontSize: 13, py: 4 }}>
-                {searchDate ? 'No workouts on the selected date' : 'No workouts recorded yet'}
+              <Typography align="center" sx={{ fontSize: 13, py: 4, color: 'rgba(255,255,255,0.4)' }}>
+                {searchDate ? 'No workout on that date' : 'No workouts recorded yet'}
               </Typography>
             ) : (
               monthGroups.map(group => (
-                <Box key={group.label} sx={{ mb: 2.5 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
-                    {group.label}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box key={group.label}>
+                  <PanelLabel sx={{ mt: 0.5, mb: 0.75, px: 0.25 }}>{group.label}</PanelLabel>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                     {group.workouts.map(w => (
                       <WorkoutCard key={w.id} workout={w} onDelete={requestDelete} />
                     ))}
@@ -373,19 +367,19 @@ const WorkoutHistory = () => {
                 </Box>
               ))
             )}
-          </>
+          </Box>
         )}
 
-        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-          <DialogTitle sx={{ fontSize: 13 }}>Delete workout</DialogTitle>
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={dialogPaperProps}>
+          <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>Delete workout?</DialogTitle>
           <DialogContent>
-            <Typography sx={{ fontSize: 13 }}>
-              Are you sure you want to delete this workout? This action cannot be undone.
+            <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+              Every set logged in it will be removed. This can't be undone.
             </Typography>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)} sx={{ fontSize: 13 }}>Cancel</Button>
-            <Button onClick={handleDeleteWorkout} color="error" variant="contained" sx={{ fontSize: 13 }}>
+          <DialogActions sx={{ px: 2.5, pb: 2 }}>
+            <Button onClick={() => setDeleteDialogOpen(false)} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+            <Button onClick={handleDeleteWorkout} sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', px: 2, borderRadius: 2, color: '#fff', backgroundColor: '#b33030', '&:hover': { backgroundColor: '#c73c3c' } }}>
               Delete
             </Button>
           </DialogActions>
