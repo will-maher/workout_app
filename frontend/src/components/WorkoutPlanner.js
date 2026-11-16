@@ -22,7 +22,7 @@ import LinkOffIcon from '@mui/icons-material/LinkOff';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axios from 'axios';
-import { API_BASE_URL } from '../App';
+import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import ScrollablePicker from './ScrollablePicker';
 import { Panel, PanelLabel, TEAL } from './ui';
 import {
@@ -35,6 +35,8 @@ import {
   dropOrphanSupersets,
   totalSets,
   musclesForWorkout,
+  mobilityForWorkout,
+  describeTarget,
   OPTIMAL_RANGES,
 } from '../lib/plan';
 
@@ -233,12 +235,13 @@ const WorkoutPlanner = ({ user }) => {
 
   // ── render ────────────────────────────────────────────────────────────────
   const muscleRows = selected ? musclesForWorkout(selected, exerciseMap) : [];
+  const mobility = selected ? mobilityForWorkout(selected, exerciseMap) : { count: 0, seconds: 0 };
 
   const openExerciseDialog = (index) => {
     const ex = selected.exercises[index];
     setExerciseDialog({
       index,
-      form: { exercise: ex.exercise, sets: ex.sets, targetReps: ex.targetReps ?? '' },
+      form: { exercise: ex.exercise, sets: ex.sets, targetReps: ex.targetReps ?? '', targetSeconds: ex.targetSeconds ?? '' },
     });
   };
 
@@ -252,6 +255,7 @@ const WorkoutPlanner = ({ user }) => {
               exercise: form.exercise,
               sets: parseInt(form.sets, 10) || 1,
               targetReps: form.targetReps === '' ? null : (parseInt(form.targetReps, 10) || null),
+              targetSeconds: form.targetSeconds === '' ? null : (parseInt(form.targetSeconds, 10) || null),
             }
           : ex
       )
@@ -415,7 +419,7 @@ const WorkoutPlanner = ({ user }) => {
                             }}
                           >
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography noWrap sx={{ fontSize: 13, fontWeight: 500, color: ex.exercise ? 'text.primary' : 'rgba(255,255,255,0.3)' }}>
+                              <Typography noWrap sx={{ fontSize: 13, fontWeight: 500, color: !ex.exercise ? 'rgba(255,255,255,0.3)' : exerciseMap[ex.exercise]?.category === 'mobility' ? MOBILITY_PINK : 'text.primary' }}>
                                 {ex.exercise || 'Tap to choose an exercise'}
                               </Typography>
                               {exerciseMap[ex.exercise]?.muscle_group && (
@@ -425,7 +429,7 @@ const WorkoutPlanner = ({ user }) => {
                               )}
                             </Box>
                             <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.55)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                              {ex.sets} × {ex.targetReps ?? '?'}
+                              {describeTarget(ex, exerciseMap[ex.exercise])}
                             </Typography>
                             <ChevronRightIcon sx={{ fontSize: 17, color: 'rgba(255,255,255,0.22)', flexShrink: 0 }} />
                           </Box>
@@ -438,7 +442,7 @@ const WorkoutPlanner = ({ user }) => {
                 <Button
                   onClick={() => {
                     updateSelected((list) => [...list, makeExercise()]);
-                    setTimeout(() => setExerciseDialog({ index: selected.exercises.length, form: { exercise: '', sets: 3, targetReps: 8 } }), 0);
+                    setTimeout(() => setExerciseDialog({ index: selected.exercises.length, form: { exercise: '', sets: 3, targetReps: 8, targetSeconds: '' } }), 0);
                   }}
                   startIcon={<AddIcon />}
                   fullWidth
@@ -452,7 +456,7 @@ const WorkoutPlanner = ({ user }) => {
                 </Button>
               </Panel>
 
-              {muscleRows.length > 0 && (
+              {(muscleRows.length > 0 || mobility.count > 0) && (
                 <Panel>
                   <PanelLabel>This workout</PanelLabel>
                   {muscleRows.map(([muscle, sets]) => (
@@ -468,9 +472,20 @@ const WorkoutPlanner = ({ user }) => {
                       </Typography>
                     </Box>
                   ))}
-                  <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', mt: 0.75 }}>
-                    Sets in this workout, with the suggested weekly total alongside.
-                  </Typography>
+                  {mobility.count > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.5 }}>
+                      <Typography sx={{ fontSize: 12.5, color: MOBILITY_PINK }}>Mobility</Typography>
+                      <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontVariantNumeric: 'tabular-nums' }}>
+                        {mobility.count} {mobility.count === 1 ? 'exercise' : 'exercises'}
+                        {mobility.seconds > 0 && ` · ${Math.round(mobility.seconds / 60 * 10) / 10} min`}
+                      </Typography>
+                    </Box>
+                  )}
+                  {muscleRows.length > 0 && (
+                    <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', mt: 0.75 }}>
+                      Strength sets in this workout, with the suggested weekly total alongside.
+                    </Typography>
+                  )}
                 </Panel>
               )}
             </>
@@ -508,12 +523,30 @@ const WorkoutPlanner = ({ user }) => {
                   onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, sets: e.target.value } }))}
                   inputProps={{ min: 1, inputMode: 'numeric' }}
                 />
-                <TextField
-                  label="Target reps" type="number" size="small" sx={{ flex: 1 }}
-                  value={exerciseDialog.form.targetReps}
-                  onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, targetReps: e.target.value } }))}
-                  inputProps={{ min: 1, inputMode: 'numeric' }}
-                />
+                {(() => {
+                  // A stretch is planned as a hold length, a check-off needs
+                  // no second number, and only strength work has target reps.
+                  const info = exerciseMap[exerciseDialog.form.exercise];
+                  if (info?.category === 'mobility') {
+                    if (info.tracking_type === 'checkoff') return null;
+                    return (
+                      <TextField
+                        label="Hold (seconds)" type="number" size="small" sx={{ flex: 1 }}
+                        value={exerciseDialog.form.targetSeconds}
+                        onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, targetSeconds: e.target.value } }))}
+                        inputProps={{ min: 1, step: 5, inputMode: 'numeric' }}
+                      />
+                    );
+                  }
+                  return (
+                    <TextField
+                      label="Target reps" type="number" size="small" sx={{ flex: 1 }}
+                      value={exerciseDialog.form.targetReps}
+                      onChange={(e) => setExerciseDialog((d) => ({ ...d, form: { ...d.form, targetReps: e.target.value } }))}
+                      inputProps={{ min: 1, inputMode: 'numeric' }}
+                    />
+                  );
+                })()}
               </Box>
 
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -598,7 +631,7 @@ const WorkoutPlanner = ({ user }) => {
         </DialogTitle>
         <DialogContent>
           {workoutDialog && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, mt: 0.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}>
               <TextField
                 label="Name" size="small" fullWidth autoFocus
                 placeholder="Push A"

@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogActions,
   Skeleton,
+  TextField,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -30,7 +31,7 @@ import {
 } from 'date-fns';
 import axios from 'axios';
 import { API_BASE_URL } from '../App';
-import { Panel, PanelLabel, PageHeader, pageSx, dialogPaperProps, DANGER } from './ui';
+import { Panel, PanelLabel, PageHeader, pageSx, dialogPaperProps, primaryButtonSx, DANGER } from './ui';
 
 const relativeDate = (dateStr) => {
   const date = parseISO(dateStr);
@@ -120,7 +121,7 @@ const Heatmap = ({ workouts }) => {
   );
 };
 
-const WorkoutCard = ({ workout, onDelete }) => {
+const WorkoutCard = ({ workout, onDelete, onEditSet }) => {
   const [open, setOpen] = useState(false);
   const sets = useMemo(
     () => (Array.isArray(workout.sets) ? workout.sets : []),
@@ -184,15 +185,30 @@ const WorkoutCard = ({ workout, onDelete }) => {
           {Object.entries(byExercise).map(([name, exSets]) => (
             <Box key={name} sx={{ mb: 0.875 }}>
               <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>{name}</Typography>
-              <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums' }}>
-                {exSets.map(s =>
-                  s.duration_seconds != null
-                    ? formatSetDuration(s.duration_seconds)
-                    : (s.weight == null && s.reps == null)
-                      ? 'done'
-                      : `${s.weight}×${s.reps}`
-                ).join('  ·  ')}
-              </Typography>
+              {/* Each set is its own button, so a mistyped weight can be
+                  corrected without deleting the whole workout. */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.375 }}>
+                {exSets.map(s => (
+                  <Box
+                    key={s.id}
+                    role="button"
+                    aria-label={`Edit set of ${name}`}
+                    onClick={() => onEditSet(workout, s)}
+                    sx={{
+                      px: 1, minHeight: 30, display: 'flex', alignItems: 'center', borderRadius: 1.5, cursor: 'pointer',
+                      border: '1px solid rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.02)',
+                      fontSize: 12, color: 'rgba(255,255,255,0.72)', fontVariantNumeric: 'tabular-nums',
+                      '&:hover': { borderColor: 'rgba(255,255,255,0.25)' },
+                    }}
+                  >
+                    {s.duration_seconds != null
+                      ? formatSetDuration(s.duration_seconds)
+                      : (s.weight == null && s.reps == null)
+                        ? 'done'
+                        : `${s.weight} × ${s.reps}`}
+                  </Box>
+                ))}
+              </Box>
             </Box>
           ))}
           {workout.notes && (
@@ -230,6 +246,9 @@ const WorkoutHistory = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [workoutToDelete, setWorkoutToDelete] = useState(null);
   const [searchDate, setSearchDate] = useState(null);
+  const [editingSet, setEditingSet] = useState(null);
+  const [setBusy, setSetBusy] = useState(false);
+  const [setFormError, setSetFormError] = useState('');
 
   useEffect(() => {
     fetchWorkouts();
@@ -281,6 +300,87 @@ const WorkoutHistory = () => {
     } finally {
       setDeleteDialogOpen(false);
       setWorkoutToDelete(null);
+    }
+  };
+
+  // Apply a change to the list and keep the cache in step with it.
+  const commitWorkouts = (update) => {
+    setWorkouts(ws => {
+      const next = update(ws);
+      if (!searchDate) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
+  };
+
+  const openSetEditor = (workout, set) => {
+    const kind = set.duration_seconds != null ? 'duration' : (set.weight == null && set.reps == null) ? 'checkoff' : 'strength';
+    setSetFormError('');
+    setEditingSet({
+      workoutId: workout.id,
+      setCount: workout.sets.length,
+      id: set.id,
+      name: set.exercise_name,
+      kind,
+      weight: set.weight ?? '',
+      reps: set.reps ?? '',
+      seconds: set.duration_seconds ?? '',
+    });
+  };
+
+  const saveSet = async () => {
+    const e = editingSet;
+    let body;
+    if (e.kind === 'strength') {
+      const weight = parseFloat(e.weight), reps = parseInt(e.reps, 10);
+      if (!Number.isFinite(weight) || weight < 0 || !Number.isFinite(reps) || reps <= 0) {
+        setSetFormError('Enter a weight and a rep count');
+        return;
+      }
+      body = { weight, reps, duration_seconds: null };
+    } else {
+      const seconds = parseInt(e.seconds, 10);
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        setSetFormError('Enter a hold length in seconds');
+        return;
+      }
+      body = { weight: null, reps: null, duration_seconds: seconds };
+    }
+    setSetBusy(true);
+    setSetFormError('');
+    try {
+      await axios.put(`${API_BASE_URL}/api/workouts/sets/${e.id}`, body);
+      commitWorkouts(ws => ws.map(w => w.id !== e.workoutId ? w : {
+        ...w, sets: w.sets.map(st => st.id === e.id ? { ...st, ...body } : st),
+      }));
+      setEditingSet(null);
+    } catch (err) {
+      setSetFormError(err.response?.data?.error || 'Couldn’t save the set');
+    } finally {
+      setSetBusy(false);
+    }
+  };
+
+  const deleteSet = async () => {
+    const e = editingSet;
+    setSetBusy(true);
+    setSetFormError('');
+    try {
+      // Removing the only set would leave an empty workout behind, so take
+      // the workout with it.
+      if (e.setCount <= 1) {
+        await axios.delete(`${API_BASE_URL}/api/workouts/${e.workoutId}`);
+        commitWorkouts(ws => ws.filter(w => w.id !== e.workoutId));
+      } else {
+        await axios.delete(`${API_BASE_URL}/api/workouts/sets/${e.id}`);
+        commitWorkouts(ws => ws.map(w => w.id !== e.workoutId ? w : { ...w, sets: w.sets.filter(st => st.id !== e.id) }));
+      }
+      setEditingSet(null);
+    } catch (err) {
+      setSetFormError(err.response?.data?.error || 'Couldn’t delete the set');
+    } finally {
+      setSetBusy(false);
     }
   };
 
@@ -361,7 +461,7 @@ const WorkoutHistory = () => {
                   <PanelLabel sx={{ mt: 0.5, mb: 0.75, px: 0.25 }}>{group.label}</PanelLabel>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                     {group.workouts.map(w => (
-                      <WorkoutCard key={w.id} workout={w} onDelete={requestDelete} />
+                      <WorkoutCard key={w.id} workout={w} onDelete={requestDelete} onEditSet={openSetEditor} />
                     ))}
                   </Box>
                 </Box>
@@ -369,6 +469,60 @@ const WorkoutHistory = () => {
             )}
           </Box>
         )}
+
+        <Dialog open={!!editingSet} onClose={() => !setBusy && setEditingSet(null)} fullWidth maxWidth="xs" PaperProps={dialogPaperProps}>
+          <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>{editingSet?.name}</DialogTitle>
+          <DialogContent>
+            {editingSet && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}>
+                {editingSet.kind === 'strength' && (
+                  <Box sx={{ display: 'flex', gap: 1.5 }}>
+                    <TextField
+                      label="Weight (kg)" type="number" size="small" sx={{ flex: 1 }}
+                      value={editingSet.weight}
+                      onChange={(ev) => setEditingSet(s => ({ ...s, weight: ev.target.value }))}
+                      inputProps={{ min: 0, step: 0.5, inputMode: 'decimal' }}
+                    />
+                    <TextField
+                      label="Reps" type="number" size="small" sx={{ flex: 1 }}
+                      value={editingSet.reps}
+                      onChange={(ev) => setEditingSet(s => ({ ...s, reps: ev.target.value }))}
+                      inputProps={{ min: 1, inputMode: 'numeric' }}
+                    />
+                  </Box>
+                )}
+                {editingSet.kind === 'duration' && (
+                  <TextField
+                    label="Hold (seconds)" type="number" size="small" fullWidth
+                    value={editingSet.seconds}
+                    onChange={(ev) => setEditingSet(s => ({ ...s, seconds: ev.target.value }))}
+                    inputProps={{ min: 1, inputMode: 'numeric' }}
+                  />
+                )}
+                {editingSet.kind === 'checkoff' && (
+                  <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                    Logged as completed. There's nothing to edit, but you can remove it.
+                  </Typography>
+                )}
+                {setFormError && <Alert severity="error" sx={{ fontSize: 12, borderRadius: 2 }}>{setFormError}</Alert>}
+                <Button
+                  onClick={deleteSet}
+                  disabled={setBusy}
+                  startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                  sx={{ fontSize: 11.5, textTransform: 'none', color: DANGER, borderRadius: 2, border: '1px solid rgba(240,149,149,0.3)' }}
+                >
+                  {editingSet.setCount <= 1 ? 'Delete set (removes this workout)' : 'Delete set'}
+                </Button>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 2.5, pb: 2 }}>
+            <Button onClick={() => setEditingSet(null)} disabled={setBusy} sx={{ fontSize: 13, textTransform: 'none', color: 'text.secondary' }}>Cancel</Button>
+            {editingSet?.kind !== 'checkoff' && (
+              <Button onClick={saveSet} disabled={setBusy} sx={primaryButtonSx}>{setBusy ? 'Saving…' : 'Save'}</Button>
+            )}
+          </DialogActions>
+        </Dialog>
 
         <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={dialogPaperProps}>
           <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>Delete workout?</DialogTitle>

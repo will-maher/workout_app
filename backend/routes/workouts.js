@@ -193,6 +193,42 @@ router.post('/:id/sets', authenticateToken, async (req, res) => {
       }
 });
 
+// PUT update a logged set (user-specific). A strength set carries weight and
+// reps; a mobility set carries a hold duration, or nothing at all for a plain
+// check-off — so each field is optional but must be a sane number if sent.
+router.put('/sets/:setId', authenticateToken, async (req, res) => {
+  const userId = req.user.userId;
+  const { setId } = req.params;
+  const clean = (value, { integer }) => {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || (integer && !Number.isInteger(n))) return undefined;
+    return n;
+  };
+  const weight = clean(req.body.weight, { integer: false });
+  const reps = clean(req.body.reps, { integer: true });
+  const duration = clean(req.body.duration_seconds, { integer: true });
+  if (weight === undefined || reps === undefined || duration === undefined) {
+    return res.status(400).json({ error: 'weight, reps and duration_seconds must be non-negative numbers' });
+  }
+  if ((weight === null) !== (reps === null)) {
+    return res.status(400).json({ error: 'weight and reps must be given together' });
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE workout_sets SET weight = $1, reps = $2, duration_seconds = $3 WHERE id = $4 AND user_id = $5 RETURNING *',
+      [weight, reps, duration, setId, userId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Set not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating set:', err);
+    res.status(500).json({ error: 'Failed to update set' });
+  }
+});
+
 // DELETE set from workout (user-specific)
 router.delete('/sets/:setId', authenticateToken, async (req, res) => {
   const userId = req.user.userId;

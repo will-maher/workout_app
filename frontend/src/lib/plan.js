@@ -7,7 +7,7 @@
 //
 // v2 shape:
 //   { version: 2, workouts: [ { id, name, exercises: [ Exercise ] } ] }
-//   Exercise: { exercise, sets, targetReps, notes, supersetId }
+//   Exercise: { exercise, sets, targetReps, targetSeconds, notes, supersetId }
 //
 // Exercises sharing a supersetId AND sitting next to each other form a
 // superset. Keeping the marker on the exercise (rather than nesting groups)
@@ -28,6 +28,7 @@ export const makeExercise = (overrides = {}) => ({
   exercise: '',
   sets: 3,
   targetReps: 8,
+  targetSeconds: null,
   notes: '',
   supersetId: null,
   ...overrides,
@@ -46,10 +47,13 @@ const normalizeExercise = (raw) => {
   const name = typeof raw.exercise === 'string' ? raw.exercise : '';
   const sets = parseInt(raw.sets, 10);
   const reps = parseInt(raw.targetReps, 10);
+  const secs = parseInt(raw.targetSeconds, 10);
   return {
     exercise: name,
     sets: Number.isFinite(sets) && sets > 0 ? sets : 3,
     targetReps: Number.isFinite(reps) && reps > 0 ? reps : null,
+    // Timed mobility work is planned as a hold length rather than a rep count.
+    targetSeconds: Number.isFinite(secs) && secs > 0 ? secs : null,
     notes: typeof raw.notes === 'string' ? raw.notes : '',
     supersetId: typeof raw.supersetId === 'string' ? raw.supersetId : null,
   };
@@ -128,15 +132,40 @@ export function groupExercises(exercises) {
 export const totalSets = (workout) =>
   (workout?.exercises || []).reduce((sum, ex) => sum + (parseInt(ex.sets, 10) || 0), 0);
 
-// Sets per muscle group for one workout, descending.
+// How a planned exercise should be described: "4 × 5" for strength,
+// "2 × 30s" for a timed hold, "2 sets" for a check-off.
+export function describeTarget(planned, exerciseInfo) {
+  const sets = parseInt(planned?.sets, 10) || 0;
+  if (exerciseInfo?.category === 'mobility') {
+    if (exerciseInfo.tracking_type === 'checkoff') return `${sets} ${sets === 1 ? 'set' : 'sets'}`;
+    return `${sets} × ${planned.targetSeconds ? `${planned.targetSeconds}s` : '?'}`;
+  }
+  return `${sets} × ${planned?.targetReps ?? '?'}`;
+}
+
+// Strength sets per muscle group for one workout, descending. Mobility work
+// is left out: it doesn't count towards weekly training volume.
 export function musclesForWorkout(workout, exerciseMap) {
   const counts = {};
   (workout?.exercises || []).forEach((ex) => {
-    const muscle = exerciseMap?.[ex.exercise]?.muscle_group;
-    if (!muscle) return;
-    counts[muscle] = (counts[muscle] || 0) + (parseInt(ex.sets, 10) || 0);
+    const info = exerciseMap?.[ex.exercise];
+    if (!info?.muscle_group || info.category === 'mobility') return;
+    counts[info.muscle_group] = (counts[info.muscle_group] || 0) + (parseInt(ex.sets, 10) || 0);
   });
   return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+// Planned mobility work in a workout: how many exercises and total hold time.
+export function mobilityForWorkout(workout, exerciseMap) {
+  let count = 0;
+  let seconds = 0;
+  (workout?.exercises || []).forEach((ex) => {
+    const info = exerciseMap?.[ex.exercise];
+    if (info?.category !== 'mobility') return;
+    count += 1;
+    seconds += (parseInt(ex.sets, 10) || 0) * (ex.targetSeconds || 0);
+  });
+  return { count, seconds };
 }
 
 // Optimal weekly set / frequency guidance per muscle group. Lives here rather
