@@ -24,7 +24,7 @@ import { format, subMonths, differenceInCalendarDays, parseISO } from 'date-fns'
 import axios from 'axios';
 import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import ScrollablePicker from './ScrollablePicker';
-import { migratePlan, groupExercises } from '../lib/plan';
+import { migratePlan, groupExercises, describeTarget } from '../lib/plan';
 import { Panel, PanelLabel, TEAL, hideScrollbarSx, dialogPaperProps } from './ui';
 
 // Format a hold duration for display, e.g. 45 -> "45s", 90 -> "1:30".
@@ -34,6 +34,82 @@ const formatDuration = (secs) => {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const REST_PRESETS = [0, 60, 90, 120, 180];
+const formatClock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+
+// Rest timer. Idle, it is a row of presets; running, the same panel becomes
+// the countdown, so it takes no extra room on the screen.
+const RestTimer = ({ rest, seconds, onSeconds, onAdjust, onSkip }) => {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!rest) return undefined;
+    const id = setInterval(() => tick((n) => n + 1), 250);
+    return () => clearInterval(id);
+  }, [rest]);
+
+  const smallBtn = {
+    minWidth: 0, height: 30, px: 1.25, borderRadius: 2, fontSize: 11.5, fontWeight: 700, textTransform: 'none',
+    color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.1)',
+  };
+
+  if (rest) {
+    const remaining = Math.max(0, Math.ceil((rest.endsAt - Date.now()) / 1000));
+    const pct = rest.total > 0 ? Math.min(100, (remaining / rest.total) * 100) : 0;
+    return (
+      <Panel sx={{ borderColor: `${TEAL}55` }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 10, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)' }}>
+              Rest
+            </Typography>
+            <Typography aria-live="off" sx={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: TEAL }}>
+              {formatClock(remaining)}
+            </Typography>
+          </Box>
+          <Button onClick={() => onAdjust(-15)} sx={smallBtn} aria-label="15 seconds less">−15</Button>
+          <Button onClick={() => onAdjust(15)} sx={smallBtn} aria-label="15 seconds more">+15</Button>
+          <Button onClick={onSkip} sx={{ ...smallBtn, color: TEAL, borderColor: `${TEAL}55` }}>Skip</Button>
+        </Box>
+        <Box sx={{ mt: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+          <Box sx={{ height: '100%', width: `${pct}%`, borderRadius: 2, backgroundColor: TEAL, transition: 'width .25s linear' }} />
+        </Box>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel sx={{ py: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 10, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', flexShrink: 0 }}>
+          Rest timer
+        </Typography>
+        <Box sx={{ flex: 1, display: 'flex', p: '2px', borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          {REST_PRESETS.map((s) => {
+            const on = seconds === s;
+            return (
+              <Box
+                key={s}
+                role="button"
+                aria-pressed={on}
+                onClick={() => onSeconds(s)}
+                sx={{
+                  flex: 1, textAlign: 'center', py: 0.5, borderRadius: 1, cursor: 'pointer', userSelect: 'none',
+                  fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  color: on ? '#06140F' : 'rgba(255,255,255,0.5)',
+                  backgroundColor: on ? TEAL : 'transparent',
+                  transition: 'background-color .18s ease, color .18s ease',
+                }}
+              >
+                {s === 0 ? 'Off' : formatClock(s)}
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    </Panel>
+  );
 };
 
 // Compact completion ring for the planned-workout progress.
@@ -415,6 +491,19 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [duration, setDuration] = useState('30');
+  const [restSeconds, setRestSeconds] = useState(() => {
+    try {
+      const v = parseInt(localStorage.getItem('rest_seconds'), 10);
+      return Number.isFinite(v) && v >= 0 ? v : 90;
+    } catch { return 90; }
+  });
+  const [rest, setRest] = useState(() => {
+    try {
+      const r = JSON.parse(localStorage.getItem('rest_timer'));
+      return r && r.endsAt > Date.now() ? r : null;
+    } catch { return null; }
+  });
+  const audioCtxRef = useRef(null);
   const [sets, setSets] = useState([]);
   const [saving, setSaving] = useState(false);
   const [recentSets, setRecentSets] = useState([]);
@@ -907,18 +996,48 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
   // Validate numeric input
   const isNumeric = (val) => /^\d+(\.\d+)?$/.test(val);
 
-  // In a superset you alternate exercises set by set, so logging one moves
-  // straight to its partner (wrapping round) with that exercise's target reps.
-  const advanceWithinSuperset = (exerciseName) => {
+  // Where an exercise sits inside a superset of the selected workout, if any.
+  const supersetSlot = (exerciseName) => {
     const group = groupExercises(selectedWorkout?.exercises || [])
       .find((g) => g.items.length > 1 && g.items.some((it) => it.exercise.exercise === exerciseName));
-    if (!group) return;
-    const pos = group.items.findIndex((it) => it.exercise.exercise === exerciseName);
-    const next = group.items[(pos + 1) % group.items.length].exercise;
+    if (!group) return null;
+    return { items: group.items, pos: group.items.findIndex((it) => it.exercise.exercise === exerciseName) };
+  };
+
+  // In a superset you alternate exercises set by set, so logging one moves
+  // straight to its partner (wrapping round) with that exercise's targets.
+  const advanceWithinSuperset = (exerciseName) => {
+    const slot = supersetSlot(exerciseName);
+    if (!slot) return;
+    const next = slot.items[(slot.pos + 1) % slot.items.length].exercise;
     const nextData = exercises.find((ex) => ex.name === next.exercise);
     if (!nextData || nextData.id === parseInt(selectedExercise, 10)) return;
     pendingRepsRef.current = next.targetReps ? parseInt(next.targetReps, 10) : null;
+    if (next.targetSeconds) setDuration(String(next.targetSeconds));
     setSelectedExercise(nextData.id);
+  };
+
+  // ── Rest timer ───────────────────────────────────────────────────────────
+  // Stored as an end timestamp rather than a ticking counter, so it stays
+  // correct if the tab is backgrounded or the app is reopened mid-rest.
+  const startRest = () => {
+    if (!restSeconds) return;
+    // Created on the tap that adds the set: browsers only allow sound that
+    // starts from a user gesture, and the beep fires long after it.
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx && !audioCtxRef.current) audioCtxRef.current = new Ctx();
+      audioCtxRef.current?.resume?.();
+    } catch { /* sound is a bonus; the timer works without it */ }
+    setRest({ endsAt: Date.now() + restSeconds * 1000, total: restSeconds });
+  };
+
+  const adjustRest = (deltaSeconds) => {
+    setRest((r) => {
+      if (!r) return r;
+      const endsAt = Math.max(Date.now(), r.endsAt + deltaSeconds * 1000);
+      return { endsAt, total: Math.max(r.total + deltaSeconds, Math.ceil((endsAt - Date.now()) / 1000)) };
+    });
   };
 
   const handleAddSet = () => {
@@ -971,12 +1090,53 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
     haptic();
     setMessage('');
     setReps('');
+    // Inside a superset you only rest once the round is finished.
+    const slot = supersetSlot(exercise.name);
+    if (!slot || slot.pos === slot.items.length - 1) startRest();
     advanceWithinSuperset(exercise.name);
   };
 
   const handleRemoveSet = (setId) => {
     setSets(sets.filter(set => set.id !== setId));
   };
+
+  useEffect(() => {
+    try { localStorage.setItem('rest_seconds', String(restSeconds)); } catch {}
+  }, [restSeconds]);
+
+  useEffect(() => {
+    try {
+      if (rest) localStorage.setItem('rest_timer', JSON.stringify(rest));
+      else localStorage.removeItem('rest_timer');
+    } catch {}
+  }, [rest]);
+
+  // Announce the end of a rest: vibration where the device supports it, a
+  // short double beep, and a line in the app bar.
+  useEffect(() => {
+    if (!rest) return undefined;
+    const id = setInterval(() => {
+      if (Date.now() < rest.endsAt) return;
+      setRest(null);
+      try { navigator.vibrate?.([200, 100, 200]); } catch {}
+      try {
+        const ctx = audioCtxRef.current;
+        if (ctx) {
+          [0, 0.22].forEach((offset) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = 880;
+            gain.gain.value = 0.12;
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(ctx.currentTime + offset);
+            osc.stop(ctx.currentTime + offset + 0.14);
+          });
+        }
+      } catch {}
+      setMessage('Rest over — next set');
+    }, 250);
+    return () => clearInterval(id);
+  }, [rest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- LocalStorage persistence for sets ---
   // Load sets from localStorage on mount
@@ -1382,6 +1542,8 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                           onClick={() => {
                             if (!exerciseData) return;
                             const t = exercise.targetReps ? parseInt(exercise.targetReps, 10) : null;
+                            // A planned hold length pre-fills the timer field.
+                            if (exercise.targetSeconds) setDuration(String(exercise.targetSeconds));
                             if (selectedExercise === exerciseData.id) {
                               if (t) { setReps(String(t)); setSliderReps(t); }
                             } else {
@@ -1426,7 +1588,7 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                             </Box>
                           )}
                           <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', flexShrink: 0, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
-                            {exercise.sets} × {exercise.targetReps || '?'}
+                            {describeTarget(exercise, exerciseData)}
                           </Typography>
                         </Box>
                       );
@@ -1738,6 +1900,16 @@ const WorkoutEntry = ({ onStatusMessage, onHeaderAction }) => {
                 </Box>
               )}
             </Panel>
+
+            {(rest || (selectedExercise && !isMobility)) && (
+              <RestTimer
+                rest={rest}
+                seconds={restSeconds}
+                onSeconds={(v) => { setRestSeconds(v); haptic(); }}
+                onAdjust={adjustRest}
+                onSkip={() => setRest(null)}
+              />
+            )}
 
             {/* ── Active goal ────────────────────────────────────────────── */}
             {activeGoal && (

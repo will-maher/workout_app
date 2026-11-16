@@ -254,7 +254,7 @@ router.get('/performance/sets', authenticateToken, async (req, res) => {
   if (!exercise_id) {
     return res.status(400).json({ error: 'exercise_id is required' });
   }
-  let query = 'SELECT w.date, ws.weight, ws.reps, ws.set_number FROM workout_sets ws JOIN workouts w ON ws.workout_id = w.id WHERE ws.user_id = $1 AND ws.exercise_id = $2 ORDER BY w.date ASC, ws.set_number ASC';
+  let query = 'SELECT w.date, ws.weight, ws.reps, ws.duration_seconds, ws.set_number FROM workout_sets ws JOIN workouts w ON ws.workout_id = w.id WHERE ws.user_id = $1 AND ws.exercise_id = $2 ORDER BY w.date ASC, ws.set_number ASC';
   const params = [userId, exercise_id];
   try {
     const result = await pool.query(query, params);

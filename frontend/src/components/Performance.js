@@ -10,9 +10,9 @@ import ScrollablePicker from './ScrollablePicker';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import axios from 'axios';
-import { format, parseISO, startOfISOWeek, subMonths, subYears, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO, startOfISOWeek, subMonths, subYears, subWeeks, differenceInCalendarDays } from 'date-fns';
 import { OPTIMAL_RANGES } from '../lib/plan';
-import { API_BASE_URL } from '../App';
+import { API_BASE_URL, MOBILITY_PINK } from '../App';
 import { Panel, PanelLabel, StatCard, pageSx, TEAL, DANGER } from './ui';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -141,8 +141,7 @@ const Performance = () => {
   const fetchExercises = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/exercises`);
-      // Mobility work has no weight or reps, so there is no 1RM to chart.
-      const list = (Array.isArray(res.data) ? res.data : []).filter(e => e.category !== 'mobility');
+      const list = Array.isArray(res.data) ? res.data : [];
       setExercises(list);
       const remembered = parseInt(localStorage.getItem(LAST_EXERCISE_KEY), 10);
       const start = list.find(e => e.id === remembered)
@@ -486,6 +485,58 @@ const Performance = () => {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [sortedSets, showAllSets]);
 
+  // ── Mobility ─────────────────────────────────────────────────────────────
+  // Mobility work has no weight or reps, so there is no 1RM to chart. What
+  // matters instead is whether it is being done, and for how long.
+  const selectedInfo = useMemo(
+    () => exercises.find(e => e.id === parseInt(selectedExercise, 10)) || null,
+    [exercises, selectedExercise]
+  );
+  const isMobility = selectedInfo?.category === 'mobility';
+  const isTimed = isMobility && selectedInfo?.tracking_type !== 'checkoff';
+
+  const mobility = useMemo(() => {
+    if (!isMobility) return null;
+    const bySession = (rows) => {
+      const acc = {};
+      rows.forEach(r => {
+        const key = r.date.slice(0, 10);
+        if (!acc[key]) acc[key] = { sets: 0, seconds: 0 };
+        acc[key].sets += 1;
+        acc[key].seconds += r.duration_seconds || 0;
+      });
+      return acc;
+    };
+    const inRange = bySession(filteredSets);
+    const all = bySession(allSets);
+    const dates = Object.keys(inRange).sort();
+
+    // Consecutive weeks with at least one session, counting back from this
+    // week — or from last week, so the streak isn't shown as broken just
+    // because this week's session hasn't happened yet.
+    const weeks = new Set(Object.keys(all).map(d => format(startOfISOWeek(parseISO(d)), 'yyyy-MM-dd')));
+    let cursor = startOfISOWeek(new Date());
+    if (!weeks.has(format(cursor, 'yyyy-MM-dd'))) cursor = subWeeks(cursor, 1);
+    let streak = 0;
+    while (weeks.has(format(cursor, 'yyyy-MM-dd'))) { streak += 1; cursor = subWeeks(cursor, 1); }
+
+    return {
+      sessions: dates.length,
+      totalSets: dates.reduce((n, d) => n + inRange[d].sets, 0),
+      totalSeconds: dates.reduce((n, d) => n + inRange[d].seconds, 0),
+      longest: allSets.reduce((m, r) => Math.max(m, r.duration_seconds || 0), 0),
+      streak,
+      series: dates.map(d => [new Date(d).getTime(), isTimed ? inRange[d].seconds : inRange[d].sets]),
+    };
+  }, [isMobility, isTimed, filteredSets, allSets]);
+
+  const fmtHold = (secs) => {
+    if (!secs) return '0s';
+    if (secs < 60) return `${secs}s`;
+    const m = Math.floor(secs / 60), r = secs % 60;
+    return r ? `${m}:${String(r).padStart(2, '0')}` : `${m}m`;
+  };
+
   const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', 'all': 'all time' }[timeRange];
 
   return (
@@ -552,6 +603,82 @@ const Performance = () => {
           <Panel sx={{ py: 5, textAlign: 'center' }}>
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>Pick an exercise to see your progress</Typography>
           </Panel>
+        ) : isMobility ? (
+          !mobility || mobility.sessions === 0 ? (
+            <Panel sx={{ py: 5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                {allSets.length === 0 ? 'Nothing logged for this exercise yet' : `Nothing logged in the last ${rangeLabel}`}
+              </Typography>
+            </Panel>
+          ) : (
+            <>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+                <StatCard label="Sessions" value={mobility.sessions} unit={`in ${rangeLabel}`} accent={MOBILITY_PINK} />
+                <StatCard label="Week streak" value={mobility.streak} unit={mobility.streak === 1 ? 'week' : 'weeks'} />
+                {isTimed ? (
+                  <>
+                    <StatCard label="Total hold time" value={fmtHold(mobility.totalSeconds)} />
+                    <StatCard label="Longest hold" value={fmtHold(mobility.longest)} />
+                  </>
+                ) : (
+                  <>
+                    <StatCard label="Times completed" value={mobility.totalSets} />
+                    <StatCard label="Per session" value={(mobility.totalSets / mobility.sessions).toFixed(1)} unit="avg" />
+                  </>
+                )}
+              </Box>
+
+              {mobility.series.length > 1 && (
+                <Panel sx={{ pb: 0.5 }}>
+                  <PanelLabel>{isTimed ? 'Hold time per session' : 'Completions per session'}</PanelLabel>
+                  <HighchartsReact highcharts={Highcharts} options={{
+                    chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'inherit' }, height: 200, spacing: [8, 4, 8, 4] },
+                    title: { text: '' },
+                    xAxis: { type: 'datetime', title: { text: null }, lineColor: axisColor, tickColor: 'transparent', gridLineWidth: 0, labels: { style: { fontSize: '11px', color: chartText } } },
+                    yAxis: {
+                      min: 0, title: { text: null }, gridLineColor: gridColor, allowDecimals: false,
+                      labels: { formatter: function () { return isTimed ? `${this.value}s` : this.value; }, style: { fontSize: '11px', color: chartText } },
+                    },
+                    tooltip: {
+                      ...tooltipStyle,
+                      formatter: function () {
+                        return `<b>${format(new Date(this.x), 'MMM d, yyyy')}</b><br/>${isTimed ? `Held <b>${fmtHold(this.y)}</b>` : `<b>${this.y}</b> completed`}`;
+                      },
+                    },
+                    plotOptions: { column: { borderWidth: 0, borderRadius: 3, pointPadding: 0.05, groupPadding: 0.1, maxPointWidth: 28 } },
+                    series: [{ name: 'Mobility', data: mobility.series, color: `${MOBILITY_PINK}cc` }],
+                    credits: { enabled: false },
+                    legend: { enabled: false },
+                  }} />
+                </Panel>
+              )}
+
+              <Panel>
+                <PanelLabel
+                  right={<Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>{sortedSets.length} logged</Typography>}
+                >
+                  Log
+                </PanelLabel>
+                {groupedSets.map(([date, dateSets]) => (
+                  <Box key={date} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1, py: 0.375 }}>
+                    <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>
+                      {format(parseISO(date), 'EEE d MMM yyyy')}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                      {isTimed
+                        ? dateSets.map(r => fmtHold(r.duration_seconds || 0)).join('  ·  ')
+                        : `${dateSets.length} × done`}
+                    </Typography>
+                  </Box>
+                ))}
+                {sortedSets.length > SETS_PREVIEW && (
+                  <Button onClick={() => setShowAllSets(v => !v)} fullWidth sx={{ mt: 0.5, fontSize: 12, textTransform: 'none', color: 'rgba(255,255,255,0.55)' }}>
+                    {showAllSets ? 'Show fewer' : `Show all ${sortedSets.length}`}
+                  </Button>
+                )}
+              </Panel>
+            </>
+          )
         ) : filteredDailyMaxPoints.length === 0 ? (
           <Panel sx={{ py: 5, textAlign: 'center' }}>
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>

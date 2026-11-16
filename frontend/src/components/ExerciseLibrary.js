@@ -259,7 +259,7 @@ const ExerciseLibrary = () => {
         <DialogTitle sx={{ fontSize: 14, fontWeight: 700 }}>{form?.id ? 'Edit exercise' : 'New exercise'}</DialogTitle>
         <DialogContent>
           {form && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, mt: 0.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}>
               <TextField label="Name" size="small" fullWidth autoFocus={!form.id} value={form.name} onChange={(e) => set({ name: e.target.value })} />
               <TextField label="Muscle group" size="small" select fullWidth value={form.muscle_group} onChange={(e) => set({ muscle_group: e.target.value })}>
                 {muscleGroups.map((mg) => <MenuItem key={mg} value={mg}>{mg}</MenuItem>)}
